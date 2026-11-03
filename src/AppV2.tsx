@@ -1,7 +1,7 @@
 import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Bell, BookOpen, Camera, Check, ChevronDown, ChevronRight, CircleHelp, CircleUserRound, Coffee, Compass, Flame, Flower2, Footprints, Heart, Leaf, Maximize, MessageCircle, MoreHorizontal, Package, Settings2, Sprout, UsersRound, Utensils, Volume2, VolumeX, Wind, X, Zap } from 'lucide-react';
 import { activities, useGame, type Activity, type Panel } from './gameStore';
-import { dishes, distance, nearestSeat, npcs, seats, zoneAt } from './gameData';
+import { templeOffering, OFFERING_RANGE, OFFERING_DURATION, incenseSpot, INCENSE_RANGE, INCENSE_DURATION, dishes, distance, nearestSeat, npcs, seats, zoneAt } from './gameData';
 import { activityIcons } from './uiIcons';
 import {KneelingSit,SeatedMeditation} from './practiceIcons';
 import PanelsV2, { Tasks } from './PanelsV2';
@@ -14,20 +14,21 @@ import CharacterCreator from './CharacterCreator';
 const World=lazy(()=>import('./WorldV2'));
 class SceneBoundary extends Component<{children:ReactNode},{error:boolean}>{state={error:false};static getDerivedStateFromError(){return {error:true}}render(){return this.state.error?<div className="scene-error"><Flower2 size={42}/><h2>Chưa mở được khuôn viên 3D</h2><p>Bật WebGL trong trình duyệt rồi thử tải lại nhé.</p><button onClick={()=>window.location.reload()}>Mở lại khuôn viên</button></div>:this.props.children}}
 function ContextActions(){const s=useGame(),zone=zoneAt(s.position),seat=seats.find(c=>c.id===s.seated),near=nearestSeat(s.position),npc=npcs.find(n=>distance(s.position,[n.x,n.z])<4);if(!s.started)return null;
+  if(['incense','flower','candle'].includes(s.action))return <div className="context-actions v2-context incense-status"><span>{s.action==='flower'?'Đang dâng hoa…':s.action==='candle'?'Đang dâng đèn…':'Đang dâng hương…'} {Math.min(100,Math.round((Date.now()-(s.event?.at||Date.now()))/(s.action==='incense'?INCENSE_DURATION:OFFERING_DURATION)*100))}%</span><button onClick={()=>s.stand()}>Hủy · Esc</button></div>;
   const button=(label:string,Icon:typeof Leaf,fn:()=>void,key=label)=><button key={key} onClick={fn}><Icon size={16}/>{label}</button>;
   if(seat?.kind==='dining')return <div className="context-actions v2-context">{button('Thực đơn chay',Utensils,()=>s.set({panel:'menu'}))}{s.meal?.status==='ready'&&s.meal.seatId===seat.id&&button('Dùng bữa',Utensils,()=>s.eat())}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
   if(s.seated)return <div className="context-actions v2-context">{seat?.kind==='tea'?button('Uống một tách trà',Coffee,()=>s.perform('tea')):button('Ngồi thiền',SeatedMeditation,()=>s.perform('meditate'))}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
   const buttons=[];
   if(npc)buttons.push(button(`Trò chuyện với ${npc.name}`,MessageCircle,()=>s.set({npc:npc.id,panel:'dialogue'})));
-  if(near&&distance(s.position,[near.position[0],near.position[2]])<3)buttons.push(button(near.kind==='dining'?'Ngồi ăn chay':near.kind==='cushion'?'Ngồi lên bồ đoàn':'Ngồi nghỉ',KneelingSit,()=>s.sit(near.id)));
+  if(near&&distance(s.position,[near.position[0],near.position[2]])<3)buttons.push(button(near.kind==='dining'?'Ngồi ăn chay':near.kind==='cushion'?'Ngồi lên bồ đoàn':'Ngồi nghỉ',Flower2,()=>s.sit(near.id)));
   if(nearBodhiAltar(s.position))buttons.push(button('Dâng hương dưới bồ đề',Leaf,()=>s.perform('incense')));
-  if(zone.id==='temple'&&distance(s.position,[0,-24])<15){buttons.push(button('Dâng hương',Leaf,()=>s.perform('incense')),button('Thắp nến',Flame,()=>s.perform('candle')),button('Dâng hoa',Flower2,()=>s.perform('flower')))}
+  if(zone.id==='temple'&&distance(s.position,[0,-24])<15){buttons.push(button(distance(s.position,incenseSpot)>INCENSE_RANGE?'Đến lư hương':s.inventory.incense>0?`Dâng hương · E · Còn ${s.inventory.incense}`:'Hết hương · Mở túi vải',Leaf,()=>s.perform('incense')),button(distance(s.position,templeOffering.candle.spot)>OFFERING_RANGE?'Đến bàn dâng đèn':`Dâng đèn · Còn ${s.inventory.candle}`,Flame,()=>s.perform('candle')),button(distance(s.position,templeOffering.flower.spot)>OFFERING_RANGE?'Đến bàn dâng hoa':`Dâng hoa · Còn ${s.inventory.flower}`,Flower2,()=>s.perform('flower')))}
   if(zone.id==='pond'&&distance(s.position,[18,4])<12)buttons.push(button('Cho cá koi ăn',Leaf,()=>s.perform('feed')));
   if(zone.id==='lotus')buttons.push(button('Viết lời nguyện',Flame,()=>s.perform('lantern')));
   if(zone.id==='bell')buttons.push(button('Thỉnh chuông',Bell,()=>s.perform('bell')));
   if(zone.id==='dining')buttons.push(button('Xem thực đơn chay',Utensils,()=>s.set({panel:'menu'})));
   if(zone.id==='library')buttons.push(button('Mở tàng kinh các',BookOpen,()=>{s.set({panel:'library'});s.read(s.scripture)}));
-  return buttons.length?<div className="context-actions v2-context">{buttons.slice(0,3)}</div>:null;
+  return buttons.length?<div className="context-actions v2-context">{buttons.slice(0,4)}</div>:null;
 }
 function PracticeCard(){const s=useGame(),action=s.action;if(!['meditate','chant','beads','mok','pray'].includes(action))return null;const a=activities.find(a=>a.id===action)!,Icon=activityIcons[a.id],count=s.progress[a.id];return <section className="practice-card"><div className="practice-symbol"><Icon size={27} strokeWidth={1.2}/></div><span className="eyebrow">{seats.find(c=>c.id===s.seated)?.label||'MỘT KHOẢNH KHẮC TĨNH TẠI'}</span><h2>{action==='meditate'?'Hít vào. Thở ra.':a.name}</h2><p>{action==='chant'?'Nam mô Bổn Sư Thích Ca Mâu Ni Phật.':action==='beads'?`Hạt ${Math.floor(count)%27+1} / 27 · Chậm rãi theo từng hạt.`:action==='mok'?'Một nhịp đều, một niệm an lành.':'Buông lỏng hai vai. Trở về với chính mình.'}</p><div className="practice-count">{Math.floor(count)} <small>{action==='beads'?'hạt đã lần':action==='mok'?'nhịp đã gõ':'giây tĩnh tại'}</small></div>{(action==='beads'||action==='mok')&&<button className="button ghost" onClick={()=>{s.record(action);if(action==='mok')playWood()}}>{action==='mok'?'Gõ một nhịp':'Lần thêm một hạt'}</button>}<button className="text-btn" onClick={()=>s.set({action:s.seated?'sit':'walk'})}>Tạm dừng thực tập</button></section>}
 function MealStatus(){const s=useGame(),m=s.meal;if(!m||(m.status==='finished'&&zoneAt(s.position).id!=='dining'))return null;const d=dishes.find(d=>d.id===m.dish)!;const seconds=m.status==='preparing'?Math.max(0,Math.ceil((m.readyAt-Date.now())/1000)):m.status==='eating'?Math.max(0,Math.ceil(((m.eatUntil||0)-Date.now())/1000)):0;return <section className={`meal-status ${m.status}`}><header><span><Utensils size={15}/> BẾP HƯƠNG THIỀN</span>{m.status==='finished'&&<button className="icon-btn" aria-label="Đóng thông báo bữa ăn" onClick={()=>s.set({meal:null})}><X size={14}/></button>}</header><div className="meal-status-main"><span className="meal-emoji">{d.icon}</span><div><strong>{d.name}</strong><p>{m.status==='preparing'?`Bếp đang chuẩn bị · ${seconds}s`:m.status==='ready'?'Món đã được đặt trên bàn':m.status==='eating'?`Ăn chậm, nhai kỹ · ${seconds}s`:'Cảm ơn bạn đã dùng bữa'}</p></div></div>{m.status==='ready'?<button className="button primary" onClick={()=>s.eat()}>{s.seated===m.seatId?'Dùng bữa chay':'Trở lại chỗ ăn'}<ArrowUpRight size={14}/></button>:m.status==='eating'?<div className="meal-time-progress"><i style={{width:`${(9-seconds)/9*100}%`}}/></div>:m.status==='finished'?<span className="meal-finish"><Check size={13}/>+{d.energy} năng lượng · Một bữa chay an lành</span>:<div className="meal-time-progress"><i style={{width:`${(6-seconds)/6*100}%`}}/></div>}</section>}
@@ -52,5 +53,3 @@ export default function AppV2(){const s=useGame(),[dailyOpen,setDailyOpen]=useSt
     <Joystick/>{s.toast&&<div className="toast" key={s.toast.id} role="status"><Leaf size={17}/>{s.toast.text}</div>}<PanelsV2/>
   </main>;
 }
-
-

@@ -1,3 +1,5 @@
+import MainTempleReference from './MainTempleReference';
+import IncenseBurner from './IncenseBurner';
 import GardenDetails from './GardenDetails';
 import BodhiTree from './BodhiTree';
 import CourtyardTrees from './CourtyardTrees';
@@ -25,9 +27,9 @@ export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string
   useFrame(()=>{if(!ref.current)return;ref.current.getWorldPosition(point.current);const p=useGame.getState().position,visible=Math.hypot(p[0]-point.current.x,p[1]-point.current.z)<maxDistance;if(visible!==previous.current){previous.current=visible;show(visible)}});
   return <group ref={ref} position={position}>{shown&&<Html center distanceFactor={distanceFactor} zIndexRange={[3,0]}>{children}</Html>}</group>;
 }function RoofSection({x,z,w,d,children}:{x:number;z:number;w:number;d:number;children:React.ReactNode}){const ref=useRef<THREE.Group>(null);useFrame(()=>{if(!ref.current)return;const s=useGame.getState();ref.current.visible=!(Math.abs(s.position[0]-x)<w/2+1&&Math.abs(s.position[1]-z)<d/2+2)});return <group ref={ref}>{children}</group>}
-function Pavers(){const material=useSurface('stone','#e7dfc8');const ref=useRef<THREE.InstancedMesh>(null);const cells=useMemo(()=>{const a:Vec3[]=[];for(let x=-14;x<=14;x++)for(let z=-17;z<=27;z++)a.push([x,0,z]);for(let x=-47;x<=47;x++)for(const z of [-7,-6,-5,-4,-33,-32])if(Math.abs(x)>14)a.push([x,0,z]);for(let z=-57;z<=47;z++)for(const x of [-18,-17,17,18])if(z<-17||z>27)a.push([x,0,z]);return a},[]);useEffect(()=>{const m=new THREE.Object3D();if(!ref.current)return;cells.forEach((p,i)=>{m.position.set(p[0],.025,p[2]);m.scale.set(.975,.05,.975);m.updateMatrix();ref.current!.setMatrixAt(i,m.matrix);ref.current!.setColorAt(i,new THREE.Color(['#c8c0a5','#cfc7ac','#c2bba0','#d4cbb0'][i%4]))});ref.current.instanceMatrix.needsUpdate=true},[cells]);return <instancedMesh ref={ref} args={[undefined,undefined,cells.length]} receiveShadow material={material}><boxGeometry/></instancedMesh>}
+function Pavers(){const material=useSurface('stone','#e7dfc8');const ref=useRef<THREE.InstancedMesh>(null);const cells=useMemo(()=>{const a:Vec3[]=[];for(let x=-14;x<=14;x++)for(let z=-17;z<=27;z++)a.push([x,0,z]);for(let x=-47;x<=47;x++)for(const z of [-7,-6,-5,-4,-33,-32])if(Math.abs(x)>14)a.push([x,0,z]);for(let z=-57;z<=47;z++)for(const x of [-18,-17,17,18])if(z<-17||z>27)a.push([x,0,z]);return a},[]);useEffect(()=>{const m=new THREE.Object3D();if(!ref.current)return;cells.forEach((p,i)=>{m.position.set(p[0],.025,p[2]);m.scale.set(.975,.05,.975);m.updateMatrix();ref.current!.setMatrixAt(i,m.matrix);ref.current!.setColorAt(i,new THREE.Color(['#c8c0a5','#cfc7ac','#c2bba0','#d4cbb0'][i%4]))});ref.current.instanceMatrix.needsUpdate=true},[cells]);return <instancedMesh ref={ref} args={[undefined,undefined,cells.length]} frustumCulled={false} receiveShadow material={material}><boxGeometry/></instancedMesh>}
 function WalkSurface(){const click=(e:ThreeEvent<MouseEvent>)=>{if(e.delta>5)return;e.stopPropagation();const s=useGame.getState();s.stand();s.set({destination:[e.point.x,e.point.z],pendingSeat:null});};return <mesh position={[0,.065,0]} rotation={[-Math.PI/2,0,0]} onClick={click}><planeGeometry args={[124,132]}/><meshBasicMaterial transparent opacity={0} depthWrite={false}/></mesh>}
-export function Ground(){return <group>
+export function Ground(){return <group><IncenseBurner/>
   <mesh position={[0,-.15,0]} receiveShadow rotation={[-Math.PI/2,0,0]}><planeGeometry args={[350,350]}/><meshStandardMaterial color="#a6b18a"/></mesh>
   <mesh position={[0,-.04,-2]} receiveShadow><boxGeometry args={[124,.1,132]}/><meshStandardMaterial color="#a4ad83"/></mesh>
   <Pavers/><WalkSurface/>
@@ -37,27 +39,14 @@ export function Ground(){return <group>
     <CuboidCollider position={[0,-.24,-2]} args={[62,.3,66]}/>
     <CuboidCollider position={[-60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[0,1,-66]} args={[60,3,.3]}/><CuboidCollider position={[0,1,62]} args={[60,3,.3]}/>
     {obstacles.filter(o=>!o.navigationOnly).map((o,i)=><CuboidCollider key={i} position={[o.x,o.w>10&&o.d<1?2:.7,o.z]} args={[o.w/2,o.w>10&&o.d<1?2:.7,o.d/2]}/>)}
-    <CuboidCollider position={[0,.25,-27]} args={[10.8,.33,9]}/><CuboidCollider position={[0,.17,-17.8]} rotation={[.28,0,0]} args={[4.5,.08,1.8]}/>
     <CuboidCollider position={[-33,.14,-17]} args={[10,.26,8]}/><CuboidCollider position={[-33,.08,-8.6]} rotation={[.2,0,0]} args={[4,.05,1.1]}/>
     <CuboidCollider position={[34,.03,-27]} args={[11.5,.13,9]}/><CuboidCollider position={[-34,.1,-43]} args={[8.5,.25,7]}/>
     <CuboidCollider position={[0,.08,-56]} args={[8,.22,5]}/>
     <CuboidCollider position={[28,.19,4]} args={[11,.2,1.5]}/><CuboidCollider position={[28,.15,39]} args={[13,.2,1.5]}/>
   </RigidBody>
 </group>}
-function MainTemple(){return <group position={[0,0,-27]}>
-  <Box position={[0,.2,0]} scale={[23,.4,19]} color="#b4b398"/><Box position={[0,.49,0]} scale={[21.6,.18,18]} color="#c8bc96"/>
-  {[0,1,2].map(i=><Box key={i} position={[0,.08+i*.17,10.2-i*.6]} scale={[9-i*.2,.17,1]} color="#d0c9ab"/>)}
-  <Box position={[0,2.8,-8.7]} scale={[21.5,4.5,.22]} color="#d6bd91"/>
-  {[-10,-6.7,-3.3,3.3,6.7,10].flatMap(x=>[-8.2,8.2].map(z=><group key={`${x}-${z}`}><Box position={[x,2.9,z]} scale={[.35,4.6,.35]} color="#7c4a35"/><Box position={[x,.8,z]} scale={[.6,.45,.6]} color="#aaa284"/></group>))}
-  {[-1,1].map(s=><group key={s}><Box position={[s*10.6,2.4,0]} scale={[.2,3.6,16.5]} color="#c7ab7d"/>{Array.from({length:10},(_,i)=><Box key={i} position={[s*10.4,3.25,-7+i*1.55]} scale={[.03,1.3,.045]} color="#78553a"/>)}</group>)}
-  <group position={[0,.6,-5.5]} scale={2}><Buddha/></group>
-  <Box position={[0,1,-3.6]} scale={[7.5,.6,1.4]} color="#80503c"/><Box position={[0,1.35,-3.6]} scale={[7.8,.12,1.7]} color="#b49a5d"/>
-  {[-3,3].map(x=><group key={x} position={[x,1.45,-3.6]}><mesh><cylinderGeometry args={[.22,.3,.45,16]}/><meshStandardMaterial color="#789080"/></mesh><mesh position={[0,.8,0]}><sphereGeometry args={[.33,12,10]}/><meshStandardMaterial color="#dab7ad"/></mesh></group>)}
-  <group position={[0,.8,10.8]}><mesh><cylinderGeometry args={[.65,.45,.7,24]}/><meshStandardMaterial color="#7d8b70" metalness={.3}/></mesh>{[-.18,0,.18].map(x=><mesh key={x} position={[x,.7,0]}><cylinderGeometry args={[.015,.015,.9,6]}/><meshStandardMaterial color="#936b45"/></mesh>)}</group>
-  <RoofSection x={0} z={-27} w={23} d={19}><Box position={[0,5,8.4]} scale={[22,.4,.4]} color="#704432"/><Roof y={5.2} width={27} depth={22} height={2.3}/><Box position={[0,7.2,0]} scale={[10,1.5,5]} color="#cdbb92"/><Roof y={8.3} width={14} depth={8} height={1.8}/></RoofSection>
-  {[-8,-4,4,8].map(x=><Lantern key={x} position={[x,4.3,8.5]}/>)}
-  <WorldLabel position={[0,4.7,9]} title="ĐẠI HÙNG BẢO ĐIỆN" subtitle="Chạm một bồ đoàn để ngồi"/>
-</group>}
+function MainTemple(){return <MainTempleReference/>}
+
 function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;w:number;d:number;title:string;subtitle:string;children:React.ReactNode;floor?:number}){return <group position={[x,0,z]}>
   <Box position={[0,floor/2,0]} scale={[w,floor,d]} color="#b3aa8b"/>
   <Box position={[0,2.3,-d/2+.15]} scale={[w,4,.2]} color="#ceba94"/>
@@ -115,6 +104,3 @@ function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/
 </>}
 function Architecture(){return <><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);
-
-
-

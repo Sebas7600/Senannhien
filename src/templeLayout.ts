@@ -1,0 +1,3 @@
+import * as THREE from 'three';
+export function removedTemplePost(x:number,z:number){return Math.abs(x)<9&&[1,4.9].some(row=>Math.abs(z-row)<.65)}
+export function removeNavePosts(scene:THREE.Group,parts:(g:THREE.BufferGeometry)=>{box:THREE.Box3;indices:number[]}[]){scene.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const material=o.material as THREE.Material;if(!/wood|stone|gold/.test(material.name))return;const keep:number[]=[];for(const part of parts(o.geometry)){const c=part.box.getCenter(new THREE.Vector3()).multiplyScalar(.5),size=part.box.getSize(new THREE.Vector3()).multiplyScalar(.5);if(removedTemplePost(c.x,c.z)&&size.x<1.5&&size.z<1.5)continue;keep.push(...part.indices)}o.geometry=o.geometry.clone();o.geometry.setIndex(keep);});return scene;}

@@ -33,7 +33,7 @@ export function createGameServer(){
         if(pathname==='/api/state'){
           const finite=(n,min,max,fallback)=>typeof n==='number'&&Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
           const seat=typeof b.seat==='string'&&b.seat.length<40&&!([...room.peers.values()].some(p=>p.id!==b.id&&p.seat===b.seat))?b.seat:null;
-          const actions=['walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok'];
+          const actions=['flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok'];
           const meal=b.meal&&['noodles','rice','soup','bread'].includes(b.meal.dish)&&['preparing','ready','eating','finished'].includes(b.meal.status)&&typeof b.meal.seatId==='string'?{dish:b.meal.dish,seatId:b.meal.seatId.slice(0,40),status:b.meal.status,readyAt:finite(b.meal.readyAt,0,Date.now()+60000,0),eatUntil:finite(b.meal.eatUntil,0,Date.now()+60000,0)}:null;
           room.peers.set(b.id,{...peer,name:typeof b.name==='string'?b.name.trim().slice(0,22)||'An Nhiên':peer.name,robe:typeof b.robe==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.robe)?b.robe:peer.robe,gender:b.gender==='female'?'female':'male',skin:typeof b.skin==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.skin)?b.skin:'#c99c79',robeStyle:b.robeStyle==='cross'?'cross':'traditional',x:finite(b.x,-60,60,peer.x),y:finite(b.y,-1,12,peer.y),z:finite(b.z,-66,62,peer.z),heading:finite(b.heading,-100,100,peer.heading),action:actions.includes(b.action)?b.action:'walk',seat,meal,updated:Date.now()});json(res,200,{ok:true,seat});return;
         }
@@ -57,7 +57,6 @@ export function createGameServer(){
 }
 export function startGameServer(){
   const port=Number(process.env.PORT||5174),server=createGameServer();server.on('error',e=>{console.error(`Khong mo duoc cong ${port}: ${e.message}`);process.exitCode=1});
-  server.listen(port,'127.0.0.1',()=>console.log(`\n  SEN AN NHIEN · KHUON VIEN MO RONG\n  http://127.0.0.1:${port}\n  13 khu vuc · 80 cho ngoi · 4 mon chay\n  Phong + chat: mo cung dia chi trong cua so khac.\n  Giu cua so nay de choi. Ctrl+C de dung.\n`));
+  server.listen(port,'127.0.0.1',()=>console.log(`\n  SEN AN NHIEN · KHUON VIEN MO RONG\n  http://127.0.0.1:${port}\n  13 khu vuc · 94 cho ngoi · 4 mon chay\n  Phong + chat: mo cung dia chi trong cua so khac.\n  Giu cua so nay de choi. Ctrl+C de dung.\n`));
   return server;
 }
-
