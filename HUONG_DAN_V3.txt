@@ -1,0 +1,25 @@
+SEN AN NHIEN 3
+
+1. Giai nen toan bo goi Play.
+2. Can Node.js 18.20+ da cai san.
+3. Bam doi Choi-Game.cmd, giu cua so lenh khi choi.
+4. Game mo tai http://127.0.0.1:5174 .
+
+WASD di chuyen; Shift di nhanh; E tuong tac/dung day.
+Chuot phai xoay camera; cuon de zoom; F dat lai camera.
+M mo ban do. Chon khu vuc va Den nhanh de dich chuyen.
+Chon cho ngoi de ngoi that vao bo doan/ghe.
+Nha an: chon ghe, goi mon, cho bep, bam Dung bua.
+Chap tay: bam lan nua de ha tay.
+Cai dat -> Chinh nhan vat 3D de doi gioi tinh/mau ao.
+
+THAY QR UNG HO SAU:
+- Chep QR that vao dist/donate/qr.png.
+- Sua dist/donation.json: enabled=true, dien ten nguoi nhan,
+  ngan hang, so tai khoan, muc dich va mo ta dung thuc te.
+- Dong/mo lai muc Ung ho de tai lai cau hinh.
+- Ban nguon thi sua public/donation.json va public/donate/qr.png,
+  sau do npm run build.
+
+Chi tiet: README_V3.md. Ban do/bua chay: README_V2.md.
+Nguon va giay phep asset: ASSET_LICENSES.md.

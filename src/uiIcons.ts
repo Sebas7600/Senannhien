@@ -1,0 +1,6 @@
+import { Bell, BookOpen, Flower2, Flame, Footprints, HandHeart, Heart, Leaf, Music2, Soup, Sparkles, Sprout, Utensils, Wheat, Wind, Coffee, CircleDot, type LucideIcon } from 'lucide-react';
+import type { Activity, Item } from './gameStore';
+export const activityIcons:Record<Activity,LucideIcon>={pray:HandHeart,bow:Heart,sweep:Wind,meditate:Flower2,feed:Wheat,bell:Bell,lantern:Flame,incense:Leaf,beads:CircleDot,chant:BookOpen,mok:Music2,candle:Flame,flower:Flower2,read:BookOpen,plant:Sprout,water:Leaf,harvest:Wheat,meal:Utensils,tea:Coffee,walk:Footprints};
+export const itemInfo:Record<Item,{name:string;desc:string;icon:LucideIcon;quantity:number;cost:number}>={
+  feed:{name:'Cám cá',desc:'Một bữa nhỏ cho đàn koi',icon:Wheat,quantity:10,cost:6},lantern:{name:'Hoa đăng',desc:'Gửi lời nguyện ở hồ sen',icon:Flame,quantity:5,cost:12},incense:{name:'Tâm hương',desc:'Dâng lên lư hương chánh điện',icon:Leaf,quantity:5,cost:6},candle:{name:'Nến sáp',desc:'Thắp sáng một góc chánh điện',icon:Flame,quantity:5,cost:6},flower:{name:'Hoa tươi',desc:'Một bình hoa dâng Phật',icon:Flower2,quantity:5,cost:6},seed:{name:'Hạt giống',desc:'Gieo ở vườn rau từ tâm',icon:Sprout,quantity:8,cost:6},vegetable:{name:'Rau đã hái',desc:'Thành quả từ luống rau của bạn',icon:Wheat,quantity:0,cost:0},
+};
