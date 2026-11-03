@@ -1,0 +1,141 @@
+/* Activity surfaces share a quiet palette and a readable touch scale. */
+.v2-game{min-height:100dvh}
+.v2-game .action-bar{max-width:800px}
+.v2-game .action-bar button{min-width:78px;min-height:66px}
+.v2-game .action-bar span{font-size:11px}
+.v2-game .action-bar small{font-size:9px}
+.v2-game .bottom-center{max-width:calc(100% - 32px)}
+.modal-shade{padding:24px;backdrop-filter:blur(5px)}
+.v2-modal{max-height:calc(100dvh - 48px);overscroll-behavior:contain;scrollbar-gutter:stable;padding:32px;color:#435747}
+.v2-modal>.eyebrow{font-size:10px;letter-spacing:1.5px;color:#758268}
+.v2-modal h2{font-size:36px;color:#354f42}
+.v2-modal .modal-subtitle{font-size:13px;line-height:1.7;color:#74806b}
+.v2-modal .button{min-height:46px;padding:12px 18px;font-size:13px;justify-content:center;border-radius:12px}
+.v2-modal .text-btn{min-height:44px;font-size:12px;line-height:1.5}
+.v2-modal .modal-close{position:sticky;top:0;float:right;margin:-12px -12px 0 10px;width:44px;height:44px;z-index:3;background:#f8f5ebed;color:#566b50}
+.v2-modal .field-label{font-size:13px;color:#617257}
+.v2-modal input,.v2-modal textarea{font-size:16px;line-height:1.7;border-radius:14px}
+.v2-modal .soft-note{font-size:12px;line-height:1.8}
+.v2-modal .activity-grid{gap:12px}
+.v2-modal .activity-grid>button{min-height:142px;padding:20px;border-radius:16px;gap:11px}
+.v2-modal .activity-grid strong{font-size:14px;color:#4e6745}
+.v2-modal .activity-grid span{font-size:12px;line-height:1.7;color:#6d7d60}
+.v2-modal .activity-grid small{font-size:11px;color:#758168}
+.v2-modal .activity-grid>button:has(.lucide-flame){background:#ebe6d1}
+.seating-summary strong{font-size:25px}.seating-summary p{font-size:12px;color:#65765c}
+.seat-filters button{min-height:44px;font-size:12px}.seat-filters span{font-size:11px}
+.seat-grid{max-height:none;overflow:visible}.seat-grid>button{min-height:114px}
+.seat-grid>button strong{font-size:12px}.seat-grid>button span{font-size:11px;color:#65765c}
+.v2-modal .dish-heading strong{font-size:23px}.v2-modal .dish-card>p{font-size:12px;min-height:78px;line-height:1.7;color:#68765e}
+.v2-modal .dish-card footer{font-size:11px}.v2-modal .dish-card footer b{font-size:12px}
+.v2-modal .menu-banner>div>span{font-size:11px}.v2-modal .menu-banner>p{font-size:12px}
+.v2-modal .order-summary strong{font-size:14px}.v2-modal .order-summary p{font-size:12px;line-height:1.7}
+.meal-status{width:290px}.meal-status header>span{font-size:10px}.meal-status-main p{font-size:12px;line-height:1.7}.meal-status-main strong{font-size:24px}.meal-status>.button{min-height:44px;font-size:13px}.meal-finish{font-size:11px;line-height:1.7}
+.wish-station-tag{background:#fbf5df;border:1px solid #c3b381;border-radius:16px;padding:12px 18px;min-width:165px;color:#4c654c;font-size:15px;box-shadow:0 6px 22px #213d3030}
+.wish-station-tag>span{color:#bd944c;margin-right:5px}.wish-station-tag small{display:block;font-size:10px;margin-top:5px;color:#748169}
+.ceremony-status{position:absolute;bottom:190px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:13px;padding:16px 22px;background:#fbf6e7ed;border:1px solid #e3d7ad;border-radius:18px;box-shadow:0 12px 50px #1d342e20;pointer-events:none;color:#7d915f;z-index:6;max-width:calc(100% - 32px);width:max-content}
+.ceremony-status strong{font-size:14px;font-weight:500;color:#4c6448}.ceremony-status span{display:block;margin-top:6px;font-size:11px;color:#788168}
+
+/* Book catalogue first, then the pages belonging to that book. */
+.reading-seat{display:flex;align-items:center;gap:10px;border:1px solid #d9dfc8;background:#eaf0df;border-radius:12px;padding:9px 14px;margin-bottom:25px;color:#617355;font-size:12px}
+.reading-seat .text-btn{margin-left:auto;white-space:nowrap}
+.catalogue-label{display:block;font-size:10px;letter-spacing:2px;color:#7a866e;margin:14px 0 18px}
+.book-catalogue{display:grid;gap:18px}.catalogue-book{display:flex;align-items:center;gap:36px;padding:26px;border:1px solid #dedfc9;border-radius:18px;background:#eeeddf;text-align:left;transition:background .2s}
+.catalogue-book:hover{background:#e6e8d6}.book-cover{flex:0 0 190px;min-height:255px;align-self:stretch;display:flex;align-items:center;flex-direction:column;justify-content:center;position:relative;padding:20px 22px 16px 30px;background:linear-gradient(100deg,#5b7057,#748265 7%,#8b9973 8%,#798b69 12%,#758865);box-shadow:5px 8px 14px #354f4220,inset 2px 0 #f0ecd34a;color:#f9f1d8;border-radius:3px 12px 12px 3px}
+.book-cover:before{content:'';position:absolute;inset:12px 10px 12px 18px;border:1px solid #d5d3a655;border-radius:1px 6px 6px 1px;pointer-events:none}
+.book-cover>span:first-of-type{font-size:8px;letter-spacing:2px}.book-cover strong{font:normal 30px/1.25 Georgia,'Times New Roman',serif;text-align:center;margin:13px 0}.book-cover i{font:italic 11px Georgia,serif;line-height:1.6;text-align:center;color:#e0e2c9}.cover-flower{font-size:28px;color:#cbd5ae;margin-top:16px}.book-cover .book-illustration{width:84px;height:55px}
+.book-details{max-width:340px}.book-details h3{font:normal 31px/1.35 Georgia,'Times New Roman',serif;margin:15px 0;color:#405b45}.book-details p{font-size:13px;line-height:1.9;color:#6c7960}.book-open-link{display:flex;align-items:center;gap:12px;margin-top:26px;font-size:13px;color:#536e47}.catalogue-note{font-size:12px;color:#7d886f;margin-top:22px}
+.book-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#65745a;font-size:12px;border-bottom:1px solid #dce1ce;padding-bottom:8px}
+.book-preview{display:flex;align-items:center;flex-direction:column;margin:12px auto 22px;color:#879072;font-size:11px;gap:2px}.book-preview svg{width:100px;height:65px}.turning-page{transform-origin:80px 58px;animation:turn-page 4.4s ease-in-out infinite}
+.v2-modal .book-list button{min-height:75px;padding:13px 10px;border-radius:12px}.v2-modal .book-list strong{font-size:13px;line-height:1.7}.v2-modal .book-list small{font-size:9px;letter-spacing:1px}.v2-modal .book-list svg{flex-shrink:0}
+.reading-page{min-width:0;border-radius:14px;background:#fffcf3;animation:reading-in .35s ease-out}.v2-modal .reading-page h3{font-size:30px;line-height:1.3}.v2-modal .reading-page p{font:normal 18px/1.95 Georgia,'Times New Roman',serif;color:#4e604e}.v2-modal .reading-page .eyebrow{font-size:10px;color:#7a826a}
+.reading-placeholder{display:grid;align-content:center;justify-items:center;padding:40px;text-align:center;color:#8d9978;background:#eeeee0;border-radius:14px;min-height:240px}.reading-placeholder h3{font:normal 26px Georgia,serif;color:#647957}.reading-placeholder p{font-size:12px;line-height:1.8}
+.page-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:28px;border-top:1px solid #e3e2ce;padding-top:18px}.page-navigation>span{font-size:11px;white-space:nowrap}.page-navigation .button{font-size:11px;padding:9px!important;gap:4px}
+
+/* A small ceremony, drawn in vectors rather than a screenshot with baked-in text. */
+.v2-modal.moment-frame{width:min(470px,100%);border:1px solid #dfe2c8;border-radius:28px;background:radial-gradient(ellipse at 50% 20%,#fffdf5,#f5f1e4);padding:28px 30px 30px;box-shadow:0 25px 100px #132f3540;scrollbar-gutter:auto}
+.moment-frame>.eyebrow,.moment-frame>.modal-subtitle{display:none}
+.v2-modal.moment-frame>h2{font:500 10px 'Be Vietnam Pro',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#839075;margin:12px 0 0}
+.moment-body{text-align:center;clear:both}.moment-art{margin:6px auto 0;max-width:360px;line-height:0}.moment-art svg{width:100%;height:auto;max-height:235px}
+.moment-kicker{font-size:9px;letter-spacing:2px;color:#8a9678;display:block;margin:8px 0 18px}
+.moment-body h3{font:normal 35px/1.3 Georgia,'Times New Roman',serif;letter-spacing:-.7px;color:#516e49;margin:0 0 17px}
+.moment-description{font-size:12px;line-height:1.9;color:#7b866c;margin:14px auto 8px;max-width:280px}
+.moment-divider{display:flex;align-items:center;gap:15px;justify-content:center;color:#adb88b;margin:22px 0}.moment-divider:before,.moment-divider:after{content:'';width:60px;height:1px;background:#d7ddc1}
+.moment-close{width:100%;background:#748d64!important;box-shadow:0 5px 14px #546b4030}.moment-close:hover{background:#627f53!important}.moment-footnote{display:block;font-size:10px;color:#829078;margin-top:18px;line-height:1.7}
+.moment-body .sent-wish{font:italic 17px/1.8 Georgia,'Times New Roman',serif;min-height:0;padding:13px 16px;margin:20px 0 0;border-radius:12px;background:#ebe9d8;color:#768363;overflow-wrap:anywhere}
+.lanternMoment .moment-art{margin-top:-4px}.lanternMoment .lotus-bloom{transform-origin:200px 190px;animation:lotus-arrival 1.35s ease-out both,lotus-float 5s 1.35s ease-in-out infinite}
+.lotus-flame{transform-origin:200px 170px;animation:flame-glow 2.5s ease-in-out infinite}.lotus-spark{animation:spark-drift 3.5s ease-in-out infinite}.lotus-ripple{transform-origin:200px 203px;animation:water-ring 4s ease-out infinite}
+.tea-cup{transform-origin:180px 200px;animation:tea-sip 6s ease-in-out infinite}.tea-steam{animation:steam-wave 3s ease-in-out infinite;transform-origin:center}
+.incense-smoke{animation:incense-wave 4s ease-in-out infinite;transform-origin:251px 125px}.candle-glow{animation:flame-glow 3s ease-in-out infinite}
+.reflection-bell{transform-origin:180px 112px;animation:bell-settle 1.8s ease-out both}
+.v2-modal.chantMoment{width:min(490px,100%)}.chantMoment .moment-art{margin-top:24px;max-width:100%}.chantMoment .moment-art svg{max-height:none}.chantMoment .moment-kicker{margin-top:20px}.chantMoment .moment-body h3{font-size:32px}
+.modal-shade:has(.lanternMoment){background:#122e38ad}.modal-shade:has(.teaMoment){background:#48543c66}
+
+/* Signature wish composition. */
+.v2-modal.wish-frame{width:min(570px,100%);padding:30px;border-radius:26px}.wish-frame>h2{margin-bottom:8px}.wish-frame .modal-subtitle{margin-bottom:22px}
+.wish-scene{position:relative;isolation:isolate;overflow:hidden;height:220px;border-radius:18px;background:radial-gradient(ellipse at 50% 75%,#58786e55,transparent 60%),linear-gradient(150deg,#1d3940,#314e50 60%,#47665d);display:grid;place-items:center}
+.wish-scene:before,.wish-scene:after{content:'';position:absolute;bottom:27px;border:1px solid #c3c79a33;border-radius:50%;width:250px;height:38px;z-index:-1}.wish-scene:after{width:320px;bottom:17px;height:50px;opacity:.4}
+.wish-scene .lotus-illustration{width:290px;height:190px;align-self:start}.wish-scene>span{position:absolute;bottom:17px;font-size:8px;letter-spacing:2.5px;color:#d0d6b3}
+.wish-moon{position:absolute;top:26px;right:33px;border-radius:50%;width:25px;height:25px;background:#ddd7b6;box-shadow:0 0 26px #eadb9950;opacity:.8}
+.wish-stars{position:absolute;width:3px;height:3px;background:#ded3a1;top:30px;left:45px;box-shadow:30px 25px #ded3a177,90px -8px #ded3a177,190px 20px #ded3a199,280px 65px #ded3a155,10px 110px #ded3a155,135px 45px #ded3a1;border-radius:50%}
+.wish-invitation{display:flex;gap:12px;align-items:center;color:#96a27b;margin:21px 0}.wish-invitation p{font-size:13px;line-height:1.8;color:#6e7c62;margin:0}
+.wish-compose .wish-label{margin:0 0 10px;display:block}.wish-compose textarea{font-family:inherit;width:100%;min-height:128px;resize:vertical;max-height:240px;background:#ecefdf;border:1px solid #d6dfc5;padding:15px 16px;color:#3f5844;outline-offset:3px;touch-action:auto}.wish-compose textarea:focus{outline:2px solid #8eaa78}.wish-compose textarea::placeholder{color:#879278}
+.wish-footer{align-items:center;margin-top:16px;gap:12px}.wish-footer>span{font-size:11px;line-height:1.9;color:#7d896d}.wish-footer b{font-weight:400;color:#5d7550}.wish-footer .button{gap:14px;background:#617c51}.wish-privacy{font-size:10px;color:#89947c;line-height:1.7;margin:16px 0 0}
+.wish-compose .past-wishes{border-top:1px solid #dce2ca;padding-top:20px;margin-top:24px}.past-wishes summary{font-size:12px;color:#6d7e60;cursor:pointer;padding:6px 0;min-height:36px}.past-wishes summary span{margin-left:8px;color:#95a080}.wish-compose .past-wishes p{font:italic 17px/1.7 Georgia,serif;min-height:0;overflow-wrap:anywhere;color:#859171;border-left:2px solid #d2dcbc;padding-left:14px}
+
+@keyframes tea-sip{0%,30%,85%,100%{transform:translateY(0) rotate(0)}50%,65%{transform:translateY(-9px) rotate(-5deg)}}
+@keyframes steam-wave{0%,100%{transform:translateY(3px) scaleX(.9);opacity:.35}50%{transform:translateY(-8px) scaleX(1.1);opacity:.8}}
+@keyframes incense-wave{0%{transform:translate(0,8px) scaleX(.8);opacity:0}30%{opacity:.7}80%{opacity:.45}100%{transform:translate(10px,-8px) scaleX(1.1);opacity:0}}
+@keyframes turn-page{0%,15%,85%,100%{transform:scaleX(1)}48%{transform:scaleX(-.9)}65%{transform:scaleX(1)}}
+@keyframes lotus-arrival{0%{transform:translateY(20px) scale(.9);opacity:0}48%{transform:translateY(-9px) scale(1.02);opacity:1}72%{transform:translateY(3px)}100%{transform:translateY(0) scale(1);opacity:1}}
+@keyframes lotus-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes flame-glow{0%,100%{opacity:.75;transform:scaleY(.94)}50%{opacity:1;transform:scaleY(1.04)}}
+@keyframes spark-drift{0%,100%{opacity:.15;transform:translateY(5px)}50%{opacity:.85;transform:translateY(-7px)}}
+@keyframes water-ring{0%{transform:scale(.75);opacity:.5}100%{transform:scale(1.35);opacity:0}}
+@keyframes bell-settle{0%{transform:rotate(-4deg)}35%{transform:rotate(3deg)}65%{transform:rotate(-1deg)}100%{transform:rotate(0)}}
+@keyframes reading-in{from{opacity:.4;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:1100px){.v2-game .bottom-left{bottom:145px}.v2-game .bottom-right{bottom:150px}.v2-game .v2-context{bottom:250px}.ceremony-status{bottom:260px}}
+@media(max-width:760px){
+  .modal-shade{padding:12px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .v2-modal,.v2-modal.wide{padding:24px 20px;border-radius:21px;width:100%;max-height:calc(100dvh - 24px)}
+  .v2-modal>.eyebrow{font-size:8px;letter-spacing:1.2px}.v2-modal h2{font-size:30px;margin-top:18px}.v2-modal .modal-subtitle{font-size:12px;margin-bottom:20px;line-height:1.7}
+  .v2-modal .modal-close{margin:-12px -12px 0 8px}.v2-modal .button{font-size:13px;min-height:46px}.v2-modal .soft-note{font-size:11px;gap:8px}.soft-note>svg{flex-shrink:0}
+  .v2-game .topbar{height:62px;padding:0 12px}.v2-game .brand strong{font-size:10px;letter-spacing:1.4px}.v2-game .brand span{font-size:9px}.v2-game .brand>svg{width:24px}.v2-game .top-actions{gap:2px}.v2-game .top-actions>.icon-btn{min-width:38px;min-height:42px}.v2-game .merit-pill{font-size:11px;padding:8px}.v2-game .merit-pill b{font-size:11px}.v2-game .donate-top{display:none}
+  .v2-game .location-card{top:76px;left:12px;min-width:0;max-width:calc(100% - 24px);width:auto;padding:9px 12px}.v2-game .location-card strong{font-size:12px}.v2-game .location-card span:not(.location-icon){font-size:10px}.v2-game .location-card>.icon-btn{width:38px;height:38px}.v2-game .location-icon{width:31px;height:31px}
+  .v2-game .quick-destinations{top:148px;left:12px}.v2-game .quick-destinations button{font-size:10px;min-height:38px;padding:9px}
+  .v2-game .explore-card{display:none}.v2-game .v2-side-tools{top:204px;right:10px;gap:8px;width:44px}.v2-game .v2-side-tools>button{width:44px;height:48px;border-radius:12px}.v2-game .v2-side-tools>button>span{font-size:8px}.v2-game .v2-side-tools>button>svg{width:19px;height:19px}
+  .v2-game .bottom-left{display:none}.v2-game .bottom-right{display:none}.v2-game .bottom-center{bottom:max(12px,env(safe-area-inset-bottom));width:calc(100% - 16px);max-width:none}.v2-game .action-caption,.v2-game .control-hint{display:none}
+  .v2-game .action-bar{gap:0;padding:5px;border-radius:18px;max-width:none;box-shadow:0 8px 30px #33493625}.v2-game .action-bar button{min-width:0;min-height:62px;padding:7px 2px;gap:7px;flex:1}.v2-game .action-bar button svg{width:22px;height:22px}.v2-game .action-bar span{font-size:10px;white-space:normal;line-height:1.3;text-align:center}.v2-game .action-bar small{display:none}
+  .v2-game .v2-context{bottom:106px;max-width:calc(100% - 24px);gap:6px}.v2-context button{font-size:12px;min-height:44px;padding:11px 13px;line-height:1.5}.v2-game .joystick{bottom:177px;left:15px;width:80px;height:80px}.v2-game .joystick>span{left:25px;top:25px}
+  .v2-game .toast{top:197px;max-width:calc(100% - 80px);font-size:12px;line-height:1.7;padding:12px 14px;z-index:10}.v2-game .walking-note{top:199px;left:12px;transform:none;max-width:calc(100% - 78px);font-size:11px;padding:10px 12px;line-height:1.6}.walking-note button{font-size:11px;min-height:34px}
+  .ceremony-status{bottom:120px;font-size:12px;padding:14px 18px;z-index:10}.ceremony-status strong{font-size:13px}.ceremony-status span{font-size:10px}
+  .v2-game .meal-status{top:204px;left:12px;width:calc(100% - 80px);padding:16px}.v2-game .meal-status-main strong{font-size:22px}.v2-game .meal-status-main p{font-size:12px}.meal-status header>span{font-size:10px}.meal-status>.button{font-size:13px}.meal-finish{font-size:11px}.v2-game .practice-card{top:205px;left:12px;width:calc(100% - 80px)}.v2-game .practice-card p{font-size:12px}.v2-game .practice-card .text-btn{font-size:12px}
+  .seating-summary p{font-size:11px}.seat-filters button{font-size:11px;padding:9px}.seat-filters span{font-size:10px}.seat-grid{max-height:none}.seat-grid>button strong{font-size:12px}.seat-grid>button span{font-size:10px}.seating-summary strong{font-size:23px}
+  .v2-modal .activity-grid{gap:9px}.v2-modal .activity-grid>button{padding:16px 13px;min-height:145px}.v2-modal .activity-grid strong{font-size:13px}.v2-modal .activity-grid span{font-size:11px}.v2-modal .activity-grid small{font-size:10px}
+  .v2-modal .dish-card{padding:12px}.v2-modal .dish-heading strong{font-size:21px}.v2-modal .dish-card>p{font-size:11px;min-height:88px}.v2-modal .dish-heading>span{font-size:8px}.v2-modal .dish-card footer{font-size:10px}.v2-modal .dish-card footer b{font-size:11px}.v2-modal .menu-banner>p{font-size:11px}.v2-modal .menu-banner>div>span{font-size:9px}
+  .catalogue-book{flex-direction:column;gap:23px;padding:24px 20px}.book-cover{flex:auto;align-self:center;width:190px;min-height:260px}.book-details h3{font-size:28px}.book-details p{font-size:13px}.book-open-link{margin-top:18px}.reading-seat{font-size:11px;line-height:1.6;padding:8px 10px;margin-bottom:20px}.reading-seat>svg{flex-shrink:0}.book-toolbar{font-size:11px}
+  .library-layout{grid-template-columns:1fr;gap:18px}.v2-modal .book-list{grid-template-columns:1fr 1fr;gap:8px}.v2-modal .book-list strong{font-size:12px}.v2-modal .book-list small{font-size:8px}.reading-page{padding:22px 18px}.v2-modal .reading-page p{font-size:18px}.page-navigation{gap:4px}.v2-modal .page-navigation .button{font-size:11px;padding:8px!important}
+  .v2-modal.moment-frame,.v2-modal.wish-frame{padding:24px 21px;border-radius:24px}.moment-art svg{max-height:195px}.moment-body h3{font-size:31px}.moment-kicker{font-size:8px;letter-spacing:1.6px}.moment-description{font-size:12px}.moment-divider{margin:18px 0}.chantMoment .moment-body h3{font-size:28px}.v2-modal.moment-frame>h2{font-size:9px;letter-spacing:1.5px}.moment-body .sent-wish{font-size:17px}.wish-scene{height:200px}.wish-scene .lotus-illustration{width:270px;height:175px}.wish-invitation p{font-size:12px}.wish-footer>span{font-size:11px}.wish-footer>.button{font-size:13px;padding:12px 15px}.wish-privacy{font-size:10px}
+}
+@media(max-width:380px){.v2-game .action-bar span{font-size:9px}.v2-modal{padding:22px 16px}.v2-modal .dish-card>p{min-height:104px}.moment-body h3{font-size:28px}.wish-footer .button{font-size:12px;padding:11px}.v2-modal .book-list strong{font-size:11px}}
+@media(max-height:550px) and (orientation:landscape){.v2-game .quick-destinations,.v2-game .v2-side-tools{display:none}.v2-game .topbar{height:50px}.v2-game .location-card{top:60px}.v2-game .action-bar button{min-height:48px}.v2-game .action-bar button svg{width:18px;height:18px}.v2-game .action-bar span{font-size:9px}.moment-art svg{max-height:140px}.moment-body h3{font-size:27px}.v2-modal{max-height:calc(100dvh - 24px)}}
+@media(prefers-reduced-motion:reduce){.lotus-bloom,.lotus-flame,.lotus-spark,.lotus-ripple,.tea-cup,.tea-steam,.incense-smoke,.candle-glow,.reflection-bell,.turning-page,.reading-page{animation:none!important;transition:none!important}.incense-smoke{opacity:.5}}
+
+.v2-game .v2-context button{font-size:12px;min-height:44px;padding:11px 13px}
+
+/* Full Vietnamese glyph coverage: avoid mixed Georgia fallback and negative tracking. */
+.moment-body h3,.v2-modal .reading-page h3,.v2-modal .reading-page p,.book-details h3,.book-cover strong{
+  font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  letter-spacing:normal;font-kerning:normal;font-variant-ligatures:none;text-rendering:optimizeLegibility;
+}
+.moment-body h3{font-size:30px;font-weight:400;line-height:1.45}
+.v2-modal .reading-page p{font-size:17px;line-height:1.95;font-weight:400}
+@media(max-width:760px){.moment-body h3{font-size:27px}.v2-modal .reading-page p{font-size:17px}}
+
+.wish-scene .lantern-illustration{width:290px;height:195px;align-self:start}
+.wish-scene:has(.lantern-illustration):before,.wish-scene:has(.lantern-illustration):after{display:none}
+.paper-lantern{transform-origin:200px 36px;animation:paper-drift 6s ease-in-out infinite}
+@keyframes paper-drift{0%,100%{transform:translateY(2px) rotate(-2deg)}50%{transform:translateY(-3px) rotate(2deg)}}
+@media(max-width:760px){.wish-scene .lantern-illustration{height:177px;width:270px}}
+@media(prefers-reduced-motion:reduce){.paper-lantern{animation:none}}
