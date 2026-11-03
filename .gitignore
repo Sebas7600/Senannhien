@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.sites-runtime/
+*.local
+*.tsbuildinfo
+artifacts/
+tmp/
+.openai/

@@ -1,0 +1,29 @@
+SEN AN NHIEN 2 - KHUON VIEN MO RONG
+
+1. Giai nen toan bo thu muc.
+2. May can co Node.js 18.20 tro len (https://nodejs.org).
+3. Bam doi Choi-Game.cmd.
+4. Trinh duyet mo http://127.0.0.1:5174 . Neu chua thay, tai lai trang.
+5. Giu cua so lenh trong khi choi. Ctrl+C hoac dong cua so de dung.
+
+Ban Play da build san, KHONG can npm install.
+
+13 khu vuc, 80 cho ngoi, 16 hoat dong, vuon rau va 4 NPC.
+NHA AN HUONG THIEN: chon ghe, goi mon, doi bep va dung bua.
+Co mi chay, com chay, hu tieu chay, banh mi chay. Mien phi.
+
+WASD / phim mui ten: di lai. Giu Shift: di nhanh.
+Click san: tu tim duong. E: tuong tac hoac dung day.
+Click bo doan/ghe hoac nut Chon cho ngoi de ngoi xuong.
+Keo chuot phai: xoay camera. Cuon chuot: thu phong.
+Q/C: xoay. F: dat lai camera. V: theo nhan vat/toan canh.
+M: ban do. B: tui vai. H: huong dan. Esc: dong cua so.
+Dien thoai: joystick va thao tac cham.
+
+Mo cung dia chi trong cua so/trinh duyet khac de tham gia
+cung phong, thay nhan vat cua nhau va gui loi nhan.
+May chu mac dinh chi phuc vu tren may nay (127.0.0.1),
+CHUA phai may chu Internet. Khong co tai khoan/cloud.
+
+Tien trinh luu trong trinh duyet. Chat/phong xoa khi tat server.
+Doc README_V2.md de biet day du tinh nang va gioi han.

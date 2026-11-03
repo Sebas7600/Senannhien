@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import type {BufferGeometry} from 'three';
+import {benchNearGeometry,benchFarGeometry} from '../src/benchGeometry';
+import {canopyGeometry} from '../src/foliage';
+import {foliageTexture} from '../src/foliageTexture';
+import * as bodhi from '../src/bodhiGeometry';
+import {courtyardTreeGeometry} from '../src/courtyardTreeGeometry';
+import {stoneBenches} from '../src/stoneBenchData';
+const size=(g:BufferGeometry)=>({triangles:(g.index?.count||g.attributes.position.count)/3,bytes:Object.values(g.attributes).reduce((n,a)=>n+a.array.byteLength,0)+(g.index?.array.byteLength||0)});
+const result={before:{benchTriangles:5058,benchMeshes:7,sixBenchesBaseDrawCalls:42,sharedBenchGeometryBytes:315264,canopyTriangles:3120,canopyBytes:159120,sharedTextureBaseBytes:1536*384*4},after:{benchCount:stoneBenches.length,benchSeats:stoneBenches.length*2,nearBench:size(benchNearGeometry),farBench:size(benchFarGeometry),benchMeshes:1,maxBenchBaseDrawCalls:6,sameLodBenchBaseDrawCalls:3,canopy:size(canopyGeometry),sharedFoliageTextureBaseBytes:foliageTexture.image.data.byteLength,courtyardTreeBase:size(courtyardTreeGeometry),twoCourtyardTreesBaseDrawCalls:2,bodhi:Object.fromEntries(Object.entries(bodhi).map(([k,g])=>[k,size(g)])),sharedTextureBaseBytes:(512*512+1024*256)*4},note:'Geometry counts are measured from buffers. Draw-call budgets count base-pass asset meshes/batches, excluding other scene objects and shadow passes; FPS depends on hardware. Texture bytes exclude mip levels; both versions use mipmaps.'};
+await fs.mkdir('artifacts/optimization',{recursive:true});await fs.writeFile('artifacts/optimization/asset-budget.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
