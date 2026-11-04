@@ -1,5 +1,7 @@
+import QuanAmShrine from './QuanAmShrine';
+import WaterTaskWorld from './WaterTaskWorld';
 import {TeaGallery} from './TeaGallery';
-import {TempleBell, BellFrame} from './TempleBell';
+import {ImportedGate,ImportedBell,ImportedDrum} from './ImportedCourtyardProps';
 import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
 import {counterHasMeal} from './mealService';
 import TempleGarden from './TempleGarden';
@@ -24,8 +26,6 @@ import { Character } from './Character';
 import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, PICKUP_PLATE, WORLD, type Vec3 } from './gameData';
 
 import { useGame } from './gameStore';
-import {bellAngle} from './ritualMotion';
-import {useReducedMotion} from './useReducedMotion';
 
 export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string;subtitle?:string}){
   const ref=useRef<THREE.Group>(null),worldPoint=useRef(new THREE.Vector3()),previous=useRef(true);const [shown,show]=useState(true);
@@ -95,27 +95,13 @@ function MeditationHall(){return <Pavilion x={-33} z={-17} w={20} d={16} title="
   <group position={[0,.4,-5.9]} scale={1.4}><Buddha/></group><Box position={[0,1,-5]} scale={[6,.3,.9]} color="#8a6445"/>
   {[-8,8].map(x=><group key={x}><Box position={[x,2.3,-6.5]} scale={[1.2,2.2,.12]} color="#7c7856"/>{[0,1,2].map(i=><mesh key={i} position={[x,3-i*.5,-6.4]}><torusGeometry args={[.13,.015,5,16]}/><meshStandardMaterial color="#d9c59a"/></mesh>)}</group>)}
 </Pavilion>}
-function Gate(){return <group position={[0,0,29]}>
-  {[-7,-2.8,2.8,7].map(x=><group key={x}><Box position={[x,2.3,0]} scale={[.8,4.6,.8]} color="#bbb599"/><Box position={[x,4.6,0]} scale={[1.1,.25,1.1]} color="#7b8b72"/></group>)}
-  <RoofSection x={0} z={29} w={18} d={24}><Box position={[0,4.3,0]} scale={[6.1,.75,.7]} color="#657b65"/><Roof y={4.7} width={9} depth={3.5} height={1.4}/>
-  {[-5,5].map(x=><group key={x} position={[x,0,0]}><Box position={[0,3.4,0]} scale={[3.8,.5,.5]} color="#76896b"/><Roof y={3.7} width={4.6} depth={2.9} height={.9}/></group>)}
-  </RoofSection><WorldLabel position={[0,3.95,.5]} title="SEN AN NHIÊN" subtitle="Chậm một bước · Nhẹ một lòng"/>
-</group>}
+function Gate(){return <ImportedGate/>}
 function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
-  const bell=useRef<THREE.Group>(null),reduced=useReducedMotion();
-  useFrame(()=>{const c=useGame.getState().ceremony;if(bell.current)bell.current.rotation.z=!drum&&c?.type==='bell'?bellAngle(Date.now()-c.at,reduced):0});
   return <group position={[x,0,-13]} onClick={e=>{if(!drum){e.stopPropagation();useGame.getState().perform('bell')}}}>
     <Box position={[0,.2,0]} scale={[5,.4,5]} color="#b4b598"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*1.8,2.2,t*1.8]} scale={[.25,4,.25]} color="#815538"/>))}
     <RoofSection x={x} z={-13} w={5} d={5}><Roof y={4.3} width={6.7} depth={6.5} height={1.6}/></RoofSection>
-    <Box position={[0,3.9,0]} scale={[3.7,.25,.3]} color="#815538"/>
-    {!drum&&<BellFrame/>}
-    {/* The pivot is at the suspension hook; the rim travels the furthest. */}
-    <group ref={bell} position={[0,3.65,0]}>
-      {drum?<mesh position={[0,-1,0]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.95,.95,1.3,24]}/><meshStandardMaterial color="#a77c4c"/></mesh>:<>
-        <TempleBell/>
-      </>}
-    </group>
+    {drum?<ImportedDrum/>:<ImportedBell/>}
     <WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'Nhịp chậm ngày an':'E · Thỉnh một tiếng chuông'}/>
   </group>
 }
@@ -130,13 +116,11 @@ function TeaTerrace(){return <Pavilion x={0} z={-56} w={20} d={13} floor={.3} ti
   </group>)}
 </Pavilion>}
 
-export function Seats(){const peers=useGame(s=>s.peers),seated=useGame(s=>s.seated);return <><BenchBatches/><CushionBatches/>{seats.filter(s=>s.kind!=='bench'&&s.kind!=='cushion').map(s=><group key={s.id} position={s.position} rotation={[0,s.rotation,0]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().sit(s.id)}}>
-  {usesFloorSeat(s)?<><mesh position={[0,.04,0]} receiveShadow><cylinderGeometry args={[.58,.62,.11,24]}/><meshStandardMaterial color={seated===s.id?'#d7ba6b':peers.some(p=>p.seat===s.id)?'#899177':'#b8a36d'} roughness={.95}/></mesh><mesh position={[0,.108,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[.42,.45,32]}/><meshStandardMaterial color="#d6c38c"/></mesh></>:<>
+export function Seats(){const seated=useGame(s=>s.seated);return <><BenchBatches/><CushionBatches/>{seats.filter(s=>s.kind!=='bench'&&!usesFloorSeat(s)).map(s=><group key={s.id} position={s.position} rotation={[0,s.rotation,0]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().sit(s.id)}}>
     <Box position={[0,-.06,0]} scale={[.85,.14,.85]} color="#a49370"/>
     <Box position={[0,.35,-.4]} scale={[.85,.7,.09]} color="#9c8b66"/>
     {[-1,1].flatMap(a=>[-1,1].map(b=><Box key={`${a}-${b}`} position={[a*.3,-.28,b*.3]} scale={[.08,.5,.08]} color="#7d7156"/>))}
-  </>}
-  <mesh position={[0,.03,0]}><cylinderGeometry args={[.73,.73,.08,16]}/><meshBasicMaterial color="#e0c98a" transparent opacity={seated===s.id?.2:0} depthWrite={false}/></mesh>
+  {seated===s.id&&<mesh position={[0,.03,0]}><cylinderGeometry args={[.73,.73,.08,16]}/><meshBasicMaterial color="#e0c98a" transparent opacity={.2} depthWrite={false}/></mesh>}
 </group>)}</>}
 export function MealPlates(){const meal=useGame(s=>s.meal),peers=useGame(s=>s.peers);const all=[...(meal?[{meal,key:'self'}]:[]),...peers.filter(p=>p.meal).map(p=>({meal:p.meal!,key:p.id}))];return <>{all.filter(o=>o.meal.status==='ready'||o.meal.status==='eating').map(o=>{const seat=seats.find(s=>s.id===o.meal.seatId);if(!seat?.table)return null;const x=seat.position[0]<seat.table[0]?-.65:.65,z=seat.position[2]<seat.table[2]?-.8:.8;return <group key={o.key} position={[seat.table[0]+x,seat.table[1]+.06,seat.table[2]+z]} scale={.85}><Food dish={o.meal.dish} eating={o.meal.status==='eating'}/></group>})}</>}
 export function Garden(){return <><TempleGarden/><WorldLabel position={[36,2.3,-42]} title="VƯỜN RAU TỪ TÂM" subtitle="Vườn chung · Gieo · Tưới · Thu hoạch sau 60 giây"/></>}
@@ -146,8 +130,7 @@ function LanternPaths(){return <>{Array.from({length:14},(_,i)=>[-1,1].map(s=><g
 function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
   <CourtyardTrees/>
   {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
-  {[-1,1].flatMap(s=>[0,8,-8].map(z=><group key={`${s}-${z}`} position={[s*7.2,0,z]}><mesh position={[0,.3,0]}><cylinderGeometry args={[.45,.3,.6,16]}/><meshStandardMaterial color="#7b8e78"/></mesh><mesh position={[0,1.1,0]} scale={[.8,.9,.8]} castShadow><icosahedronGeometry args={[1,2]}/><meshStandardMaterial color="#6e895b"/></mesh></group>))}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><TableAccessories/><AltarOfferings/><ReceptionDesk/><KitchenMeal/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><KitchenMeal/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);

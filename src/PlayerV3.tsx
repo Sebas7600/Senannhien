@@ -1,3 +1,5 @@
+import {QUAN_AM} from './quanAmData';
+import {WATER_TASK,WATER_WELL,WATER_JARS} from './waterTaskData';
 import {pondBlocked} from './pondLayout';
 import {offeringStation} from './templeFixtures';
 import {useEffect,useRef,useState} from 'react';
@@ -11,12 +13,14 @@ import {incenseSpot,incenseApproach,INCENSE_CLEARANCE,outsideIncenseBurner,seats
 import {findPath} from './navigation';
 import {Character} from './Character';
 import {playerMotion} from './runtime';
+import {gateState} from './gateState';
 export const movementKeys=new Set<string>();
 export const movementJoystick={x:0,y:0};
 export default function PlayerV3(){
   const body=useRef<RapierRigidBody>(null),collider=useRef<RapierCollider>(null),renderObject=useRef<THREE.Group>(null),visual=useRef<THREE.Group>(null),{world}=useRapier(),camera=useThree(s=>s.camera);
   const controller=useRef<ReturnType<typeof world.createCharacterController>|null>(null),path=useRef<Vec2[]>([]),destinationKey=useRef(''),lastTeleport=useRef(0),sync=useRef(0),seconds=useRef(0),movingRef=useRef(false),forward=useRef(new THREE.Vector3());
   const verticalSpeed=useRef(0);
+  useEffect(()=>gateState.subscribe(()=>{destinationKey.current='';path.current=[]}),[]);
   const[moving,setMoving]=useState(false);const pose=useGame(s=>s.action),robe=useGame(s=>s.robe),name=useGame(s=>s.name),seated=useGame(s=>s.seated),gender=useGame(s=>s.gender),skin=useGame(s=>s.skin),robeStyle=useGame(s=>s.robeStyle),dish=useGame(s=>s.meal?.dish),bow=useGame(s=>s.bow);
   useEffect(()=>{const c=world.createCharacterController(.02);c.enableAutostep(.25,.15,true);c.enableSnapToGround(.35);c.setApplyImpulsesToDynamicBodies(true);c.setCharacterMass(1);controller.current=c;playerMotion.object=renderObject.current;playerMotion.heading=Math.PI;return()=>{world.removeCharacterController(c);controller.current=null;playerMotion.object=null;movementKeys.clear();movementJoystick.x=movementJoystick.y=0}},[world]);
   useFrame(()=>{if(visual.current)visual.current.rotation.y=playerMotion.heading});
@@ -31,17 +35,19 @@ export default function PlayerV3(){
     let dz=(movementKeys.has('s')||movementKeys.has('arrowdown')?1:0)-(movementKeys.has('w')||movementKeys.has('arrowup')?1:0)+movementJoystick.y;
     if(['plant','water','harvest'].includes(s.action)&&s.event)playerMotion.heading=Math.atan2(s.event.x-p.x,s.event.z-p.z);
     if(s.action==='flower'||s.action==='candle'){const station=offeringStation(s.action,s.event?.target);playerMotion.heading=Math.atan2(station.spot[0]-p.x,station.spot[1]-p.z);}
-    if(s.action==='incense')playerMotion.heading=Math.atan2(incenseSpot[0]-p.x,incenseSpot[1]-p.z);
-    if(['plant','water','harvest','feed','incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
+    if(s.action==='drawWater')playerMotion.heading=Math.atan2(WATER_WELL.x-p.x,WATER_WELL.z-p.z);
+    if(s.action==='pourWater'&&s.waterQuest?.jar!==null&&s.waterQuest?.jar!==undefined){const j=WATER_JARS[s.waterQuest.jar];playerMotion.heading=Math.atan2(j.x-p.x,j.z-p.z);}
+    if(s.action==='incense'){const spot=s.event?.target===QUAN_AM.incenseId?[QUAN_AM.tableX,QUAN_AM.tableZ]:incenseSpot;playerMotion.heading=Math.atan2(spot[0]-p.x,spot[1]-p.z);}
+    if(['drawWater','pourWater','plant','water','harvest','feed','incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
     let walking=false;
     if(s.seated){if(dx||dz){s.stand();return;}const seat=seats.find(c=>c.id===s.seated)!;rb.setNextKinematicTranslation({x:seat.position[0],y:seat.position[1]+CHARACTER_OFFSET,z:seat.position[2]});playerMotion.heading=seat.rotation;}
     else{
       let vx=0,vz=0;
-      if(dx||dz){camera.getWorldDirection(forward.current);forward.current.y=0;forward.current.normalize();const f=forward.current;vx=-f.z*dx-f.x*dz;vz=f.x*dx-f.z*dz;if(s.destination||s.pendingSeat||s.pendingActivity)s.set({destination:null,pendingSeat:null,pendingActivity:null});if(s.action!=='walk'&&s.action!=='sweep')s.set({action:'walk',bow:null});path.current=[];destinationKey.current='';}
+      if(dx||dz){camera.getWorldDirection(forward.current);forward.current.y=0;forward.current.normalize();const f=forward.current;vx=-f.z*dx-f.x*dz;vz=f.x*dx-f.z*dz;if(s.destination||s.pendingSeat||s.pendingActivity)s.set({destination:null,pendingSeat:null,pendingActivity:null});if(s.action!=='walk'&&s.action!=='sweep'&&s.action!=='carryWater')s.set({action:'walk',bow:null});path.current=[];destinationKey.current='';}
       else if(s.destination&&!s.panel&&s.characterConfigured){const key=s.destination.join(',');if(key!==destinationKey.current){destinationKey.current=key;path.current=findPath([p.x,p.z],s.destination);if(!path.current.length){s.set({destination:null,pendingSeat:null,pendingActivity:null});s.notify('Chọn một điểm có lối đi nhé.')}}
         const next=path.current[0];if(next){vx=next[0]-p.x;vz=next[1]-p.z;if(Math.hypot(vx,vz)<.23){path.current.shift();if(!path.current.length){s.set({destination:null});destinationKey.current='';if(s.pendingSeat){s.arriveSeat(s.pendingSeat);}else if(s.pendingActivity){const activity=s.pendingActivity;s.set({pendingActivity:null});s.perform(activity);}return;}}}
       }
-      const length=Math.hypot(vx,vz);walking=length>.05;const speed=s.action==='sweep'?2.9:movementKeys.has('shift')?7.3:s.destination?5.2:4.3;
+      const length=Math.hypot(vx,vz);walking=length>.05;const speed=s.action==='carryWater'?WATER_TASK.walkSpeed:s.action==='sweep'?2.9:movementKeys.has('shift')?7.3:s.destination?5.2:4.3;
       const mx=length?vx/length*speed*dt:0,mz=length?vz/length*speed*dt:0,assisted=stepAssistHeight(p.x,p.z,mx,mz,p.y);
       // Only step up at an actual height change; do not teleport 1 cm on every frame.
       if(assisted>p.y){rb.setTranslation({x:p.x,y:assisted,z:p.z},true);p=rb.translation();}
