@@ -1,6 +1,10 @@
 import TempleGarden from './TempleGarden';
 import MainTempleReference from './MainTempleReference';
 import IncenseBurner from './IncenseBurner';
+import {TeaGallery} from './TeaGallery';
+import {TempleBell, BellFrame} from './TempleBell';
+import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
+import {counterHasMeal} from './mealService';
 import GardenDetails from './GardenDetails';
 import BodhiTree from './BodhiTree';
 import CourtyardTrees from './CourtyardTrees';
@@ -16,8 +20,10 @@ import * as THREE from 'three';
 import { Box, Buddha, Lantern, Roof, Tree } from './models';
 import { Food, Steam } from './Food';
 import { Character } from './Character';
-import { obstacles, places, seats, WORLD, type Vec3 } from './gameData';
+import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, PICKUP_PLATE, WORLD, type Vec3 } from './gameData';
 import { useGame } from './gameStore';
+import {bellAngle} from './ritualMotion';
+import {useReducedMotion} from './useReducedMotion';
 
 export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string;subtitle?:string}){
   const ref=useRef<THREE.Group>(null),worldPoint=useRef(new THREE.Vector3()),previous=useRef(true);const [shown,show]=useState(true);
@@ -39,11 +45,9 @@ export function Ground(){return <group><IncenseBurner/>
   <RigidBody type="fixed" colliders={false}>
     <CuboidCollider position={[0,-.24,-2]} args={[62,.3,66]}/>
     <CuboidCollider position={[-60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[0,1,-66]} args={[60,3,.3]}/><CuboidCollider position={[0,1,62]} args={[60,3,.3]}/>
-    {obstacles.filter(o=>!o.navigationOnly).map((o,i)=><CuboidCollider key={i} position={[o.x,o.w>10&&o.d<1?2:.7,o.z]} args={[o.w/2,o.w>10&&o.d<1?2:.7,o.d/2]}/>)}
-    <CuboidCollider position={[-33,.14,-17]} args={[10,.26,8]}/><CuboidCollider position={[-33,.08,-8.6]} rotation={[.2,0,0]} args={[4,.05,1.1]}/>
-    <CuboidCollider position={[34,.03,-27]} args={[11.5,.13,9]}/><CuboidCollider position={[-34,.1,-43]} args={[8.5,.25,7]}/>
-    <CuboidCollider position={[0,.08,-56]} args={[8,.22,5]}/>
-    <CuboidCollider position={[33,.37,9]} args={[9,.07,1.5]}/>{[-1,1].map(side=><CuboidCollider key={'ramp'+side} position={[33+side*10,.18,9]} rotation={[0,0,-side*Math.atan(.19)]} args={[1.02,.07,1.5]}/>)}{[-1,1].map(side=><CuboidCollider key={'rail'+side} position={[33,.8,9+side*1.5]} args={[11,.6,.07]}/>)} <CuboidCollider position={[28,.15,39]} args={[13,.2,1.5]}/>
+    {obstacles.filter(o=>!o.navigationOnly).map((o,i)=>{const h=o.height??1.4;return <CuboidCollider key={i} position={[o.x,(o.base??0)+h/2,o.z]} args={[o.w/2,h/2,o.d/2]}/>})}
+    {floorSurfaces.map((f,i)=><CuboidCollider key={`floor-${i}`} position={[f.x,f.height/2,f.z]} args={[f.w/2,f.height/2,f.d/2]}/>)}
+    <CuboidCollider position={[33,.37,9]} args={[9,.07,1.5]}/>{[-1,1].map(side=><CuboidCollider key={'ramp'+side} position={[33+side*10,.18,9]} rotation={[0,0,-side*Math.atan(.19)]} args={[1.02,.07,1.5]}/>)}{[-1,1].map(side=><CuboidCollider key={'rail'+side} position={[33,.8,9+side*1.5]} args={[11,.6,.07]}/>)}
   </RigidBody>
 </group>}
 function MainTemple(){return <MainTempleReference/>}
@@ -57,19 +61,32 @@ function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;
   <WorldLabel position={[0,4.1,d/2+.3]} title={title} subtitle={subtitle}/>
   {children}
 </group>}
+function KitchenMeal(){
+  const meal=useGame(s=>s.meal),ref=useRef<THREE.Group>(null);
+  useFrame(()=>{if(ref.current)ref.current.visible=counterHasMeal(meal,Date.now())});
+  return meal?<group ref={ref} visible={false} position={PICKUP_PLATE} scale={.75}><Food dish={meal.dish}/></group>:null;
+}
 function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} title="NHÀ ĂN HƯƠNG THIỀN" subtitle="Bữa chay thanh đạm · Mời bạn ngồi">
   <Box position={[0,.75,-6.1]} scale={[17,1.25,1.5]} color="#aa9471"/><Box position={[0,1.41,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
   {[-5,-1,3].map(x=><group key={x} position={[x,1.45,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh><group position={[0,.25,0]}><Steam/></group></group>)}
-  <group position={[7,1.5,-6]} scale={1.5}><Food dish="bread"/></group>
+
   {[-8.5,8.5].map(x=><group key={x}><Box position={[x,1,-7.6]} scale={[1,1.6,1]} color="#82906c"/><mesh position={[x,2.2,-7.6]} scale={[.6,.8,.6]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#7a975e"/></mesh></group>)}
-  {[0,1,2,3].map(i=><group key={i} position={[-4+(i%2)*8,0,-1+Math.floor(i/2)*8]}><Box position={[0,.9,0]} scale={[2.5,.16,3.8]} color="#a38d65"/>{[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*.9,.5,t*1.4]} scale={[.13,.85,.13]} color="#7d6747"/>))}<mesh position={[0,1.08,0]}><cylinderGeometry args={[.1,.13,.22,14]}/><meshStandardMaterial color="#9aa77f"/></mesh></group>)}
+  {diningTables.map((table,i)=><group key={i} position={[table[0]-34,0,table[2]+27]}>
+    <Box position={[0,.58,0]} scale={[2.5,.12,2.8]} color="#a38d65"/>
+    {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*.95,.36,t*1.05]} scale={[.13,.4,.13]} color="#7d6747"/>))}
+  </group>)}
   <WorldLabel position={[0,1.9,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
 </Pavilion>}
-function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="Bốn bài thực tập · Chạm kệ sách để đọc">
+function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
   {[-6,-2,2,6].map((x,i)=><group key={x} position={[x,0,-5.3]} onClick={e=>{e.stopPropagation();useGame.getState().perform('read')}}>
     <Box position={[0,1.6,0]} scale={[2.7,2.5,.7]} color="#8b6d49"/>{[.7,1.5,2.3].flatMap(y=>Array.from({length:9},(_,j)=><Box key={`${y}-${j}`} position={[-1.05+j*.26,y+.2,.41]} scale={[.18,.53,.2]} color={['#7d8e6c','#ac9570','#7b8f8b','#b99e7d'][(i+j)%4]}/>))}
   </group>)}
-  <Box position={[0,.85,0]} scale={[7,.15,1.7]} color="#aa946e"/>{[-2,0,2].map(x=><group key={x}><Box position={[x,.96,0]} scale={[.65,.04,.9]} color="#e0d6b7"/><Box position={[x,.99,0]} scale={[.015,.02,.9]} color="#baa476"/></group>)}
+  {readingTables.map((t,i)=><group key={i} position={[t[0]+34,0,t[2]+43]} onClick={e=>{e.stopPropagation();useGame.getState().sit(`reading-${i}`,'read')}}>
+    <Box position={[0,.71,0]} scale={[1.4,.1,.7]} color="#aa946e"/>
+    {[-.52,.52].map(x=><Box key={x} position={[x,.52,0]} scale={[.1,.34,.5]} color="#8d7857"/>)}
+    <Box position={[0,.79,0]} scale={[.4,.025,.34]} color="#e0d6b7"/>
+    <Box position={[0,.81,0]} scale={[.015,.015,.34]} color="#baa476"/>
+  </group>)}
 </Pavilion>}
 function MeditationHall(){return <Pavilion x={-33} z={-17} w={20} d={16} title="THIỀN ĐƯỜNG TRÚC LÂM" subtitle="20 bồ đoàn · Thiền · Tụng kinh · Gõ mõ">
   <group position={[0,.4,-5.9]} scale={1.4}><Buddha/></group><Box position={[0,1,-5]} scale={[6,.3,.9]} color="#8a6445"/>
@@ -81,15 +98,41 @@ function Gate(){return <group position={[0,0,29]}>
   {[-5,5].map(x=><group key={x} position={[x,0,0]}><Box position={[0,3.4,0]} scale={[3.8,.5,.5]} color="#76896b"/><Roof y={3.7} width={4.6} depth={2.9} height={.9}/></group>)}
   </RoofSection><WorldLabel position={[0,3.95,.5]} title="SEN AN NHIÊN" subtitle="Chậm một bước · Nhẹ một lòng"/>
 </group>}
-function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){const bell=useRef<THREE.Group>(null);useFrame(({clock})=>{const e=useGame.getState().event;if(bell.current)bell.current.rotation.z=e?.type==='bell'&&Date.now()-e.at<6000?Math.sin(clock.elapsedTime*5)*.08:0});return <group position={[x,0,-13]}><Box position={[0,.2,0]} scale={[5,.4,5]} color="#b4b598"/>{[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*1.8,2.2,t*1.8]} scale={[.25,4,.25]} color="#815538"/>))}<Roof y={4.3} width={6.7} depth={6.5} height={1.6}/><group ref={bell} position={[0,2.6,0]}>{drum?<mesh rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.95,.95,1.3,24]}/><meshStandardMaterial color="#a77c4c"/></mesh>:<><mesh castShadow><cylinderGeometry args={[.55,.9,1.8,24]}/><meshStandardMaterial color="#9aa17a" metalness={.5} roughness={.6}/></mesh><mesh position={[0,-.85,0]} rotation={[Math.PI/2,0,0]}><torusGeometry args={[.88,.07,8,24]}/><meshStandardMaterial color="#b4ae82"/></mesh></>}</group><WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'Nhịp chậm ngày an':'E · Thỉnh một tiếng chuông'}/></group>}
+function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
+  const bell=useRef<THREE.Group>(null),reduced=useReducedMotion();
+  useFrame(()=>{const c=useGame.getState().ceremony;if(bell.current)bell.current.rotation.z=!drum&&c?.type==='bell'?bellAngle(Date.now()-c.at,reduced):0});
+  return <group position={[x,0,-13]} onClick={e=>{if(!drum){e.stopPropagation();useGame.getState().perform('bell')}}}>
+    <Box position={[0,.2,0]} scale={[5,.4,5]} color="#b4b598"/>
+    {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*1.8,2.2,t*1.8]} scale={[.25,4,.25]} color="#815538"/>))}
+    <RoofSection x={x} z={-13} w={5} d={5}><Roof y={4.3} width={6.7} depth={6.5} height={1.6}/></RoofSection>
+    <Box position={[0,3.9,0]} scale={[3.7,.25,.3]} color="#815538"/>
+    {!drum&&<BellFrame/>}
+    {/* The pivot is at the suspension hook; the rim travels the furthest. */}
+    <group ref={bell} position={[0,3.65,0]}>
+      {drum?<mesh position={[0,-1,0]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.95,.95,1.3,24]}/><meshStandardMaterial color="#a77c4c"/></mesh>:<>
+        <TempleBell/>
+      </>}
+    </group>
+    <WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'Nhịp chậm ngày an':'E · Thỉnh một tiếng chuông'}/>
+  </group>
+}
 function Stupa(){return <group position={[-35,0,42]}><Box position={[0,.3,0]} scale={[9,.6,9]} color="#b8b297"/>{Array.from({length:7},(_,i)=><group key={i} position={[0,i*1.85+.6,0]}><Box position={[0,.65,0]} scale={[5.7-i*.5,1.4,5.7-i*.5]} color="#c1ac82"/>{[-1,1].map(s=><Box key={s} position={[0,.73,s*(2.9-i*.25)]} scale={[.55,.85,.05]} color="#726348"/>)}<Roof y={1.3} width={7.4-i*.65} depth={7.4-i*.65} height={.75}/></group>)}<mesh position={[0,14.2,0]}><coneGeometry args={[.35,2,8]}/><meshStandardMaterial color="#c2a268"/></mesh><WorldLabel position={[0,2,5]} title="BẢO THÁP AN LẠC" subtitle="Bảy tầng tĩnh lặng"/></group>}
-function TeaTerrace(){return <Pavilion x={0} z={-56} w={16} d={10} floor={.3} title="TRÀ ĐÌNH VỌNG SƠN" subtitle="Ngồi xuống · Uống trà · Ngắm núi">
-  {[-3,0,3].map(x=><group key={x}><Box position={[x,.73,1]} scale={[1.9,.12,1.4]} color="#9f8861"/><mesh position={[x,.86,1]}><sphereGeometry args={[.13,12,10]}/><meshStandardMaterial color="#a3b08b"/></mesh><mesh position={[x+.35,.84,1]}><cylinderGeometry args={[.07,.05,.1,10]}/><meshStandardMaterial color="#c6c8ac"/></mesh></group>)}
+function TeaTerrace(){return <Pavilion x={0} z={-56} w={20} d={13} floor={.3} title="TRÀ ĐÌNH VỌNG SƠN" subtitle="10 bàn đôi · Hai ghế đối diện · Một tách trà an nhiên">
+  <TeaGallery/>
+  {teaTables.map((t,i)=><group key={i} position={[t[0],0,t[2]+56]}>
+    <Box position={[0,.92,0]} scale={[1.6,.12,1.2]} color="#9f8861"/>
+    {[-.6,.6].flatMap(x=>[-.4,.4].map(z=><Box key={`${x}-${z}`} position={[x,.6,z]} scale={[.1,.6,.1]} color="#816c4e"/>))}
+
+    {[-.35,.35].map(z=><group key={z} position={[.32,1.05,z]}><mesh><cylinderGeometry args={[.07,.05,.1,10]}/><meshStandardMaterial color="#c6c8ac"/></mesh><Steam/></group>)}
+  </group>)}
 </Pavilion>}
-export function Seats(){const seated=useGame(s=>s.seated);return <><BenchBatches/><CushionBatches/>{seats.filter(s=>s.kind!=='bench'&&s.kind!=='cushion').map(s=><group key={s.id} position={s.position} rotation={[0,s.rotation,0]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().sit(s.id)}}>
+
+export function Seats(){const peers=useGame(s=>s.peers),seated=useGame(s=>s.seated);return <><BenchBatches/><CushionBatches/>{seats.filter(s=>s.kind!=='bench'&&s.kind!=='cushion').map(s=><group key={s.id} position={s.position} rotation={[0,s.rotation,0]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().sit(s.id)}}>
+  {usesFloorSeat(s)?<><mesh position={[0,.04,0]} receiveShadow><cylinderGeometry args={[.58,.62,.11,24]}/><meshStandardMaterial color={seated===s.id?'#d7ba6b':peers.some(p=>p.seat===s.id)?'#899177':'#b8a36d'} roughness={.95}/></mesh><mesh position={[0,.108,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[.42,.45,32]}/><meshStandardMaterial color="#d6c38c"/></mesh></>:<>
     <Box position={[0,-.06,0]} scale={[.85,.14,.85]} color="#a49370"/>
     <Box position={[0,.35,-.4]} scale={[.85,.7,.09]} color="#9c8b66"/>
     {[-1,1].flatMap(a=>[-1,1].map(b=><Box key={`${a}-${b}`} position={[a*.3,-.28,b*.3]} scale={[.08,.5,.08]} color="#7d7156"/>))}
+  </>}
   <mesh position={[0,.03,0]}><cylinderGeometry args={[.73,.73,.08,16]}/><meshBasicMaterial color="#e0c98a" transparent opacity={seated===s.id?.2:0} depthWrite={false}/></mesh>
 </group>)}</>}
 export function MealPlates(){const meal=useGame(s=>s.meal),peers=useGame(s=>s.peers);const all=[...(meal?[{meal,key:'self'}]:[]),...peers.filter(p=>p.meal).map(p=>({meal:p.meal!,key:p.id}))];return <>{all.filter(o=>o.meal.status==='ready'||o.meal.status==='eating').map(o=>{const seat=seats.find(s=>s.id===o.meal.seatId);if(!seat?.table)return null;const x=seat.position[0]<seat.table[0]?-.65:.65,z=seat.position[2]<seat.table[2]?-.8:.8;return <group key={o.key} position={[seat.table[0]+x,seat.table[1]+.06,seat.table[2]+z]} scale={.85}><Food dish={o.meal.dish} eating={o.meal.status==='eating'}/></group>})}</>}
@@ -103,5 +146,5 @@ function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/
   {[-1,1].flatMap(s=>[0,8,-8].map(z=><group key={`${s}-${z}`} position={[s*7.2,0,z]}><mesh position={[0,.3,0]}><cylinderGeometry args={[.45,.3,.6,16]}/><meshStandardMaterial color="#7b8e78"/></mesh><mesh position={[0,1.1,0]} scale={[.8,.9,.8]} castShadow><icosahedronGeometry args={[1,2]}/><meshStandardMaterial color="#6e895b"/></mesh></group>))}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><TableAccessories/><AltarOfferings/><ReceptionDesk/><KitchenMeal/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);

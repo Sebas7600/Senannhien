@@ -7,12 +7,12 @@ const {seats,dishes,places,distance,walkable}=await import('../src/gameData.ts')
 const {findPath,clearLine}=await import('../src/navigation.ts');
 const defaults=useGame.getInitialState();
 beforeEach(()=>useGame.setState({...defaults,inventory:{...defaults.inventory},progress:emptyProgress(),lifetime:emptyProgress(),day:localDay(),position:[0,22],peers:[],claimed:[],badges:[],visited:[],tasted:[],readBooks:[],plots:{},wishes:[]},true));
-test('118 unique seats, including 16 dining chairs, are placed outside navigation obstacles',()=>{
-  assert.equal(seats.length,118);assert.equal(new Set(seats.map(s=>s.id)).size,118);assert.equal(seats.filter(s=>s.kind==='dining').length,16);
+test('156 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
+  assert.equal(seats.length,156);assert.equal(new Set(seats.map(s=>s.id)).size,156);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
   for(const s of seats)assert.ok(walkable(s.position[0],s.position[2],.3),s.id);
 });
-test('navigation reaches all dining chairs and every practice area without crossing walls or water',()=>{
-  const selected=[...seats.filter(s=>s.kind==='dining'),...seats.filter(s=>['temple-0','temple-17','hall-0','hall-19','bamboo-4','tea-0'].includes(s.id))];
+test('navigation reaches all dining seats and every practice area without crossing walls or water',()=>{
+  const selected=[...seats.filter(s=>['dining','reading','tea'].includes(s.kind)),...seats.filter(s=>['temple-0','temple-17','hall-0','hall-19','bamboo-4','tea-0'].includes(s.id))];
   for(const s of selected){const start:[number,number]=[0,22],path=findPath(start,[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from=start;for(const p of path){assert.ok(clearLine(from,p),`${s.id}: ${from} -> ${p}`);from=p;}assert.ok(distance(from,[s.position[0],s.position[2]])<1,s.id);}
 });
 test('meals require a dining seat and cannot be reordered before finishing',()=>{
@@ -25,7 +25,7 @@ test('meals require a dining seat and cannot be reordered before finishing',()=>
 test('each of the four dishes is prepared, eaten, awards once and records its name',()=>{
   let time=Date.now();const original=Date.now;Date.now=()=>time;
   try{useGame.setState({seated:'dining-0',position:[28.2,-29],energy:0});
-    for(const dish of dishes){useGame.getState().orderMeal(dish.id);time+=5501;useGame.getState().tick();assert.equal(useGame.getState().meal?.status,'ready');useGame.getState().eat();assert.equal(useGame.getState().action,'eat');time+=9001;useGame.getState().tick();assert.equal(useGame.getState().meal?.status,'finished');const earned=useGame.getState().merit;useGame.getState().tick();assert.equal(useGame.getState().merit,earned);}
+    for(const dish of dishes){time=Math.max(time,(useGame.getState().meal?.homeAt||0)+1);useGame.getState().orderMeal(dish.id);time=useGame.getState().meal!.readyAt+1;useGame.getState().tick();assert.equal(useGame.getState().meal?.status,'ready');useGame.getState().eat();assert.equal(useGame.getState().action,'eat');time+=9001;useGame.getState().tick();assert.equal(useGame.getState().meal?.status,'finished');const earned=useGame.getState().merit;useGame.getState().tick();assert.equal(useGame.getState().merit,earned);}
     assert.equal(useGame.getState().progress.meal,4);assert.deepEqual(useGame.getState().tasted,dishes.map(d=>d.id));assert.equal(useGame.getState().energy,100);
   }finally{Date.now=original}
 });
