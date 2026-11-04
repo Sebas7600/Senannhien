@@ -4,7 +4,7 @@ const memory=new Map<string,string>();
 Object.defineProperty(globalThis,'window',{value:{localStorage:{getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>memory.set(k,v),removeItem:(k:string)=>memory.delete(k)}}});
 const {useGame}=await import('../src/gameStore.ts');
 const {seats,teaTables,readingTables,seatExit,walkable,distance}=await import('../src/gameData.ts');
-const {mealRoute,routePoint}=await import('../src/mealService.ts');
+const {mealRoute,mealPlan,routePoint}=await import('../src/mealService.ts');
 const {clearLine,findPath}=await import('../src/navigation.ts');
 const {bellAngle,lanternPose,BELL_DURATION,LANTERN_RISE,LANTERN_LIFETIME,MAX_LANTERNS,WISH_STATION,WISH_APPROACH}=await import('../src/ritualMotion.ts');
 const defaults=useGame.getInitialState();
@@ -30,7 +30,7 @@ test('occupied areas do not leave stale pending actions',()=>{
 });
 
 test('meal service walks around furniture to every table, using distance-based delivery times',()=>{
-  for(const seat of seats.filter(s=>s.kind==='dining')){const route=mealRoute(seat.id);assert.ok(route.length>0,seat.id);for(let i=1;i<route.points.length;i++)assert.ok(clearLine(route.points[i-1],route.points[i]),seat.id);assert.deepEqual(routePoint(route.points,0).position,route.points[0]);assert.ok(distance(routePoint(route.points,1).position,seatExit(seat))<.01);useGame.setState({seated:seat.id,meal:null});useGame.getState().orderMeal('bread');const order=useGame.getState().meal!;assert.ok(order.readyAt>order.deliveryAt!);assert.equal(order.cookedAt!-order.orderedAt!,4200);assert.ok(order.deliveryAt!>order.cookedAt!);assert.ok(order.homeAt!>order.readyAt);}
+  for(const seat of seats.filter(s=>s.kind==='dining')){const route=mealRoute(seat.id);assert.ok(route.length>0,seat.id);for(let i=1;i<route.points.length;i++)assert.ok(clearLine(route.points[i-1],route.points[i]),seat.id);assert.deepEqual(routePoint(route.points,0).position,route.points[0]);assert.ok(distance(routePoint(route.points,1).position,mealPlan(seat.id).destination)<.01);useGame.setState({seated:seat.id,meal:null});useGame.getState().orderMeal('bread');const order=useGame.getState().meal!;assert.ok(order.readyAt>order.deliveryAt!);assert.equal(order.cookedAt!-order.orderedAt!,4200);assert.ok(order.deliveryAt!>order.cookedAt!);assert.ok(order.homeAt!>order.readyAt);}
 });
 
 test('bell waits for the full decaying swing and does not interrupt another open panel',()=>{

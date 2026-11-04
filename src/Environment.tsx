@@ -5,7 +5,7 @@ import {TeaGallery} from './TeaGallery';
 import {TemplePlaque} from './TemplePlaque';
 import {TempleBell, BellFrame} from './TempleBell';
 import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
-import {counterHasMeal} from './mealService';
+import {mealPlan,MEAL_SCALE} from './mealService';
 import GardenDetails from './GardenDetails';
 import BodhiTree from './BodhiTree';
 import CourtyardTrees from './CourtyardTrees';
@@ -19,9 +19,9 @@ import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { Box, Buddha, Lantern, Roof, Tree } from './models';
-import { Food, Steam } from './Food';
+import { ServingMeal, Steam } from './Food';
 import { Character } from './Character';
-import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, PICKUP_PLATE, WORLD, type Vec3 } from './gameData';
+import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, WORLD, type Vec3 } from './gameData';
 import { useGame } from './gameStore';
 import {bellAngle} from './ritualMotion';
 import {useReducedMotion} from './useReducedMotion';
@@ -62,11 +62,6 @@ function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;
   <WorldLabel position={[0,4.1,d/2+.3]} title={title} subtitle={subtitle}/>
   {children}
 </group>}
-function KitchenMeal(){
-  const meal=useGame(s=>s.meal),ref=useRef<THREE.Group>(null);
-  useFrame(()=>{if(ref.current)ref.current.visible=counterHasMeal(meal,Date.now())});
-  return meal?<group ref={ref} visible={false} position={PICKUP_PLATE} scale={.75}><Food dish={meal.dish}/></group>:null;
-}
 function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} title="NHÀ ĂN HƯƠNG THIỀN" subtitle="Bữa chay thanh đạm · Mời bạn ngồi">
   <TemplePlaque kind="dining" position={[0,3.82,-8.7]}/>
   <Box position={[0,.75,-6.1]} scale={[17,1.25,1.5]} color="#aa9471"/><Box position={[0,1.41,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
@@ -138,7 +133,8 @@ export function Seats(){const peers=useGame(s=>s.peers),seated=useGame(s=>s.seat
   </>}
   <mesh position={[0,.03,0]}><cylinderGeometry args={[.73,.73,.08,16]}/><meshBasicMaterial color="#e0c98a" transparent opacity={seated===s.id?.2:0} depthWrite={false}/></mesh>
 </group>)}</>}
-export function MealPlates(){const meal=useGame(s=>s.meal),peers=useGame(s=>s.peers);const all=[...(meal?[{meal,key:'self'}]:[]),...peers.filter(p=>p.meal).map(p=>({meal:p.meal!,key:p.id}))];return <>{all.filter(o=>o.meal.status==='ready'||o.meal.status==='eating').map(o=>{const seat=seats.find(s=>s.id===o.meal.seatId);if(!seat?.table)return null;const x=seat.position[0]<seat.table[0]?-.65:.65,z=seat.position[2]<seat.table[2]?-.8:.8;return <group key={o.key} position={[seat.table[0]+x,seat.table[1]+.06,seat.table[2]+z]} scale={.85}><Food dish={o.meal.dish} eating={o.meal.status==='eating'}/></group>})}</>}
+// The local plate is animated by Cô Tâm and stays the same mesh after placement.
+export function MealPlates(){const peers=useGame(s=>s.peers);return <>{peers.filter(p=>p.meal&&(p.meal.status==='ready'||p.meal.status==='eating')).map(p=>{const meal=p.meal!,seat=seats.find(s=>s.id===meal.seatId);if(!seat?.table)return null;const plan=mealPlan(seat.id);return <group key={p.id} position={plan.plate} rotation={[0,plan.heading,0]} scale={MEAL_SCALE}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>})}</>}
 export function Garden(){return <><TempleGarden/><WorldLabel position={[36,2.3,-42]} title="VƯỜN RAU TỪ TÂM" subtitle="Vườn chung · Gieo · Tưới · Thu hoạch sau 60 giây"/></>}
 function Forest(){const trunks=useRef<THREE.InstancedMesh>(null),leaves=useRef<THREE.InstancedMesh>(null);const coords=useMemo(()=>{const a:Vec3[]=[];for(let i=0;i<145;i++){const angle=i*2.399,r=64+(i%9)*3;a.push([Math.sin(angle)*r,0,Math.cos(angle)*r-5])}for(let i=0;i<30;i++)a.push([-47+Math.sin(i*2.4)*8,0,-5+i*1.6]);return a},[]);useEffect(()=>{const m=new THREE.Object3D();coords.forEach(([x,y,z],i)=>{const size=.75+i%4*.18;m.position.set(x,2*size,z);m.scale.set(.28*size,4*size,.28*size);m.rotation.set(0,i,0);m.updateMatrix();trunks.current?.setMatrixAt(i,m.matrix);for(let j=0;j<3;j++){m.position.set(x+Math.sin(j*2.4+i)*size,y+(4+j*.5)*size,z+Math.cos(j*2.4+i)*size);m.scale.set(2.5*size,1.5*size,2.3*size);m.updateMatrix();leaves.current?.setMatrixAt(i*3+j,m.matrix);leaves.current?.setColorAt(i*3+j,new THREE.Color(['#517454','#68825a','#84966a'][(i+j)%3]));}});if(trunks.current)trunks.current.instanceMatrix.needsUpdate=true;if(leaves.current)leaves.current.instanceMatrix.needsUpdate=true},[coords]);return <><instancedMesh ref={trunks} args={[undefined,undefined,coords.length]} castShadow><cylinderGeometry args={[1,1.3,1,6]}/><meshStandardMaterial color="#7f7258"/></instancedMesh><instancedMesh ref={leaves} args={[undefined,undefined,coords.length*3]} castShadow><icosahedronGeometry args={[1,1]}/><meshStandardMaterial roughness={1}/></instancedMesh></>}
 function Bamboo(){const ref=useRef<THREE.InstancedMesh>(null);useEffect(()=>{if(!ref.current)return;const m=new THREE.Object3D();for(let i=0;i<80;i++){const a=i*2.399,r=6+(i%9)*.9;m.position.set(-38+Math.sin(a)*r,2.4+(i%3)*.3,12+Math.cos(a)*r);m.scale.set(.06,4.8+(i%3)*.6,.06);m.rotation.set(Math.sin(i)*.04,0,Math.cos(i)*.05);m.updateMatrix();ref.current.setMatrixAt(i,m.matrix);}ref.current.instanceMatrix.needsUpdate=true},[]);return <group><instancedMesh ref={ref} args={[undefined,undefined,80]}><cylinderGeometry args={[1,1,1,6]}/><meshStandardMaterial color="#72885b"/></instancedMesh>{Array.from({length:15},(_,i)=>{const a=i*2.4;return <mesh key={i} position={[-38+Math.sin(a)*8,5.5,12+Math.cos(a)*8]} scale={[2,.3,2]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#71945f"/></mesh>})}</group>}
@@ -149,5 +145,5 @@ function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/
   {[-1,1].flatMap(s=>[0,8,-8].map(z=><group key={`${s}-${z}`} position={[s*7.2,0,z]}><mesh position={[0,.3,0]}><cylinderGeometry args={[.45,.3,.6,16]}/><meshStandardMaterial color="#7b8e78"/></mesh><mesh position={[0,1.1,0]} scale={[.8,.9,.8]} castShadow><icosahedronGeometry args={[1,2]}/><meshStandardMaterial color="#6e895b"/></mesh></group>))}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><TableAccessories/><AltarOfferings/><ReceptionDesk/><KitchenMeal/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);

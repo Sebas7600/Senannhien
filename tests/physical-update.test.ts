@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {CHARACTER_OFFSET,CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS,diningTables,seats,floorSurfaces,obstacles,surfaceHeight,stepAssistHeight,walkable,distance} from '../src/gameData';
 import {clearLine} from '../src/navigation';
-import {mealPlan,serviceTimes,servicePhase,counterHasMeal,sampleRoute,HANDOFF_MS} from '../src/mealService';
+import {mealPlan,serviceTimes,servicePhase,counterHasMeal,sampleRoute,HANDOFF_MS,TURN_MS,WITHDRAW_MS,MEAL_SCALE,PLATE_LIFT,createMealPresentation,sampleMealPresentation} from '../src/mealService';
 import {floatingLotusPose,lanternPose,LANTERN_RISE} from '../src/ritualMotion';
 
 test('five dining tables have twenty distinct floor cushions on the actual floor',()=>{
@@ -47,6 +47,52 @@ test('all twenty meal plans enter the kitchen, pick up cooked food, deliver and 
     assert.equal(servicePhase(times,times.readyAt),'returning');assert.equal(servicePhase(times,times.homeAt),'idle');
     const out={x:0,z:0,heading:0};assert.equal(sampleRoute(plan.toTable,1,out),out);assert.ok(distance([out.x,out.z],plan.toReception.points[0])<.001);
     const returned=sampleRoute(plan.toReception,1,out);assert.ok(distance([returned.x,returned.z],plan.toKitchen.points[0])<.001);
+  }
+});
+
+test('Cô Tâm stops at the table end and every service route clears the occupied dining cushions',()=>{
+  const diners=seats.filter(s=>s.kind==='dining');
+  for(const seat of diners){
+    const plan=mealPlan(seat.id),table=seat.table!;
+    assert.ok(Math.abs(plan.destination[1]-table[2])>1.9);
+    assert.ok(distance(plan.destination,[seat.position[0],seat.position[2]])>1.6);
+    assert.ok(Math.cos(plan.heading)*(table[2]-plan.destination[1])>0,'Faces the tabletop');
+    for(const route of [plan.toKitchen,plan.toTable,plan.toReception])for(let i=0;i<route.points.length-1;i++){
+      const a=route.points[i],b=route.points[i+1],steps=Math.ceil(distance(a,b)/.05);
+      for(let j=0;j<=steps;j++)for(const diner of diners)assert.ok(Math.hypot(a[0]+(b[0]-a[0])*j/steps-diner.position[0],a[1]+(b[1]-a[1])*j/steps-diner.position[2])>.85,`${seat.id} crosses ${diner.id}`);
+    }
+    assert.ok(Math.abs(plan.plate[0]-table[0])+.62*MEAL_SCALE<1.25);
+    assert.ok(Math.abs(plan.plate[2]-table[2])+.5*MEAL_SCALE<1.4);
+    assert.ok(Math.abs(plan.plate[1]-PLATE_LIFT-table[1])<1e-9,'Tray underside contacts the tabletop');
+  }
+});
+
+test('one meal moves continuously from counter to hands to table, then stays still while empty hands withdraw',()=>{
+  for(const seat of seats.filter(s=>s.kind==='dining')){
+    const plan=mealPlan(seat.id),order={seatId:seat.id,status:'preparing',...serviceTimes(seat.id,1000)},out=createMealPresentation();
+    const sample=(now:number)=>{
+      const route=now<order.deliveryAt?plan.toKitchen:now<order.readyAt?plan.toTable:plan.toReception;
+      const progress=now<order.deliveryAt?1:now<order.readyAt?(now-order.deliveryAt)/(order.readyAt-HANDOFF_MS-order.deliveryAt):(now-order.readyAt)/(order.homeAt-order.readyAt);
+      const pose=sampleRoute(route,progress,{x:0,z:0,heading:0});
+      const heading=now<order.deliveryAt?-Math.PI/2:now>=order.readyAt-HANDOFF_MS&&now<order.readyAt?plan.heading:pose.heading;
+      return sampleMealPresentation(order,now,{...pose,y:.16,heading},out);
+    };
+    assert.ok(!sample(order.cookedAt-1).visible);assert.ok(sample(order.cookedAt).visible);
+    // Hold orientation constant across phase boundaries, just as the damped NPC transform does.
+    const npc={x:plan.destination[0],y:.16,z:plan.destination[1],heading:plan.heading};
+    for(const boundary of [order.deliveryAt,order.readyAt-HANDOFF_MS,order.readyAt-WITHDRAW_MS,order.readyAt]){
+      const a=[...sampleMealPresentation(order,boundary-.01,npc,out).position];
+      const b=sampleMealPresentation(order,boundary+.01,npc,out).position;
+      assert.ok(Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])<.001,`${seat.id} jumps at ${boundary}`);
+    }
+    const arrival=order.readyAt-HANDOFF_MS,waiting=[...sample(arrival).position];
+    assert.deepEqual(sample(arrival+TURN_MS).position,waiting,'Waits to turn before lowering the plate');
+    for(let now=arrival;now<=order.readyAt;now+=10){const frame=sample(now);assert.ok(frame.position[1]-PLATE_LIFT>=seat.table![1]-.00001,'Never sinks through the tabletop');}
+    assert.deepEqual(sample(order.readyAt-WITHDRAW_MS).position,plan.plate);
+    assert.ok(sample(order.readyAt-1).hands.release>.99);
+    assert.deepEqual(sample(order.readyAt+600).position,plan.plate,'Walking away cannot drag the plate');
+    order.status='ready';assert.deepEqual(sample(order.readyAt+1000).position,plan.plate,'Ready status does not replace the plate position');
+    order.status='finished';assert.ok(!sample(order.homeAt).visible);
   }
 });
 

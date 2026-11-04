@@ -20,7 +20,8 @@ import {playerMotion,performanceStats} from './runtime';
 import { useGame,visitDonationChest, floorAt, type Peer } from './gameStore';
 import { OFFERING_RANGE, incenseSpot, outsideIncenseBurner, INCENSE_RANGE, INCENSE_BURN_MS, distance, gardenPlots, nearestSeat, npcs, seats, usesFloorSeat, RECEPTION_HEADING, type Vec2 } from './gameData';
 import { findPath } from './navigation';
-import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS} from './mealService';
+import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS,MEAL_SCALE,createMealPresentation,sampleMealPresentation} from './mealService';
+import {ServingMeal} from './Food';
 
 
 function interact(){const s=useGame.getState();if(['incense','flower','candle'].includes(s.action))return;if(nearDonationChest(s.position)){visitDonationChest();return;}const offeringTargets=(['flower','candle'] as const).map(kind=>nearestOfferingStation(kind,s.position,s.offeringFocus)).sort((a,b)=>a.id===s.offeringFocus?-1:b.id===s.offeringFocus?1:distance(s.position,a.spot)-distance(s.position,b.spot));for(const station of offeringTargets)if(distance(s.position,station.spot)<=OFFERING_RANGE){s.perform(station.kind,station.id);return;}if(distance(s.position,incenseSpot)<=INCENSE_RANGE){s.perform('incense');return;}if(nearBodhiAltar(s.position)){s.perform('incense');return;}if(s.seated){s.stand();return;}const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot){s.garden(plot.id);return;}const npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&Math.hypot(n.x-s.position[0],n.z-s.position[1])<3);if(npc){s.set({npc:npc.id,panel:'dialogue'});return;}const seat=nearestSeat(s.position);if(seat&&distance(s.position,[seat.position[0],seat.position[2]])<2.5){s.sit(seat.id);return;}const p=s.position;if(distance(p,nearestFeedStation(p).spot)<2.5){s.perform('feed');return;}if(distance(p,[-19,-9])<7){s.perform('bell');return;}if(distance(p,[16,37])<10){s.perform('lantern');return;}if(distance(p,[0,-24])<14){s.perform('incense');return;}s.sit();}
@@ -65,24 +66,29 @@ function RemoteAvatar({peer}:{peer:Peer}){
 }
 function Others(){const peers=useGame(s=>s.peers);return <>{peers.map(p=><RemoteAvatar key={p.id} peer={p}/>)}</>}
 function Villager({n}:{n:typeof npcs[number]}){
-  const ref=useRef<THREE.Group>(null),meal=useGame(s=>n.id==='cook'?s.meal:null),plan=useMemo(()=>meal?mealPlan(meal.seatId):null,[meal?.seatId]);
-  const [motion,setMotion]=useState({walking:false,carrying:false,label:'Trò chuyện · E'}),lastMotion=useRef(''),sample=useRef({x:n.x as number,z:n.z as number,heading:0});
+  const ref=useRef<THREE.Group>(null),plate=useRef<THREE.Group>(null),presentation=useRef(createMealPresentation()),serveFrame=useRef(presentation.current.hands),meal=useGame(s=>n.id==='cook'?s.meal:null),plan=useMemo(()=>meal?mealPlan(meal.seatId):null,[meal?.seatId]);
+  const [motion,setMotion]=useState({walking:false,carrying:false,label:'Trò chuyện · E'}),lastMotion=useRef(''),sample=useRef({x:n.x as number,y:0,z:n.z as number,heading:0});
   useFrame((_,dt)=>{if(!ref.current)return;const out=sample.current;out.x=n.x;out.z=n.z;out.heading=RECEPTION_HEADING;
     let walking=false,carrying=false,label='Trò chuyện · E';
     if(meal&&plan&&meal.orderedAt!==undefined&&meal.deliveryAt!==undefined&&meal.kitchenAt!==undefined){
       const now=Date.now(),phase=servicePhase(meal,now);label=phase==='idle'?'Trò chuyện · E':serviceLabels[phase];
       if(phase==='toKitchen'){sampleRoute(plan.toKitchen,(now-meal.orderedAt)/Math.max(1,meal.kitchenAt-meal.orderedAt),out);walking=true;}
-      else if(phase==='waiting'||phase==='pickup'){sampleRoute(plan.toKitchen,1,out);out.heading=-Math.PI/2;}
-      else if(phase==='delivering'||phase==='handoff'){sampleRoute(plan.toTable,(now-meal.deliveryAt)/Math.max(1,meal.readyAt-HANDOFF_MS-meal.deliveryAt),out);walking=phase==='delivering';carrying=true;}
+      else if(phase==='waiting'||phase==='pickup'){sampleRoute(plan.toKitchen,1,out);out.heading=-Math.PI/2;carrying=phase==='pickup';}
+      else if(phase==='delivering'||phase==='handoff'){sampleRoute(plan.toTable,(now-meal.deliveryAt)/Math.max(1,meal.readyAt-HANDOFF_MS-meal.deliveryAt),out);if(phase==='handoff')out.heading=plan.heading;walking=phase==='delivering';carrying=true;}
       else if(phase==='returning'){sampleRoute(plan.toReception,(now-meal.readyAt)/Math.max(1,(meal.homeAt??now)-meal.readyAt),out);walking=true;}
     }
-    ref.current.position.set(out.x,floorAt(out.x,out.z),out.z);
+    out.y=floorAt(out.x,out.z);ref.current.position.set(out.x,out.y,out.z);
     const turn=THREE.MathUtils.euclideanModulo(out.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;ref.current.rotation.y+=turn*(1-Math.exp(-Math.min(dt,.05)*12));
+    if(meal&&plate.current){
+      out.heading=ref.current.rotation.y;const p=sampleMealPresentation(meal,Date.now(),out,presentation.current),dx=p.position[0]-out.x,dz=p.position[2]-out.z,sin=Math.sin(out.heading),cos=Math.cos(out.heading);
+      plate.current.visible=p.visible;plate.current.position.set(dx*cos-dz*sin,p.position[1]-out.y,dx*sin+dz*cos);plate.current.rotation.y=p.heading-out.heading;
+    }
     const key=`${walking}-${carrying}-${label}`;if(key!==lastMotion.current){lastMotion.current=key;setMotion({walking,carrying,label})}
-  });
+  },-1);
   const talk=()=>{const s=useGame.getState(),p=ref.current?.position;if(!p)return;if(motion.label!=='Trò chuyện · E'){s.notify('Cô Tâm đang phục vụ món, mời bạn chọn ghế rồi gọi món tại bàn nhé.');return;}if(distance(s.position,[p.x,p.z])>4){s.stand();s.set({destination:[p.x,p.z+1.2]});s.notify(`Đến gần ${n.name} để trò chuyện.`)}else s.set({npc:n.id,panel:'dialogue'})};
   return <group ref={ref} position={[n.x,floorAt(n.x,n.z),n.z]} onClick={e=>{e.stopPropagation();talk()}}>
-    <Character robe={n.robe} gender={n.id==='cook'?'female':'male'} dish={meal?.dish} moving={motion.walking} pose={motion.carrying?'serve':'walk'}/>
+    <Character robe={n.robe} gender={n.id==='cook'?'female':'male'} dish={meal?.dish} moving={motion.walking} pose={motion.carrying?'serve':'walk'} serveFrame={n.id==='cook'?serveFrame:undefined}/>
+    {meal&&<group ref={plate} visible={false} scale={MEAL_SCALE} onClick={e=>{e.stopPropagation();const s=useGame.getState();if(s.meal?.status==='ready')s.eat();}}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>}
     <NearbyOverlay position={[0,1.9,0]} maxDistance={18}><button className="npc-tag" onClick={talk}>{n.name}<span>{motion.label}</span></button></NearbyOverlay>
   </group>
 }
