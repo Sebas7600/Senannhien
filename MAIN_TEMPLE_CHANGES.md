@@ -60,3 +60,53 @@ Mặt tiền không còn tự ẩn theo vị trí người chơi; chỉ mái cao
 ## Trần cố định, vùng ngồi rộng và ánh sáng đền
 
 Bỏ hoàn toàn cơ chế ẩn khi vào điện; nâng phần mái 1.5 đơn vị. Giới hạn camera trong điện thấp hơn trần và gần nhân vật để không xuyên lên mái. Thêm trần gỗ, hoành phi CanvasTexture 2048×512, đèn lồng và đèn vòng treo (không bóng riêng). Hai hàng cột tại z cục bộ 1 và 4.9 được bỏ cùng trang trí chân/cột và collider; giữ cột sát tường/khu thờ. 48 bồ đoàn, tổng toàn game 110 chỗ ngồi. Tượng nhỏ giảm chiều sâu còn 22%, lùi vào hốc thay vì lồi ra ngoài; vẫn dùng instancing. Hào quang thêm lớp shader cộng sáng mềm, không dùng bloom toàn màn hình. Tay tượng lớn không thay đổi.
+
+## 2026-11-04: measured fixture and shell corrections
+- Flower stems now enter the existing altar vase at local (-3.7, 3.25, -2.835); no added floating vases. Eight lamps sit on the existing right altar tabletop at y=2.843.
+- Replaced nine primitive batches with one batch of 520 recessed Buddha images, baked once at 768x1024 from the supplied Buddha model. The images are shallow relief substitutes and do not have full 3D parallax.
+- Joined raised ceiling to side/rear walls and entrance lintels; expanded ceiling coverage; removed stray low front gold fittings. Hanging lamps moved away from the altar sightline.
+- Foundation now ends at local z=9.775; solid 24-step colliders follow stair width 14.45 and z=9.497..16.303. Side rail collisions and navigation boundaries follow the same footprint.
+- Build passes; 48 tests pass, including walking up stairs, no phantom floor beside stairs/porch, blocked stair underside, and table bounds.
+
+## Multiple offerings and merit chest
+- All 16 reference ceramic vases and all 3 main altar tables are selectable. Click a vase/table to choose it; approach and duration checks remain in force. Each station holds up to 8 offerings independently. Timestamp-to-station metadata persists and expires with the offering; legacy offerings retain their previous default location. Flower rendering uses 2 instanced batches.
+- Niche sprites reduced to 0.48 x 0.64 source units and lowered so the head sits within the arch.
+- Six pendant rings, 90 support/drop wires and 72 luminous beads use 3 instanced batches with no added dynamic lights.
+- Merit chest at temple-local (10.6,2.2,-4.6), with collision, sign and E/click/mobile interaction. It opens the existing donate panel; donation configuration and balances are unchanged.
+- Build succeeds and all 51 tests pass, including every station, independent capacity, persistence/expiry and chest routing/panel behavior.
+
+## Lifetimes, decorative vases and rendering budget
+- The two front bouquet vases are decoration only; their hit targets are removed and stale selection IDs cannot consume flowers. Existing saved offerings in those vases resolve to an interior altar vase. Fourteen interior vases remain interactive.
+- Flowers and lamps last 480 seconds. Incense burns for 170 seconds, exposing a red bamboo foot with a cooled ash tip after burning; the feet are retained for up to 480 additional seconds, capped at 72 saved sticks. Smoke and embers stop at burnout.
+- Facade cleanup now handles BOTH gold and gold_light at the actual door edge z=7.59. Regression test reads the reference GLB and verifies removal of 4 gold + 20 gold-light components on brick while keeping 16 inner door motifs.
+- Rendering changes: 90 sand-grain meshes become 1 instanced batch; up to 24 lamps (216 meshes) become 3 batches with one throttled flame update; all retained incense uses 4 batches. Flower/lamp batches are memoized. Invisible vase/table hit targets use a non-rendered material while retaining raycasting. Niche bake targets are 384x512 in low quality and 768x1024 in high quality. These are draw-call/memory reductions, not a measured mobile FPS guarantee.
+
+## Shared room offerings (2026-11-04)
+Temple incense, altar flowers and lamps now use server-owned room snapshots. SSE carries surviving offerings to other players and late joiners; room changes replace decorations instead of merging private saves. Completion posts use idempotent operation IDs, distance/station validation, shared capacity and bounded incense retention. Supplies and merit update only after server acknowledgement. Unchanged offering snapshots reuse existing render arrays. Lifetimes remain 170 seconds for burning incense plus 480 seconds for its red foot, and 480 seconds for flowers/lamps. Room offerings currently live in server memory and reset on server restart. Offline practice remains local.
+## Cho cá ăn — 2026-11-04
+- Điểm tương tác [18,5], phạm vi 2,5m; đứng xa được dẫn tới bờ và chưa trừ thức ăn.
+- Thời gian chờ 3 giây ở client, máy chủ giới hạn 2,5 giây; gửi trùng không tạo thêm thức ăn.
+- Dùng trạng thái phòng/SSE sẵn có; thức ăn và phản ứng cá tồn tại 12 giây, người vào sau cũng nhận được khi còn hạn.
+- Chỉ trừ thức ăn/cộng tiến trình sau xác nhận máy chủ. Chế độ offline giữ tương tác cục bộ.
+- Giữ 15 cá hiện có, không thêm ánh sáng hoặc mô hình. Cá tụ quanh vị trí thức ăn trong hồ.
+- Build thành công, 59/59 tests đạt. Chưa commit/push theo yêu cầu cuối buổi.
+
+## Koi pond / bridge follow-up
+Lowered koi water to -0.18 and clipped courtyard ground at the ellipse. Bridge now uses matching 2m entrance ramps and physical rails. Pond navigation and manual movement use ellipse clearance with a bridge corridor, replacing square koi obstacles. Added 12 bank + 6 bridge feeding stations, server-validated targets and per-player cooldown; up to 12 concurrent feeds, 96 instanced pellets in one draw call. Koi divide across active targets, feeding arm animation is broadcast as avatar action. Build and 60 tests passed before final pellet batching. Browser visual validation blocked because local browser use is disabled in Work settings.
+
+## Correction: move pond outward, do not lower beneath paths
+Moved koi pond, bridge, collisions, fish, labels, feed stations and three pond benches by +5m X/+5m Z, away from the main walkway. Restored visible water level .085 and removed courtyard clipping. Lotus pond unchanged.
+
+## Bridge rail and shore visibility fix
+Fixed local/world height mismatch in bridge posts after pond relocation. Replaced rail pieces with three continuous endpoint-aligned beams per side, matching entrance ramps. Recomputed instance bounds for shore rocks and disabled frustum culling for these two small fixed batches to prevent disappearing borders when turning the camera.
+
+## Shared garden — 2026-11-04
+12 plots now use room-owned server state with revision-checked plant/water/harvest transitions and operation deduplication. Conflicting harvests award only the first successful contributor; client supplies/progress update after acknowledgement. Room snapshots support late joining and isolate gardens between rooms; unchanged plot state keeps object identity. Offline practice stays local. Plants need watering, mature after 60 seconds and yield 3 vegetables. Plot buttons show stage/countdown, last contributor and pending requests; contextual action + E target nearest plot within 3m. Reuses existing low-poly plant geometry, no additional lights. Server room gardens currently reset on server restart. Tests: 62/62 pass. No commit/push until end of session as requested.
+## Chibi garden visual redesign — 2026-11-04
+Replaced simple beds and blob plants with rounded pastel raised beds and four stylized vegetable silhouettes (carrot, leafy greens, pink radish, pumpkin). Types are cosmetic: all use existing seed inventory and yield three generic vegetables. Geometry is shared: 12 bed instances + 12 soil instances + one 600-capacity low-poly crop batch; updates once per session tick or plot change, no new textures/lights. Only the nearest plot within 3m displays its detailed action label, keeping mobile view clear; all beds remain clickable for approach. Existing room-owned lifecycle and single-harvest validation preserved. Browser visual validation remains unavailable due to local browser permission error. No commit/push yet.
+## Temple vegetable garden replaces chibi treatment — 2026-11-04
+User requested a restrained temple garden. Renamed ChibiGarden to TempleGarden, removed pastel borders, decorative coloured markers and cartoon crop types. All beds now grow leafy mustard greens with tapered scalloped curved leaf geometry, a raised pale centre vein, and natural green variation. Earth beds have dry/watered soil colours and bamboo borders with visible nodes and corner pegs. Batch capacities: 12 earth + 12 soil instances, 240 bamboo culms/nodes/pegs, 72 stems and 504 low-poly leaf blades. No added lights/textures; no per-frame crop updates. Only nearest bed within 3m shows an action label. Same 12 plot IDs, positions, room protocol, timing, seeds and yield remain unchanged. Build successful; visual confirmation pending while browser tooling is blocked.
+## Soil and gardening actions — 2026-11-04
+Raised the garden ground plane from .02 to .075 above the courtyard surface. Added deterministic 128x128 shared soil albedo/bump texture (grain, clods and furrow variation), retaining darker watered soil. Added plant/water/harvest avatar poses, plot-facing heading and brief movement lock; server accepts these poses for remote avatars. Watering includes a low-poly watering can and seven animated water droplets. Existing server acknowledgement, revision checks and rewards unchanged. Build passed; 62/62 functional tests passed. Browser visual validation still pending.
+## Gardening duration and stronger soil relief — 2026-11-04
+Online plant/water/harvest now wait 2000ms before submitting the revision-checked operation. Pending operation prevents repeated activation, holds the avatar pose, and cancels before submit if room/action/event/connection/proximity changed. Inventory/rewards still wait for server acknowledgement. Corrected missing albedo/bump on topsoil (previous texture only covered bed sides). Added 48 low-poly clods per bed in a single 576-instance draw, stronger topsoil bump and much darker wet earth/clod colours. Build successful; 62/62 tests passed, including the delayed operation check.

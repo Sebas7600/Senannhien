@@ -1,11 +1,15 @@
+import {submitGarden,type GardenAction} from './gardenTransport';
+import {nearestFeedStation,bridgeHeight} from './pondLayout';
+import {offeringPending,submitOffering,type SharedOfferingKind} from './offeringTransport';
+import {donationChest,nearDonationChest,nearestOfferingStation,offeringStation,offeringCount,templeSurfaceHeight} from './templeFixtures';
 import { create } from 'zustand';
 import {BODHI,nearBodhiAltar} from './bodhiData';
 import {bowDuration,type BowSession} from './bowTimeline';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { createBufferedStorage } from './saveStorage';
-import { templeOffering, OFFERING_RANGE, OFFERING_DURATION, OFFERING_CAPACITY, dishes, distance, incenseSpot, incenseApproach, INCENSE_CLEARANCE, INCENSE_RANGE, INCENSE_DURATION, INCENSE_BURN_MS, gardenPlots, nearestSeat, place, places, seats, scriptures, zoneAt, type DishId, type PlaceId, type Vec2, type Vec3 } from './gameData';
+import { templeOffering, OFFERING_RANGE, OFFERING_DURATION, OFFERING_CAPACITY, dishes, distance, incenseSpot, incenseApproach, INCENSE_CLEARANCE, INCENSE_RANGE, INCENSE_DURATION, INCENSE_BURN_MS, INCENSE_STUB_MS, INCENSE_MAX_STICKS, gardenPlots, nearestSeat, place, places, seats, scriptures, zoneAt, type DishId, type PlaceId, type Vec2, type Vec3 } from './gameData';
 export type Activity='pray'|'bow'|'sweep'|'meditate'|'feed'|'bell'|'lantern'|'incense'|'beads'|'chant'|'mok'|'candle'|'flower'|'read'|'plant'|'water'|'harvest'|'meal'|'tea'|'walk';
-export type Action='flower'|'candle'|'incense'|'walk'|'sit'|'eat'|'pray'|'bow'|'sweep'|'meditate'|'beads'|'chant'|'mok';
+export type Action='plant'|'water'|'harvest'|'feed'|'flower'|'candle'|'incense'|'walk'|'sit'|'eat'|'pray'|'bow'|'sweep'|'meditate'|'beads'|'chant'|'mok';
 export type Item='feed'|'lantern'|'incense'|'candle'|'flower'|'seed'|'vegetable';
 export type Panel='journey'|'bag'|'map'|'settings'|'help'|'activities'|'donate'|'seats'|'menu'|'library'|'dialogue'|'wish'|'chat'|null;
 export const activities:{id:Activity;name:string;hint:string;zone?:PlaceId}[]=[
@@ -37,7 +41,7 @@ export const achievements=[
   {id:'reader',title:'Trang sách mở',desc:'Đọc đủ 4 bài thực tập',target:4,reward:60,metric:'books'},
 ] as const;
 export interface MealOrder {dish:DishId;seatId:string;status:'preparing'|'ready'|'eating'|'finished';readyAt:number;eatUntil?:number}
-export interface PlotState {plantedAt:number;wateredAt:number|null;harvested:boolean}
+export interface PlotState {revision?:number;by?:string;plantedAt:number;wateredAt:number|null;harvested:boolean}
 export interface Wish {text:string;at:number}
 export interface Peer {id:string;name:string;robe:string;gender?:'male'|'female';skin?:string;robeStyle?:'traditional'|'cross';x:number;y:number;z:number;heading:number;action:Action;seat:string|null;meal?:MealOrder|null}
 export interface ChatMessage {id:string;name:string;text:string;at:number;system?:boolean}
@@ -45,24 +49,24 @@ export interface GameState {
   bow:BowSession|null;finishBow:()=>void;
   name:string;robe:string;gender:'male'|'female';skin:string;robeStyle:'traditional'|'cross';characterConfigured:boolean;merit:number;peace:number;experience:number;energy:number;day:string;started:boolean;
   progress:Record<Activity,number>;lifetime:Record<Activity,number>;inventory:Record<Item,number>;claimed:string[];badges:string[];
-  visited:PlaceId[];readBooks:string[];tasted:DishId[];plots:Record<string,PlotState>;wishes:Wish[];
-  offerings:{flower:number[];candle:number[]};burningIncense:number[];action:Action;panel:Panel;night:boolean;sound:boolean;quality:'high'|'low';camera:'follow'|'overview';cameraYaw:number;cameraReset:number;
+  visited:PlaceId[];readBooks:string[];tasted:DishId[];gardenPending:string|null;plots:Record<string,PlotState>;wishes:Wish[];
+  lastFishFedAt:number;fishFeedAt:number;fishFeeds:{at:number;x:number;z:number}[];offeringSlots:Record<string,string>;offeringFocus:string|null;offerings:{flower:number[];candle:number[]};burningIncense:number[];action:Action;panel:Panel;night:boolean;sound:boolean;quality:'high'|'low';camera:'follow'|'overview';cameraYaw:number;cameraReset:number;
   position:Vec2;height:number;heading:number;destination:Vec2|null;seated:string|null;pendingSeat:string|null;pendingAction:Action;
-  teleport:{position:Vec3;heading:number;at:number}|null;event:{type:Activity;at:number;x:number;z:number}|null;toast:{text:string;id:number}|null;
+  teleport:{position:Vec3;heading:number;at:number}|null;event:{type:Activity;at:number;x:number;z:number;target?:string}|null;toast:{text:string;id:number}|null;
   meal:MealOrder|null;npc:string|null;scripture:string;sessionSeconds:number;bodhiIncense:number;
   connection:'connecting'|'online'|'offline';room:string;peers:Peer[];messages:ChatMessage[];chatUnread:number;playerId:string;
   set:(v:Partial<GameState>)=>void;notify:(text:string)=>void;record:(activity:Activity,amount?:number)=>void;checkDay:()=>void;
-  go:(id:PlaceId)=>void;sit:(id?:string,action?:Action)=>void;stand:()=>void;perform:(activity:Activity)=>void;
+  go:(id:PlaceId)=>void;sit:(id?:string,action?:Action)=>void;stand:()=>void;perform:(activity:Activity,stationId?:string)=>void;
   orderMeal:(id:DishId)=>void;eat:()=>void;tick:()=>void;garden:(id:string)=>void;buy:(item:Item)=>void;claim:(id:string)=>void;claimBadge:(id:string)=>void;
   read:(id:string)=>void;releaseWish:(text:string)=>void;
 }
 const timed:Action[]=['meditate','beads','chant','mok','pray'];
 export function achievementValue(s:Pick<GameState,'visited'|'tasted'|'readBooks'|'lifetime'>,metric:string){return metric==='visits'?s.visited.length:metric==='dishes'?s.tasted.length:metric==='books'?s.readBooks.length:s.lifetime[metric as Activity]||0;}
-export function floorAt(x:number,z:number){if(x>17&&x<39&&z>2.5&&z<5.5)return .44;if(x>14.5&&x<41.5&&z>37.5&&z<40.5)return .44;if(Math.abs(x)<14.1&&z< -16.05&&z> -36.5)return 2.28;if(Math.abs(x)<9.2&&z>= -16.05&&z< -10.5)return .08+Math.min(1,(-10.5-z)/5.55)*2.2;if(x>-43&&x<-23&&z<-9&&z>-25)return .4;if(x>-43&&x<-25&&z<-36&&z>-50)return .35;if(x>22.5&&x<45.5&&z<-17&&z>-36)return .16;if(Math.abs(x)<8&&z<-51)return .3;return .06;}
+export function floorAt(x:number,z:number){if(x>22&&x<44&&z>7.5&&z<10.5)return bridgeHeight(x);if(x>14.5&&x<41.5&&z>37.5&&z<40.5)return .44;const templeHeight=templeSurfaceHeight(x,z+27);if(templeHeight>0)return templeHeight+.08;if(x>-43&&x<-23&&z<-9&&z>-25)return .4;if(x>-43&&x<-25&&z<-36&&z>-50)return .35;if(x>22.5&&x<45.5&&z<-17&&z>-36)return .16;if(Math.abs(x)<8&&z<-51)return .3;return .06;}
 export const useGame=create<GameState>()(persist((set,get)=>({
   name:'An Nhiên',robe:'#9b704a',gender:'male',skin:'#c99c79',robeStyle:'traditional',characterConfigured:false,merit:0,peace:0,experience:0,energy:80,day:localDay(),started:false,
-  progress:emptyProgress(),lifetime:emptyProgress(),inventory:{feed:20,lantern:5,incense:10,candle:8,flower:8,seed:12,vegetable:0},claimed:[],badges:[],visited:[],readBooks:[],tasted:[],plots:{},wishes:[],
-  offerings:{flower:[],candle:[]},burningIncense:[],action:'walk',panel:null,night:false,sound:false,quality:typeof window!=='undefined'&&window.matchMedia?.('(pointer: coarse)').matches?'low':'high',camera:'follow',cameraYaw:0,cameraReset:0,
+  progress:emptyProgress(),lifetime:emptyProgress(),inventory:{feed:20,lantern:5,incense:10,candle:8,flower:8,seed:12,vegetable:0},claimed:[],badges:[],visited:[],readBooks:[],tasted:[],gardenPending:null,plots:{},wishes:[],
+  lastFishFedAt:0,fishFeedAt:0,fishFeeds:[],offeringSlots:{},offeringFocus:null,offerings:{flower:[],candle:[]},burningIncense:[],action:'walk',panel:null,night:false,sound:false,quality:typeof window!=='undefined'&&window.matchMedia?.('(pointer: coarse)').matches?'low':'high',camera:'follow',cameraYaw:0,cameraReset:0,
   position:[0,22],height:.06,heading:Math.PI,destination:null,seated:null,pendingSeat:null,pendingAction:'sit',teleport:null,event:null,toast:null,meal:null,npc:null,scripture:'breath',sessionSeconds:0,bodhiIncense:0,bow:null,
   connection:'connecting',room:'an-nhien',peers:[],messages:[],chatUnread:0,playerId:'',
   set,notify:text=>set({toast:{text,id:Date.now()}}),
@@ -75,12 +79,21 @@ export const useGame=create<GameState>()(persist((set,get)=>({
     if(s.peers.some(p=>p.seat===seat.id)){s.notify('Chỗ này đang có người ngồi. Bạn chọn chỗ bên cạnh nhé.');return;}
     if(s.seated===seat.id){set({action,bow:null});return;}s.stand();set({pendingSeat:seat.id,pendingAction:action,destination:[seat.position[0],seat.position[2]],panel:null});s.notify(`Đến ${seat.label.toLowerCase()} · Nhấn E để đứng dậy`);
   },
-  perform:activity=>{const s=get();if(activity==='bow'&&s.action==='bow'&&s.bow&&Date.now()-s.bow.at<bowDuration(s.bow.mode)*1000)return;if(['incense','flower','candle'].includes(s.action))return;
+  perform:(activity,stationId)=>{const s=get();if(activity==='bow'&&s.action==='bow'&&s.bow&&Date.now()-s.bow.at<bowDuration(s.bow.mode)*1000)return;if(['incense','flower','candle'].includes(s.action)||offeringPending())return;
+    if(activity==='feed'){const station=nearestFeedStation(s.position);
+      if(distance(s.position,station.spot)>1.8){s.stand();set({destination:station.spot,panel:null});s.notify('Đến gần mép hồ rồi bấm Cho cá ăn nhé.');return;}
+      if(Date.now()-s.lastFishFedAt<3000){s.notify('Đợi cá ăn một chút rồi cho thêm nhé.');return;}
+      if(s.inventory.feed<1){set({panel:'bag'});s.notify('Thức ăn đã hết. Mở túi vải để đổi thêm.');return;}
+      if(s.connection==='connecting'){s.notify('Đang kết nối phòng, bạn đợi một chút nhé.');return;}
+      if(s.connection==='online'){void completeSharedOffering('feed',station.id);return;}
+      set({lastFishFedAt:Date.now(),fishFeedAt:Date.now(),fishFeeds:[...s.fishFeeds.filter(f=>Date.now()-f.at<12000),{at:Date.now(),x:station.target[0],z:station.target[1]}].slice(-12),action:'feed',event:{type:'feed',at:Date.now(),x:station.target[0],z:station.target[1]},inventory:{...s.inventory,feed:s.inventory.feed-1}});s.record('feed');s.notify('Đàn koi đang bơi đến ăn. +2 công đức');return;
+    }
     if(activity==='flower'||activity==='candle'){
-      const config=templeOffering[activity];if(distance(s.position,config.spot)>OFFERING_RANGE){s.stand();set({destination:config.approach,panel:null});s.notify('Đến bàn '+(activity==='flower'?'dâng hoa trên bàn thờ':'dâng đèn trên bàn thờ')+' rồi bấm lại để thực hiện.');return;}
+if(stationId?.startsWith('flower-front-')){s.notify('Bình này chỉ để trang trí. Mời bạn chọn bình bên trong bàn thờ.');return;}
+      const config=stationId?offeringStation(activity,stationId):nearestOfferingStation(activity,s.position,s.offeringFocus);set({offeringFocus:config.id});if(distance(s.position,config.spot)>OFFERING_RANGE){s.stand();set({destination:config.approach,panel:null});s.notify('Đến bàn '+(activity==='flower'?'dâng hoa trên bàn thờ':'dâng đèn trên bàn thờ')+' rồi bấm lại để thực hiện.');return;}
       if(s.inventory[activity]<1){set({panel:'bag'});s.notify('Vật phẩm đã hết. Mở túi vải để đổi thêm.');return;}
-      if(s.offerings[activity].filter(at=>Date.now()-at<config.lifetime).length>=OFFERING_CAPACITY){s.notify('Bàn đã đủ lễ vật. Mời bạn đợi một chút rồi quay lại.');return;}
-      s.stand();set({action:activity,panel:null,event:{type:activity,at:Date.now(),x:s.position[0],z:s.position[1]}});s.notify(activity==='flower'?'Đang thành tâm dâng hoa…':'Đang châm đèn sen…');return;
+      if(offeringCount(s.offerings[activity],s.offeringSlots,config,Date.now(),templeOffering[activity].lifetime)>=OFFERING_CAPACITY){s.notify('Bàn đã đủ lễ vật. Mời bạn đợi một chút rồi quay lại.');return;}
+      s.stand();set({action:activity,panel:null,event:{type:activity,at:Date.now(),x:s.position[0],z:s.position[1],target:config.id}});s.notify(activity==='flower'?'Đang thành tâm dâng hoa…':'Đang châm đèn sen…');return;
     }
     if(activity==='incense'&&nearBodhiAltar(s.position)){if(s.event&&Date.now()-s.event.at<900)return;if(s.inventory.incense<1){set({panel:'bag'});return;}set({inventory:{...s.inventory,incense:s.inventory.incense-1},bodhiIncense:s.bodhiIncense+1,event:{type:'incense',at:Date.now(),x:BODHI.x,z:BODHI.altarZ}});s.record('incense');return;}
     if(activity==='incense'){
@@ -94,7 +107,7 @@ if(activity==='pray'||activity==='beads'){set({action:s.action===activity?(s.sea
     if(activity==='tea'){if(!s.seated||seats.find(c=>c.id===s.seated)?.kind!=='tea'){s.sit(nearestSeat(s.position,['tea']).id);return;}s.record('tea');set({energy:Math.min(100,s.energy+10),event:{type:activity,at:Date.now(),x:s.position[0],z:s.position[1]}});s.notify('Một tách trà ấm. +10 năng lượng');return;}
     if(activity==='read'){if(zoneAt(s.position).id!=='library'){s.go('library');return;}set({panel:'library'});return;}
     const atBodhi=false;const zone=activities.find(a=>a.id===activity)?.zone;
-    const anchor:Vec2=activity==='feed'?[18,5]:activity==='lantern'?[16,37]:zone?[place(zone).x,place(zone).z]:s.position;
+    const anchor:Vec2=activity==='lantern'?[16,37]:zone?[place(zone).x,place(zone).z]:s.position;
     if(zone&&distance(s.position,anchor)>(activity==='bell'?6:9)){s.stand();set({destination:anchor});s.notify(`Đến gần ${place(zone).name.toLowerCase()} để thực hiện.`);return;}
     if(activity==='lantern'){set({panel:'wish'});return;}
     const consumable=(['feed','incense','candle','flower'] as string[]).includes(activity)?activity as Item:null;
@@ -102,31 +115,55 @@ if(activity==='pray'||activity==='beads'){set({action:s.action===activity?(s.sea
     if(activity==='sweep'){s.stand();set({action:s.action==='sweep'?'walk':'sweep'});}else if(['pray','beads'].includes(activity))set({action:s.action===activity?'sit' as Action:activity as Action});else if(activity==='bow'){const cushion=!!s.seated&&seats.find(c=>c.id===s.seated)?.kind==='cushion';if(!cushion)s.stand();set({action:'bow',bow:{at:Date.now(),mode:cushion?'cushion':'standing'},destination:null,pendingSeat:null});}
     set({event:{type:activity,at:Date.now(),x:atBodhi?BODHI.x:s.position[0],z:atBodhi?BODHI.altarZ:s.position[1]},...(atBodhi?{bodhiIncense:s.bodhiIncense+1}:{})});
     if(!['sweep','pray','beads'].includes(activity))s.record(activity);
-    s.notify(activity==='sweep'?'Đi gần lá rụng để gom lá. Lá được tạo thêm theo thời gian.':activity==='feed'?'Đàn koi đang bơi về phía bữa ăn nhỏ.':activity==='bell'?'Nghe một tiếng chuông, trở về khoảnh khắc này.':activity==='bow'?'Một lạy thành tâm.':'Thả lỏng vai, chậm lại cùng hơi thở.');
+    s.notify(activity==='sweep'?'Đi gần lá rụng để gom lá. Lá được tạo thêm theo thời gian.':activity==='bell'?'Nghe một tiếng chuông, trở về khoảnh khắc này.':activity==='bow'?'Một lạy thành tâm.':'Thả lỏng vai, chậm lại cùng hơi thở.');
   },
   orderMeal:id=>{const s=get();const seat=seats.find(c=>c.id===s.seated);if(!seat||seat.kind!=='dining'){s.notify('Bạn cần ngồi vào một ghế trong nhà ăn để gọi món.');return;}if(s.meal&&s.meal.status!=='finished'){s.notify('Bạn đang có một phần ăn. Dùng xong rồi gọi món tiếp nhé.');return;}if(!dishes.some(d=>d.id===id))return;set({meal:{dish:id,seatId:seat.id,status:'preparing',readyAt:Date.now()+5500},panel:null,action:'sit'});s.notify(`Bếp đang chuẩn bị ${dishes.find(d=>d.id===id)!.name.toLowerCase()}. Món sẽ tới bàn trong giây lát.`);},
   eat:()=>{const s=get();if(!s.meal||s.meal.status!=='ready')return;if(s.seated!==s.meal.seatId){s.sit(s.meal.seatId);return;}set({meal:{...s.meal,status:'eating',eatUntil:Date.now()+9000},action:'eat'});s.notify('Ăn chậm, trân trọng từng hương vị.');},
-  tick:()=>{const s=get();s.checkDay();
+  tick:()=>{const s=get();s.checkDay();if(!s.gardenPending&&['feed','plant','water','harvest'].includes(s.action)&&s.event&&Date.now()-s.event.at>(s.action==='feed'?1400:2200))set({action:'walk'});
     const fresh={flower:s.offerings.flower.filter(at=>Date.now()-at<templeOffering.flower.lifetime),candle:s.offerings.candle.filter(at=>Date.now()-at<templeOffering.candle.lifetime)};
     if(fresh.flower.length!==s.offerings.flower.length||fresh.candle.length!==s.offerings.candle.length)set({offerings:fresh});
     if((s.action==='flower'||s.action==='candle')&&s.event?.type===s.action&&Date.now()-s.event.at>=OFFERING_DURATION){const kind=s.action;
-      if(distance(s.position,templeOffering[kind].spot)<=OFFERING_RANGE&&s.inventory[kind]>0&&fresh[kind].length<OFFERING_CAPACITY){set({action:'walk',inventory:{...s.inventory,[kind]:s.inventory[kind]-1},offerings:{...fresh,[kind]:[...fresh[kind],Date.now()]}});s.record(kind);s.notify(kind==='flower'?'Hoa đã được đặt lên bàn. +2 công đức':'Đèn sen đã được thắp. +2 công đức');}else set({action:'walk'});
+      const station=offeringStation(kind,s.event.target),completedAt=Math.max(Date.now(),...[...fresh.flower,...fresh.candle].map(t=>t+1));if(distance(s.position,station.spot)<=OFFERING_RANGE&&s.inventory[kind]>0&&offeringCount(fresh[kind],s.offeringSlots,station,Date.now(),templeOffering[kind].lifetime)<OFFERING_CAPACITY){if(s.connection==='online'){set({action:'walk'});void completeSharedOffering(kind,station.id);return;}set({action:'walk',inventory:{...s.inventory,[kind]:s.inventory[kind]-1},offeringSlots:{...s.offeringSlots,[completedAt]:station.id},offerings:{...fresh,[kind]:[...fresh[kind],completedAt]}});s.record(kind);s.notify(kind==='flower'?'Hoa đã được đặt lên bàn. +2 công đức':'Đèn sen đã được thắp. +2 công đức');}else set({action:'walk'});
     }
 
-    const burning=s.burningIncense.filter(at=>Date.now()-at<INCENSE_BURN_MS);if(burning.length!==s.burningIncense.length)set({burningIncense:burning});
+    const liveTimes=new Set([...get().offerings.flower,...get().offerings.candle].map(String));if(Object.keys(s.offeringSlots).some(t=>!liveTimes.has(t)))set({offeringSlots:Object.fromEntries(Object.entries(get().offeringSlots).filter(([t])=>liveTimes.has(t))) });
+    const burning=s.burningIncense.filter(at=>Date.now()-at<INCENSE_BURN_MS+INCENSE_STUB_MS).slice(-INCENSE_MAX_STICKS);if(burning.length!==s.burningIncense.length)set({burningIncense:burning});
     if(s.action==='incense'&&s.event?.type==='incense'&&Date.now()-s.event.at>=INCENSE_DURATION){
-      if(distance(s.position,incenseSpot)<=INCENSE_RANGE&&s.inventory.incense>0){set({inventory:{...s.inventory,incense:s.inventory.incense-1},burningIncense:[...burning,Date.now()],action:'walk'});s.record('incense');s.notify('Đã dâng một nén hương. +2 công đức');}else set({action:'walk'});
+      if(distance(s.position,incenseSpot)<=INCENSE_RANGE&&s.inventory.incense>0){if(s.connection==='online'){set({action:'walk'});void completeSharedOffering('incense');return;}set({inventory:{...s.inventory,incense:s.inventory.incense-1},burningIncense:[...burning,Date.now()].slice(-INCENSE_MAX_STICKS),action:'walk'});s.record('incense');s.notify('Đã dâng một nén hương. +2 công đức');}else set({action:'walk'});
     }
 const zone=zoneAt(s.position);if(!s.visited.includes(zone.id)&&distance(s.position,[zone.x,zone.z])<12)set({visited:[...s.visited,zone.id]});set({sessionSeconds:s.sessionSeconds+1});
     if(s.meal?.status==='preparing'&&Date.now()>=s.meal.readyAt){set({meal:{...s.meal,status:'ready'}});s.notify('Bữa chay đã được đặt lên bàn. Chúc bạn ăn ngon miệng!');}
     if(s.meal?.status==='eating'&&s.action==='eat'&&s.seated===s.meal.seatId&&Date.now()>=(s.meal.eatUntil||Infinity)){const dish=dishes.find(d=>d.id===s.meal!.dish)!;s.record('meal');set({meal:{...s.meal,status:'finished'},action:'sit',energy:Math.min(100,s.energy+dish.energy),tasted:s.tasted.includes(dish.id)?s.tasted:[...s.tasted,dish.id]});s.notify(`Bữa ${dish.name.toLowerCase()} đã hoàn thành. +${dish.energy} năng lượng · +2 công đức`);}
   },
-  garden:id=>{const s=get(),plot=gardenPlots.find(p=>p.id===id);if(!plot)return;if(distance(s.position,[plot.x,plot.z])>3){s.stand();set({destination:[plot.x,plot.z+1]});s.notify('Đến gần luống rau rồi bấm lại để chăm cây.');return;}const p=s.plots[id];if(!p||p.harvested){if(s.inventory.seed<1){set({panel:'bag'});s.notify('Bạn đã hết hạt giống.');return;}set({plots:{...s.plots,[id]:{plantedAt:Date.now(),wateredAt:null,harvested:false}},inventory:{...s.inventory,seed:s.inventory.seed-1}});s.record('plant');s.notify('Hạt giống đã được gieo. Bấm vào luống lần nữa để tưới.');}else if(!p.wateredAt){set({plots:{...s.plots,[id]:{...p,wateredAt:Date.now()}}});s.record('water');s.notify('Đã tưới nước. Cây sẽ sẵn sàng thu hoạch sau 60 giây.');}else if(Date.now()-p.wateredAt>=60000){set({plots:{...s.plots,[id]:{...p,harvested:true}},inventory:{...s.inventory,vegetable:s.inventory.vegetable+3}});s.record('harvest');s.notify('Thu hoạch được 3 bó rau. +2 công đức');}else s.notify(`Cây đang lớn. Còn ${Math.ceil((60000-Date.now()+p.wateredAt)/1000)} giây nữa.`);},
+  garden:id=>{const s=get();if(gardenBusy)return;const plot=gardenPlots.find(p=>p.id===id);if(!plot)return;if(distance(s.position,[plot.x,plot.z])>3){s.stand();set({destination:[plot.x,plot.z+1]});s.notify('Đến gần luống rau rồi bấm lại để chăm cây.');return;}const p=s.plots[id];if(s.connection==='connecting'){s.notify('Đang kết nối vườn chung, bạn đợi một chút nhé.');return;}
+    if(s.connection==='online'){
+      const action:GardenAction|null=!p||p.harvested?'plant':p.wateredAt===null?'water':Date.now()-p.wateredAt>=60000?'harvest':null;
+      if(!action){s.notify('Cây đang lớn. Còn '+Math.ceil((60000-Date.now()+p.wateredAt!)/1000)+' giây nữa.');return;}
+      if(action==='plant'&&s.inventory.seed<1){set({panel:'bag'});s.notify('Bạn đã hết hạt giống.');return;}
+      void completeGarden(id,action,p?.revision??0);return;
+    }if(!p||p.harvested){if(s.inventory.seed<1){set({panel:'bag'});s.notify('Bạn đã hết hạt giống.');return;}set({plots:{...s.plots,[id]:{plantedAt:Date.now(),wateredAt:null,harvested:false}},inventory:{...s.inventory,seed:s.inventory.seed-1}});s.record('plant');s.notify('Hạt giống đã được gieo. Bấm vào luống lần nữa để tưới.');}else if(!p.wateredAt){set({plots:{...s.plots,[id]:{...p,wateredAt:Date.now()}}});s.record('water');s.notify('Đã tưới nước. Cây sẽ sẵn sàng thu hoạch sau 60 giây.');}else if(Date.now()-p.wateredAt>=60000){set({plots:{...s.plots,[id]:{...p,harvested:true}},inventory:{...s.inventory,vegetable:s.inventory.vegetable+3}});s.record('harvest');s.notify('Thu hoạch được 3 bó rau. +2 công đức');}else s.notify(`Cây đang lớn. Còn ${Math.ceil((60000-Date.now()+p.wateredAt)/1000)} giây nữa.`);},
   buy:item=>{const s=get();if(item==='vegetable')return;const cost=item==='lantern'?12:6,qty=item==='feed'?10:item==='seed'?8:5;if(s.merit<cost){s.notify(`Cần ${cost} công đức để đổi thêm.`);return;}set({merit:s.merit-cost,inventory:{...s.inventory,[item]:s.inventory[item]+qty}});s.notify(`Đã thêm ${qty} vật phẩm vào túi.`);},
   claim:id=>{get().checkDay();const s=get(),t=dailyTasks.find(t=>t.id===id);if(!t||s.claimed.includes(id)||s.progress[t.id]<t.target)return;set({claimed:[...s.claimed,id],merit:s.merit+t.reward});s.notify(`Nhận ${t.reward} công đức từ việc lành hôm nay.`);},
   claimBadge:id=>{const s=get(),a=achievements.find(a=>a.id===id);if(!a||s.badges.includes(id)||achievementValue(s,a.metric)<a.target)return;set({badges:[...s.badges,id],merit:s.merit+a.reward});s.notify(`Dấu mốc mới: ${a.title}. +${a.reward} công đức`);},
   read:id=>{if(!scriptures.some(b=>b.id===id))return;const s=get();set({scripture:id});if(!s.readBooks.includes(id)){set({readBooks:[...s.readBooks,id]});s.record('read');}},
   releaseWish:text=>{const s=get();if(s.inventory.lantern<1){set({panel:'bag'});s.notify('Bạn đã hết hoa đăng.');return;}const clean=text.trim().slice(0,160);set({inventory:{...s.inventory,lantern:s.inventory.lantern-1},wishes:[{text:clean||'Cầu mong mọi người đều được bình an.',at:Date.now()},...s.wishes].slice(0,30),event:{type:'lantern',at:Date.now(),x:s.position[0],z:s.position[1]},panel:null});s.record('lantern');s.notify('Lời nguyện đã theo ánh hoa đăng trôi trên hồ sen.');},
 }),{name:'sen-an-nhien-v1',storage:createJSONStorage(()=>createBufferedStorage(()=>window.localStorage)),version:3,migrate:(stored:any)=>({...stored,inventory:{feed:20,lantern:5,incense:10,candle:8,flower:8,seed:12,vegetable:0,...stored.inventory},progress:{...emptyProgress(),...stored.progress},lifetime:{...emptyProgress(),...stored.progress,...stored.lifetime}}),
-  partialize:s=>({bodhiIncense:s.bodhiIncense,offerings:s.offerings,burningIncense:s.burningIncense,name:s.name,robe:s.robe,gender:s.gender,skin:s.skin,robeStyle:s.robeStyle,characterConfigured:s.characterConfigured,merit:s.merit,peace:s.peace,experience:s.experience,energy:s.energy,day:s.day,started:s.started,progress:s.progress,lifetime:s.lifetime,inventory:s.inventory,claimed:s.claimed,badges:s.badges,visited:s.visited,readBooks:s.readBooks,tasted:s.tasted,plots:s.plots,wishes:s.wishes,night:s.night,sound:s.sound,quality:s.quality,camera:s.camera}),
+  partialize:s=>({offeringSlots:s.offeringSlots,bodhiIncense:s.bodhiIncense,offerings:s.offerings,burningIncense:s.burningIncense,name:s.name,robe:s.robe,gender:s.gender,skin:s.skin,robeStyle:s.robeStyle,characterConfigured:s.characterConfigured,merit:s.merit,peace:s.peace,experience:s.experience,energy:s.energy,day:s.day,started:s.started,progress:s.progress,lifetime:s.lifetime,inventory:s.inventory,claimed:s.claimed,badges:s.badges,visited:s.visited,readBooks:s.readBooks,tasted:s.tasted,plots:s.plots,wishes:s.wishes,night:s.night,sound:s.sound,quality:s.quality,camera:s.camera}),
 }));
+
+export function visitDonationChest(){const s=useGame.getState();s.stand();if(!nearDonationChest(s.position)){s.set({destination:[donationChest.spot[0],donationChest.spot[1]+1.3],panel:null});s.notify('Đến gần hòm công đức để mở bảng ủng hộ.');return;}s.set({panel:'donate'})}
+
+async function completeSharedOffering(kind:SharedOfferingKind,station?:string){
+ const room=useGame.getState().room;if(kind==='feed'){const s=useGame.getState();s.stand();s.set({action:'feed',event:{type:'feed',at:Date.now(),x:s.position[0],z:s.position[1]}});}
+ try{await submitOffering({kind,station,operation:crypto.randomUUID()});const s=useGame.getState();s.set({...(kind==='feed'?{lastFishFedAt:Date.now()}:{}),inventory:{...s.inventory,[kind]:Math.max(0,s.inventory[kind]-1)}});s.record(kind);if(s.room===room)s.notify(kind==='feed'?'Đàn koi đang bơi đến ăn. Mọi người trong phòng đều nhìn thấy.':'Đã dâng lễ vật. Mọi người trong phòng đều nhìn thấy. +2 công đức');}
+ catch{useGame.getState().notify('Chưa gửi được lễ vật. Vật phẩm vẫn còn trong túi, bạn thử lại nhé.');}
+}
+
+let gardenBusy=false;
+async function completeGarden(plot:string,action:GardenAction,revision:number){
+ gardenBusy=true;const before=useGame.getState(),bed=gardenPlots.find(p=>p.id===plot)!;before.stand();useGame.setState({gardenPending:plot,action,event:{type:action,at:Date.now(),x:bed.x,z:bed.z}});
+ const room=before.room,startedAt=useGame.getState().event!.at;
+ try{await new Promise(resolve=>setTimeout(resolve,2000));const current=useGame.getState();if(current.room!==room||current.action!==action||current.event?.at!==startedAt||current.connection!=='online'||distance(current.position,[bed.x,bed.z])>3)throw new Error('Đã dừng chăm cây. Vật phẩm vẫn còn trong túi.');await submitGarden({plot,action,revision,operation:crypto.randomUUID()});const s=useGame.getState();s.set({inventory:{...s.inventory,...(action==='plant'?{seed:Math.max(0,s.inventory.seed-1)}:action==='harvest'?{vegetable:s.inventory.vegetable+3}:{})}});s.record(action);s.notify(action==='plant'?'Đã gieo hạt. Mời bạn tưới nước cho cây.':action==='water'?'Đã tưới nước. Cây sẽ lớn sau 60 giây.':'Đã thu hoạch 3 bó rau. +2 công đức');}
+ catch(error){useGame.getState().notify(error instanceof Error?error.message:'Chưa chăm được cây, bạn thử lại nhé.');}
+ finally{gardenBusy=false;const current=useGame.getState();useGame.setState({gardenPending:null,...(current.event?.at===startedAt&&current.action===action?{action:'walk' as Action}:{})})}
+}

@@ -1,10 +1,12 @@
+import {pondBlocked} from './pondLayout';
+import {offeringStation} from './templeFixtures';
 import {useEffect,useRef,useState} from 'react';
 import {useFrame,useThree} from '@react-three/fiber';
 import {Html} from '@react-three/drei';
 import {RigidBody,CapsuleCollider,useBeforePhysicsStep,useRapier,type RapierRigidBody,type RapierCollider} from '@react-three/rapier';
 import * as THREE from 'three';
 import {useGame,floorAt} from './gameStore';
-import {templeOffering,incenseSpot,incenseApproach,INCENSE_CLEARANCE,outsideIncenseBurner,seats,type Vec2} from './gameData';
+import {incenseSpot,incenseApproach,INCENSE_CLEARANCE,outsideIncenseBurner,seats,type Vec2} from './gameData';
 import {findPath} from './navigation';
 import {Character} from './Character';
 import {playerMotion} from './runtime';
@@ -25,9 +27,10 @@ export default function PlayerV3(){
     }
     let dx=(movementKeys.has('d')||movementKeys.has('arrowright')?1:0)-(movementKeys.has('a')||movementKeys.has('arrowleft')?1:0)+movementJoystick.x;
     let dz=(movementKeys.has('s')||movementKeys.has('arrowdown')?1:0)-(movementKeys.has('w')||movementKeys.has('arrowup')?1:0)+movementJoystick.y;
-    if(s.action==='flower'||s.action==='candle')playerMotion.heading=Math.atan2(templeOffering[s.action].spot[0]-p.x,templeOffering[s.action].spot[1]-p.z);
+    if(['plant','water','harvest'].includes(s.action)&&s.event)playerMotion.heading=Math.atan2(s.event.x-p.x,s.event.z-p.z);
+    if(s.action==='flower'||s.action==='candle'){const station=offeringStation(s.action,s.event?.target);playerMotion.heading=Math.atan2(station.spot[0]-p.x,station.spot[1]-p.z);}
     if(s.action==='incense')playerMotion.heading=Math.atan2(incenseSpot[0]-p.x,incenseSpot[1]-p.z);
-    if(['incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
+    if(['plant','water','harvest','feed','incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
     let walking=false;
     if(s.seated){if(dx||dz){s.stand();return;}const seat=seats.find(c=>c.id===s.seated)!;rb.setNextKinematicTranslation({x:seat.position[0],y:seat.position[1]+.68,z:seat.position[2]});playerMotion.heading=seat.rotation;}
     else{
@@ -41,7 +44,7 @@ export default function PlayerV3(){
       verticalSpeed.current=Math.max(-15,verticalSpeed.current-9.81*dt);
       c.computeColliderMovement(collider.current,{x:mx,y:verticalSpeed.current*dt,z:mz});const d=c.computedMovement();
       if(c.computedGrounded())verticalSpeed.current=0;
-      const [safeX,safeZ]=outsideIncenseBurner(p.x+d.x,p.z+d.z);rb.setNextKinematicTranslation({x:safeX,y:p.y+d.y,z:safeZ});
+      const [safeX,safeZ]=outsideIncenseBurner(p.x+d.x,p.z+d.z);if(pondBlocked(safeX,safeZ)){rb.setNextKinematicTranslation({x:p.x,y:p.y+d.y,z:p.z});}else rb.setNextKinematicTranslation({x:safeX,y:p.y+d.y,z:safeZ});
       if(p.y< -5){s.set({teleport:{position:[0,.08,22],heading:Math.PI,at:Date.now()}});verticalSpeed.current=0;}
 
       if(walking){const target=Math.atan2(vx,vz),diff=THREE.MathUtils.euclideanModulo(target-playerMotion.heading+Math.PI,Math.PI*2)-Math.PI;playerMotion.heading+=diff*Math.min(1,12*dt);}

@@ -1,3 +1,4 @@
+import {pondBlocked} from './pondLayout';
 import {removedTemplePost} from './templeLayout';
 import templeObjectShapes from './templeObjectColliders.json';
 import {stoneBenches,benchSeatWorld} from './stoneBenchData';
@@ -15,11 +16,12 @@ export function outsideIncenseBurner(x:number,z:number):Vec2{
   if(length<.001)return [...incenseApproach];
   return [incenseSpot[0]+dx/length*INCENSE_CLEARANCE,incenseSpot[1]+dz/length*INCENSE_CLEARANCE];
 }
-export const templeOffering={flower:{spot:[-3.2,-29.5] as Vec2,approach:[-3.2,-27.9] as Vec2,label:'Dâng hoa',lifetime:300000},candle:{spot:[3.2,-29.5] as Vec2,approach:[3.2,-27.9] as Vec2,label:'Dâng đèn',lifetime:120000}};
+export const templeOffering={flower:{spot:[-3.7,-29.5] as Vec2,approach:[-3.7,-28] as Vec2,label:'Dâng hoa',lifetime:480000},candle:{spot:[4.7,-29.5] as Vec2,approach:[4.7,-28] as Vec2,label:'Dâng đèn',lifetime:480000}};
 export const OFFERING_RANGE=1.8, OFFERING_DURATION=3000, OFFERING_CAPACITY=8;
 export const INCENSE_RANGE=2;
 export const INCENSE_DURATION=3000;
-export const INCENSE_BURN_MS=60000;
+export const INCENSE_BURN_MS=170000;
+export const INCENSE_STUB_MS=480000,INCENSE_MAX_STICKS=72;
 export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 62 };
 export const places = [
   { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:0, z:29, icon:'gate' },
@@ -27,7 +29,7 @@ export const places = [
   { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 48 bồ đoàn', x:0, z:-24, icon:'temple' },
   { id:'hall', name:'Thiền đường Trúc Lâm', subtitle:'Ngồi thiền · Tụng kinh · Gõ mõ', x:-33, z:-17, icon:'meditate' },
   { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:-19, z:-9, icon:'bell' },
-  { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:27, z:4, icon:'fish' },
+  { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:32, z:9, icon:'fish' },
   { id:'dining', name:'Nhà ăn Hương Thiền', subtitle:'Mì · Cơm · Hủ tiếu · Bánh mì chay', x:34, z:-26, icon:'meal' },
   { id:'library', name:'Tàng kinh các', subtitle:'Đọc kinh · Trò chuyện cùng thầy', x:-34, z:-43, icon:'book' },
   { id:'garden', name:'Vườn rau từ tâm', subtitle:'Gieo hạt · Tưới cây · Thu hoạch', x:36, z:-50, icon:'plant' },
@@ -74,13 +76,15 @@ export const gardenPlots=Array.from({length:12},(_,i)=>({id:`plot-${i}`,x:31+(i%
 
 export interface Obstacle { x:number; z:number; w:number; d:number; navigationOnly?:boolean }
 export const obstacles:Obstacle[]=[
- ...templeObjectShapes.filter(s=>!removedTemplePost(s.position[0],s.position[2])).filter(s=>s.position[1]+s.args[0]>2.6&&s.position[1]-s.args[0]<4).filter(s=>s.kind==='cylinder').map(s=>({x:s.position[0],z:s.position[2]-27,w:s.args[1]*2,d:s.args[1]*2})),
-  {x:-7.7,z:-18.1,w:12.2,d:.5},{x:7.7,z:-18.1,w:12.2,d:.5},
-  ...[-11.5,-7.025,-2.35,2.35,7.025,11.5].flatMap(x=>[-33.75,-30.4].map(z=>({x,z,w:.6,d:.6}))),
-  {x:0,z:-30.6,w:7.8,d:1.7},
+ {x:10.6,z:-31.6,w:1,d:.74,navigationOnly:true},
+ ...templeObjectShapes.filter(s=>!removedTemplePost(s.position[0],s.position[2])).filter(s=>s.position[1]+s.args[0]>2.6&&s.position[1]-s.args[0]<4).filter(s=>s.kind==='cylinder').map(s=>({x:s.position[0],z:s.position[2]-27,w:s.args[1]*2,d:s.args[1]*2,navigationOnly:true})),
+  {x:-7.45,z:-19.55,w:10.3,d:.36,navigationOnly:true},{x:7.45,z:-19.55,w:10.3,d:.36,navigationOnly:true},
+  ...[-11.5,-7.025,-2.35,2.35,7.025,11.5].flatMap(x=>[-33.75,-30.4].map(z=>({x,z,w:.6,d:.6,navigationOnly:true}))),
+  {x:0,z:-30.6,w:7.8,d:1.7,navigationOnly:true},
   {x:incenseSpot[0],z:incenseSpot[1],w:1.3,d:1.3},
-  {x:28,z:-1.6,w:14,d:7.8}, {x:28,z:9.6,w:14,d:7.8}, {x:28,z:34.7,w:20,d:4.4}, {x:28,z:43.3,w:20,d:4.4},
-  {x:0,z:-36.5,w:27.6,d:.5},{x:-13.8,z:-27,w:.5,d:18.5},{x:13.8,z:-27,w:.5,d:18.5},
+  {x:28,z:34.7,w:20,d:4.4}, {x:28,z:43.3,w:20,d:4.4},
+  {x:0,z:-34.625,w:25.25,d:.3,navigationOnly:true},{x:-12.6,z:-27,w:.316,d:15.4,navigationOnly:true},{x:12.6,z:-27,w:.316,d:15.4,navigationOnly:true},
+  ...[-1,1].flatMap(side=>[{x:side*14,z:-27,w:.24,d:19.55,navigationOnly:true},{x:side*10.8,z:-17.35,w:6.24,d:.24,navigationOnly:true},{x:side*7.325,z:-14.035,w:.24,d:6.806,navigationOnly:true}]),
   {x:-33,z:-24.7,w:20,d:.5},{x:-43,z:-17,w:.5,d:15},{x:-23,z:-17,w:.5,d:15},
   {x:-34,z:-49.5,w:17,d:.5},{x:-42.5,z:-43,w:.5,d:13},{x:-25.5,z:-43,w:.5,d:13},
   {x:34,z:-35.7,w:23,d:.6},{x:22.5,z:-27,w:.5,d:18},{x:45.5,z:-27,w:.5,d:18},
@@ -89,5 +93,5 @@ export const obstacles:Obstacle[]=[
   ...courtyardTrees.map(t=>({x:t.x,z:t.z,w:COURTYARD_TREE.radius*2,d:COURTYARD_TREE.radius*2,navigationOnly:true})),
   ...[0,1,2,3].map(i=>({x:30+(i%2)*8,z:-28+Math.floor(i/2)*8,w:2.5,d:3.8})),
 ];
-export function walkable(x:number,z:number,margin=.5) {return x>WORLD.minX+1&&x<WORLD.maxX-1&&z>WORLD.minZ+1&&z<WORLD.maxZ-1&&!obstacles.some(o=>Math.abs(x-o.x)<o.w/2+margin&&Math.abs(z-o.z)<o.d/2+margin);}
+export function walkable(x:number,z:number,margin=.5) {return x>WORLD.minX+1&&x<WORLD.maxX-1&&z>WORLD.minZ+1&&z<WORLD.maxZ-1&&!pondBlocked(x,z,margin)&&!obstacles.some(o=>Math.abs(x-o.x)<o.w/2+margin&&Math.abs(z-o.z)<o.d/2+margin);}
 export function nearestSeat(p:Vec2,kinds:Seat['kind'][]=['cushion','bench','tea','dining']) {return seats.filter(s=>kinds.includes(s.kind)).sort((a,b)=>distance(p,[a.position[0],a.position[2]])-distance(p,[b.position[0],b.position[2]]))[0];}

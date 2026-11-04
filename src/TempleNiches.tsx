@@ -1,6 +1,33 @@
 import {useGame} from './gameStore';
-import {useLayoutEffect,useRef} from 'react';
+import {useLayoutEffect,useMemo,useRef} from 'react';
+import {useThree} from '@react-three/fiber';
+import {useGLTF} from '@react-three/drei';
 import * as THREE from 'three';
 import niches from './templeNiches.json';
-function Parts({part}:{part:'head'|'torso'|'lap'|'base'|'hair'|'armL'|'armR'|'hands'|'nose'}){const low=useGame(s=>s.quality==='low');const mesh=useRef<THREE.InstancedMesh>(null);useLayoutEffect(()=>{if(!mesh.current)return;const pose=new THREE.Object3D();niches.forEach((n,i)=>{const side=n.side?(n.x<0?Math.PI/2:-Math.PI/2):0;const offset=part==='head'?.72:part==='hair'?.85:part==='nose'?.73:part==='hands'?.32:part.startsWith('arm')?.42:part==='torso'?.43:part==='lap'?.19:.07;pose.position.set(n.x+(n.side?(n.x<0?-.08:.08):0),n.y+offset,n.z+(n.side?0:-.08));const lateral=part==='armL'?-.18:part==='armR'?.18:0,forward=part==='nose'?.115:part==='hands'?.16:part.startsWith('arm')?.065:0;pose.position.x+=Math.cos(side)*lateral+Math.sin(side)*forward*.2;pose.position.z+=-Math.sin(side)*lateral+Math.cos(side)*forward*.2;pose.rotation.set(0,side,part==='armL'?-.4:part==='armR'?.4:0);pose.scale.set(...(part==='hair'?[.085,.07,.085]:part==='nose'?[.025,.035,.03]:part==='hands'?[.105,.035,.055]:part.startsWith('arm')?[.055,.17,.06]:part==='head'?[.115,.14,.115]:part==='torso'?[.19,.25,.13]:part==='lap'?[.3,.12,.19]:[.32,.065,.22]) as [number,number,number]);pose.scale.z*=.22;pose.updateMatrix();mesh.current!.setMatrixAt(i,pose.matrix)});mesh.current.instanceMatrix.needsUpdate=true;mesh.current.computeBoundingSphere()},[part]);return <instancedMesh ref={mesh} args={[undefined,undefined,niches.length]}><sphereGeometry args={[1,low?6:10,low?4:8]}/><meshStandardMaterial color={part==='base'?'#a77e35':'#d9b35d'} metalness={.65} roughness={.48}/></instancedMesh>}
-export default function TempleNiches(){return <group>{(['head','torso','lap','base','hair','armL','armR','hands','nose'] as const).map(part=><Parts key={part} part={part}/>)}</group>}
+
+/** Bake the supplied Buddha once; all wall niches share one texture and draw call. */
+export default function TempleNiches(){
+ const {scene:source}=useGLTF('/assets/main-temple/buddha-open-halo.glb?v=complete-20261103-4');
+ const gl=useThree(s=>s.gl),mesh=useRef<THREE.InstancedMesh>(null);
+ const low=useGame(s=>s.quality==='low');const target=useMemo(()=>new THREE.WebGLRenderTarget(low?384:768,low?512:1024,{depthBuffer:true}),[low]);
+ useLayoutEffect(()=>{
+  const scene=new THREE.Scene(),buddha=source.clone(true),gold=new THREE.MeshStandardMaterial({color:'#dcb551',metalness:.35,roughness:.55});
+  buddha.traverse(o=>{if(o instanceof THREE.Mesh)o.material=gold});
+  buddha.rotation.y=Math.PI;buddha.updateMatrixWorld(true);
+  const bounds=new THREE.Box3().setFromObject(buddha),centre=bounds.getCenter(new THREE.Vector3()),scale=1.2/bounds.getSize(new THREE.Vector3()).y;
+  buddha.scale.setScalar(scale);buddha.position.set(-centre.x*scale,-centre.y*scale,-centre.z*scale);scene.add(buddha);
+  scene.add(new THREE.HemisphereLight('#fff1d1','#52391b',2));
+  const key=new THREE.DirectionalLight('#fff1ca',3);key.position.set(-2,3,4);scene.add(key);
+  const camera=new THREE.OrthographicCamera(-.5,.5,2/3,-2/3,.1,10);camera.position.set(0,.015,4);camera.lookAt(0,0,0);
+  const oldTarget=gl.getRenderTarget(),oldColor=gl.getClearColor(new THREE.Color()),oldAlpha=gl.getClearAlpha(),oldAuto=gl.autoClear,oldXr=gl.xr.enabled;
+  try{gl.xr.enabled=false;gl.autoClear=true;gl.setClearColor('#000000',0);gl.setRenderTarget(target);gl.clear();gl.render(scene,camera)}
+  finally{gl.setRenderTarget(oldTarget);gl.setClearColor(oldColor,oldAlpha);gl.autoClear=oldAuto;gl.xr.enabled=oldXr;gold.dispose()}
+  if(mesh.current){const pose=new THREE.Object3D();niches.forEach((n,i)=>{
+   pose.rotation.set(0,n.side?(n.x<0?Math.PI/2:-Math.PI/2):0,0);
+   pose.position.set(n.x+(n.side?(n.x<0?-.015:.015):0),n.y+.34,n.z+(n.side?0:-.015));
+   pose.scale.set(.48,.64,1);pose.updateMatrix();mesh.current!.setMatrixAt(i,pose.matrix);
+  });mesh.current.instanceMatrix.needsUpdate=true;mesh.current.computeBoundingSphere()}
+ },[source,gl,target]);
+ useLayoutEffect(()=>()=>target.dispose(),[target]);
+ return <instancedMesh ref={mesh} args={[undefined,undefined,niches.length]}><planeGeometry args={[1,1]}/><meshBasicMaterial map={target.texture} transparent alphaTest={.08} toneMapped={false} side={THREE.DoubleSide}/></instancedMesh>;
+}

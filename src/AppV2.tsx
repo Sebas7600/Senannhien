@@ -1,7 +1,11 @@
+import {gardenStatus} from './gardenStatus';
+import {gardenPlots} from './gameData';
+import {nearestFeedStation} from './pondLayout';
+import {nearestOfferingStation,nearDonationChest} from './templeFixtures';
 import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Bell, BookOpen, Camera, Check, ChevronDown, ChevronRight, CircleHelp, CircleUserRound, Coffee, Compass, Flame, Flower2, Footprints, Heart, Leaf, Maximize, MessageCircle, MoreHorizontal, Package, Settings2, Sprout, UsersRound, Utensils, Volume2, VolumeX, Wind, X, Zap } from 'lucide-react';
-import { activities, useGame, type Activity, type Panel } from './gameStore';
-import { templeOffering, OFFERING_RANGE, OFFERING_DURATION, incenseSpot, INCENSE_RANGE, INCENSE_DURATION, dishes, distance, nearestSeat, npcs, seats, zoneAt } from './gameData';
+import { activities, useGame,visitDonationChest, type Activity, type Panel } from './gameStore';
+import { OFFERING_RANGE, OFFERING_DURATION, incenseSpot, INCENSE_RANGE, INCENSE_DURATION, dishes, distance, nearestSeat, npcs, seats, zoneAt } from './gameData';
 import { activityIcons } from './uiIcons';
 import {KneelingSit,SeatedMeditation} from './practiceIcons';
 import PanelsV2, { Tasks } from './PanelsV2';
@@ -18,12 +22,14 @@ function ContextActions(){const s=useGame(),zone=zoneAt(s.position),seat=seats.f
   const button=(label:string,Icon:typeof Leaf,fn:()=>void,key=label)=><button key={key} onClick={fn}><Icon size={16}/>{label}</button>;
   if(seat?.kind==='dining')return <div className="context-actions v2-context">{button('Thực đơn chay',Utensils,()=>s.set({panel:'menu'}))}{s.meal?.status==='ready'&&s.meal.seatId===seat.id&&button('Dùng bữa',Utensils,()=>s.eat())}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
   if(s.seated)return <div className="context-actions v2-context">{seat?.kind==='tea'?button('Uống một tách trà',Coffee,()=>s.perform('tea')):button('Ngồi thiền',SeatedMeditation,()=>s.perform('meditate'))}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
-  const buttons=[];
+  const buttons=[];const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot)buttons.push(button(gardenStatus(s.plots[plot.id]).label+' · E',Leaf,()=>s.garden(plot.id)));
+  if(zone.id!=='temple'&&distance(s.position,incenseSpot)<=INCENSE_RANGE)buttons.push(button(s.inventory.incense>0?`Dâng hương · E · Còn ${s.inventory.incense}`:'Hết hương · Mở túi vải',Leaf,()=>s.perform('incense')));
+  if(nearDonationChest(s.position))buttons.push(button('Hòm công đức · Ủng hộ',Heart,visitDonationChest));
   if(npc)buttons.push(button(`Trò chuyện với ${npc.name}`,MessageCircle,()=>s.set({npc:npc.id,panel:'dialogue'})));
   if(near&&distance(s.position,[near.position[0],near.position[2]])<3)buttons.push(button(near.kind==='dining'?'Ngồi ăn chay':near.kind==='cushion'?'Ngồi lên bồ đoàn':'Ngồi nghỉ',Flower2,()=>s.sit(near.id)));
   if(nearBodhiAltar(s.position))buttons.push(button('Dâng hương dưới bồ đề',Leaf,()=>s.perform('incense')));
-  if(zone.id==='temple'&&distance(s.position,[0,-24])<15){buttons.push(button(distance(s.position,incenseSpot)>INCENSE_RANGE?'Đến lư hương':s.inventory.incense>0?`Dâng hương · E · Còn ${s.inventory.incense}`:'Hết hương · Mở túi vải',Leaf,()=>s.perform('incense')),button(distance(s.position,templeOffering.candle.spot)>OFFERING_RANGE?'Đến bàn dâng đèn':`Dâng đèn · Còn ${s.inventory.candle}`,Flame,()=>s.perform('candle')),button(distance(s.position,templeOffering.flower.spot)>OFFERING_RANGE?'Đến bàn dâng hoa':`Dâng hoa · Còn ${s.inventory.flower}`,Flower2,()=>s.perform('flower')))}
-  if(zone.id==='pond'&&distance(s.position,[18,4])<12)buttons.push(button('Cho cá koi ăn',Leaf,()=>s.perform('feed')));
+  if(zone.id==='temple'&&distance(s.position,[0,-24])<15){buttons.push(button(distance(s.position,incenseSpot)>INCENSE_RANGE?'Đến lư hương':s.inventory.incense>0?`Dâng hương · E · Còn ${s.inventory.incense}`:'Hết hương · Mở túi vải',Leaf,()=>s.perform('incense')),button(distance(s.position,nearestOfferingStation('candle',s.position,s.offeringFocus).spot)>OFFERING_RANGE?'Đến bàn dâng đèn':`Dâng đèn · Còn ${s.inventory.candle}`,Flame,()=>s.perform('candle')),button(distance(s.position,nearestOfferingStation('flower',s.position,s.offeringFocus).spot)>OFFERING_RANGE?'Đến bàn dâng hoa':`Dâng hoa · Còn ${s.inventory.flower}`,Flower2,()=>s.perform('flower')))}
+  if(distance(s.position,nearestFeedStation(s.position).spot)<3)buttons.push(button('Cho cá koi ăn',Leaf,()=>s.perform('feed')));
   if(zone.id==='lotus')buttons.push(button('Viết lời nguyện',Flame,()=>s.perform('lantern')));
   if(zone.id==='bell')buttons.push(button('Thỉnh chuông',Bell,()=>s.perform('bell')));
   if(zone.id==='dining')buttons.push(button('Xem thực đơn chay',Utensils,()=>s.set({panel:'menu'})));
