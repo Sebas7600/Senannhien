@@ -20,6 +20,8 @@ Tổng 156 chỗ: 76 bồ đoàn + 20 đệm ăn + 20 chỗ đọc + 20 ghế tr
 
 ## Hiệu năng và khả năng thay đồ họa
 
+Hoành phi ngày 04/11: Trà đình, Tàng Kinh Các và nhà ăn dùng chung mẫu nền son, nẹp vàng, khung gỗ, hoa sen và chữ Palatino đậm xuất thành vector. Nội dung hai bảng mới là “Đọc sách mở trí, tĩnh tâm dưỡng đức” và “Dùng bữa chánh niệm, nuôi dưỡng thân tâm”. Tranh phòng trà được hạ xuống để không chạm khung bảng. Ba SVG tổng khoảng 121 KB; mỗi bảng dùng hai draw call ở lượt vẽ chính và không có animation loop. Production build đạt. Đã xem mẫu chữ trên màn hình điện thoại và đến cả ba khu vực trong game bằng trình duyệt; kiểm tra thêm nhà ăn ở viewport tablet 820 × 1180. Ảnh mẫu và ảnh trong game nằm trong artifacts/ (không commit). Đây là kiểm tra hiển thị, không phải phép đo FPS trên thiết bị thật. Hướng dẫn thay chữ nằm trong public/art/signs/README.md.
+
 - Tối đa 8 đèn bay, tồn tại 120 giây; lịch sử riêng giữ 30 lời. Quỹ đạo lấy mẫu tại chỗ, không tạo mảng hay cập nhật React mỗi frame.
 - Khói nhang 14 hạt dùng một instanced mesh; cánh hoa và các chi tiết chuông được gộp geometry. Đèn nến/ấm trà/ống đũa dùng hình học chung và instancing khi phù hợp.
 - Lửa không tạo shadow map/point light cho mỗi đèn. Bàn thờ dùng một đèn ấm không đổ bóng. Có prefers-reduced-motion cho lửa, khói, đèn bay và minh họa.

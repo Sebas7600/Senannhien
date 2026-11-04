@@ -2,6 +2,7 @@ import TempleGarden from './TempleGarden';
 import MainTempleReference from './MainTempleReference';
 import IncenseBurner from './IncenseBurner';
 import {TeaGallery} from './TeaGallery';
+import {TemplePlaque} from './TemplePlaque';
 import {TempleBell, BellFrame} from './TempleBell';
 import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
 import {counterHasMeal} from './mealService';
@@ -67,6 +68,7 @@ function KitchenMeal(){
   return meal?<group ref={ref} visible={false} position={PICKUP_PLATE} scale={.75}><Food dish={meal.dish}/></group>:null;
 }
 function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} title="NHÀ ĂN HƯƠNG THIỀN" subtitle="Bữa chay thanh đạm · Mời bạn ngồi">
+  <TemplePlaque kind="dining" position={[0,3.82,-8.7]}/>
   <Box position={[0,.75,-6.1]} scale={[17,1.25,1.5]} color="#aa9471"/><Box position={[0,1.41,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
   {[-5,-1,3].map(x=><group key={x} position={[x,1.45,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh><group position={[0,.25,0]}><Steam/></group></group>)}
 
@@ -78,6 +80,7 @@ function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} 
   <WorldLabel position={[0,1.9,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
 </Pavilion>}
 function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
+  <TemplePlaque kind="library" position={[0,3.82,-6.7]}/>
   {[-6,-2,2,6].map((x,i)=><group key={x} position={[x,0,-5.3]} onClick={e=>{e.stopPropagation();useGame.getState().perform('read')}}>
     <Box position={[0,1.6,0]} scale={[2.7,2.5,.7]} color="#8b6d49"/>{[.7,1.5,2.3].flatMap(y=>Array.from({length:9},(_,j)=><Box key={`${y}-${j}`} position={[-1.05+j*.26,y+.2,.41]} scale={[.18,.53,.2]} color={['#7d8e6c','#ac9570','#7b8f8b','#b99e7d'][(i+j)%4]}/>))}
   </group>)}
