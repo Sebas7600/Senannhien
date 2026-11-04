@@ -1,11 +1,20 @@
+import {renderBowlSamples,BOWL_SAMPLE_RATE} from './bowlSynthesis';
 import {bowStrikeOffset,type BowSession} from './bowTimeline';
 let ctx: AudioContext | null = null;
 let bowlBuffer:Promise<AudioBuffer|null>|null=null;
 const bowlVoices=new Set<{source:AudioBufferSourceNode;gain:GainNode}>();
 const bowlTickets=new Map<number,object>();
-export function preloadBowl(){if(bowlBuffer)return bowlBuffer;ctx??=new AudioContext();const context=ctx;
-  bowlBuffer=fetch('/assets/audio/bow-bowl.mp3').then(r=>{if(!r.ok)throw new Error('bowl audio');return r.arrayBuffer()}).then(b=>context.decodeAudioData(b)).catch(()=>{bowlBuffer=null;return null});return bowlBuffer;
+/** Generate the same reference resonance locally; download-manager extensions cannot intercept it. */
+export function preloadBowl(){
+  if(bowlBuffer)return bowlBuffer;
+  ctx??=new AudioContext();const context=ctx;
+  bowlBuffer=Promise.resolve().then(()=>{
+    const samples=renderBowlSamples(),buffer=context.createBuffer(1,samples.length,BOWL_SAMPLE_RATE);
+    buffer.getChannelData(0).set(samples);return buffer;
+  });
+  return bowlBuffer;
 }
+
 function stopBowlVoices(){for(const voice of bowlVoices){voice.source.stop();voice.source.disconnect();voice.gain.disconnect()}bowlVoices.clear()}
 export function scheduleBowBowl(session:BowSession){let cancelled=false,source:AudioBufferSourceNode|null=null,start=Infinity;
   if(!useSound()||bowlTickets.has(session.at))return()=>{};const ticket={};bowlTickets.set(session.at,ticket);for(const at of bowlTickets.keys())if(Date.now()-at>30000)bowlTickets.delete(at);const discard=()=>{if(bowlTickets.get(session.at)===ticket)bowlTickets.delete(session.at)};
