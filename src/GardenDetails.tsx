@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef} from 'react';
 import * as THREE from 'three';
 import {Box} from './models';
-const beds=[[-20,25],[20,25],[-12,-10],[12,-10],[24,-39],[44,-39],[-46,-31],[-22,-31],[-42,30],[-28,30],[44,24],[44,49],[-13,-45],[13,-45]];
+export const beds=[[-20,25],[20,25],[-12,-10],[12,-10],[24,-39],[44,-39],[-46,-31],[-22,-31],[-42,30],[-28,30],[44,49],[-13,-45],[13,-45]];
 export default function GardenDetails(){
   const flowers=useRef<THREE.InstancedMesh>(null),stems=useRef<THREE.InstancedMesh>(null),bushes=useRef<THREE.InstancedMesh>(null),rocks=useRef<THREE.InstancedMesh>(null);
   useEffect(()=>{const obj=new THREE.Object3D();beds.forEach(([x,z],b)=>{for(let i=0;i<20;i++){const index=b*20+i,xx=x+(i%5-2)*.5,zz=z+(Math.floor(i/5)-1.5)*.35;obj.position.set(xx,.33,zz);obj.scale.set(.018,.4,.018);obj.updateMatrix();stems.current?.setMatrixAt(index,obj.matrix);obj.position.y=.55+(i%3)*.07;obj.scale.set(.095,.075,.095);obj.updateMatrix();flowers.current?.setMatrixAt(index,obj.matrix);flowers.current?.setColorAt(index,new THREE.Color(['#d9b2a2','#e1d1a6','#c1c18a','#e4c5b4'][(b+i)%4]));}});

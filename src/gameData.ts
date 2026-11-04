@@ -1,3 +1,5 @@
+import {quanAmObstacles} from './quanAmData';
+import {WATER_WELL,WATER_JARS} from './waterTaskData';
 import {templeSurfaceHeight} from './templeFixtures';
 import {bridgeHeight,pondBlocked} from './pondLayout';
 import {removedTemplePost} from './templeLayout';
@@ -6,6 +8,8 @@ import {stoneBenches,benchSeatWorld} from './stoneBenchData';
 import {BODHI} from './bodhiData';
 import {CUSHION} from './cushionData';
 import {courtyardTrees,COURTYARD_TREE} from './courtyardData';
+import {GATE,gateMasonry} from './courtyardPropsData';
+import {gateBlocked} from './gateState';
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 export const CHARACTER_RADIUS=.28;
@@ -33,7 +37,7 @@ export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 62 };
 export const places = [
   { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:0, z:29, icon:'gate' },
   { id:'courtyard', name:'Sân bồ đề', subtitle:'Quét lá · Chắp tay · Đi dạo', x:0, z:6, icon:'tree' },
-  { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 48 bồ đoàn', x:0, z:-24, icon:'temple' },
+  { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 40 bồ đoàn', x:0, z:-24, icon:'temple' },
   { id:'hall', name:'Thiền đường Trúc Lâm', subtitle:'Ngồi thiền · Tụng kinh · Gõ mõ', x:-33, z:-17, icon:'meditate' },
   { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:-19, z:-9, icon:'bell' },
   { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:32, z:9, icon:'fish' },
@@ -75,7 +79,8 @@ export function stepAssistHeight(x:number,z:number,dx:number,dz:number,bodyY:num
 }
 export function seatExit(seat:Seat):Vec2 { const offset=seat.table?-.85:1.1;return [seat.position[0]+Math.sin(seat.rotation)*offset,seat.position[2]+Math.cos(seat.rotation)*offset]; }
 export const seats:Seat[] = [
-  ...Array.from({length:48},(_,i)=>({id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.2,-8.6,-6.2,-4.4,4.4,6.2,8.6,10.2][i%8],2.28+CUSHION.seatLift,-27+Math.floor(i/8)*1.25] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
+  // Two mirrored blocks: clear space between cushions, altar access and an open central aisle.
+  ...Array.from({length:40},(_,i)=>({id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.1,-8.2,-6.3,-4.4,4.4,6.3,8.2,10.1][i%8],2.28+CUSHION.seatLift,-27.9+Math.floor(i/8)*1.8] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
   ...Array.from({length:20},(_,i)=>({id:`hall-${i}`,label:`Bồ đoàn ${i+1} · Thiền đường`,zone:'hall' as const,position:[-33+(i%5-2)*2.4,.4+CUSHION.seatLift,-19+Math.floor(i/5)*2.4] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
   ...Array.from({length:8},(_,i)=>({id:`bamboo-${i}`,label:`Tọa cụ ${i+1} · Rừng trúc`,zone:'bamboo' as const,position:[-38+Math.cos(i/8*Math.PI*2)*4,.06+CUSHION.seatLift,12+Math.sin(i/8*Math.PI*2)*4] as Vec3,rotation:-i/8*Math.PI*2-Math.PI/2,kind:'cushion' as const})),
   ...diningTables.flatMap((table,i)=>Array.from({length:4},(_,side)=>({id:`dining-${i*4+side}`,label:`Bàn ${i+1}${i===4?' trung tâm':''} · Đệm ${side+1}`,zone:'dining' as const,position:[table[0]+(side%2===0?-1.85:1.85),.16,table[2]+(side<2?-.8:.8)] as Vec3,rotation:side%2===0?Math.PI/2:-Math.PI/2,kind:'dining' as const,floorSeat:true,table}))),
@@ -109,6 +114,10 @@ export const gardenPlots=Array.from({length:12},(_,i)=>({id:`plot-${i}`,x:31+(i%
 
 export interface Obstacle { x:number; z:number; w:number; d:number; height?:number; base?:number; navigationOnly?:boolean }
 export const obstacles:Obstacle[]=[
+  ...quanAmObstacles,
+  {x:WATER_WELL.x,z:WATER_WELL.z,w:2.4,d:2.4,height:WATER_WELL.height+.06},
+  ...WATER_JARS.map(j=>({x:j.x,z:j.z,w:j.radius*2,d:j.radius*2,height:j.height+.06})),
+  ...gateMasonry.filter(p=>p.y-p.h/2<1.7).map(p=>({x:GATE.x+p.x*GATE.scale,z:GATE.z+p.z*GATE.scale,w:p.w*GATE.scale,d:p.d*GATE.scale,navigationOnly:true})),
   {x:WISH_STATION[0],z:WISH_STATION[1],w:1.1,d:1.1},
  {x:10.6,z:-31.6,w:1,d:.74,navigationOnly:true},
  ...templeObjectShapes.filter(s=>!removedTemplePost(s.position[0],s.position[2])).filter(s=>s.position[1]+s.args[0]>2.6&&s.position[1]-s.args[0]<4).filter(s=>s.kind==='cylinder').map(s=>({x:s.position[0],z:s.position[2]-27,w:s.args[1]*2,d:s.args[1]*2,navigationOnly:true})),
@@ -125,12 +134,12 @@ export const obstacles:Obstacle[]=[
     ...[-1,1].flatMap(side=>[-1,0,1].map(row=>({x:p.x+side*(p.w/2-.4),z:p.z+row*(p.d/2-.5),w:.3,d:.3,height:4.4}))),
   ]),
   ...[-19,19].flatMap(x=>[-1,1].flatMap(side=>[-1,1].map(row=>({x:x+side*1.8,z:-13+row*1.8,w:.25,d:.25,height:4.2})))),
-  {x:-19,z:-13,w:1.7,d:1.7,base:1.8,height:1.85},
-  {x:19,z:-13,w:1.9,d:1.3,base:1.7,height:1.9},
+  {x:-19,z:-13,w:1.85,d:1.85,base:.55,height:2.6},
+  {x:19,z:-13,w:2.05,d:2.02,base:.4,height:2.75},
 
   {x:BODHI.x,z:BODHI.z,w:BODHI.radius*2,d:BODHI.radius*2,navigationOnly:true},{x:-35,z:42,w:6,d:6},
   ...courtyardTrees.map(t=>({x:t.x,z:t.z,w:COURTYARD_TREE.radius*2,d:COURTYARD_TREE.radius*2,navigationOnly:true})),
-  ...[-1,1].map(side=>({x:-19+side*1.38,z:-13,w:.28,d:.42,height:3.84,base:.4})),
+  ...[-1,1].map(side=>({x:-19+side*1.08,z:-13,w:.32,d:.65,height:3.42,base:.4})),
   ...diningTables.map(t=>({x:t[0],z:t[2],w:2.5,d:2.8,height:.64})),
   {x:34,z:-33.1,w:17.3,d:1.8,height:1.47},
   {x:RECEPTION[0],z:RECEPTION[1],w:1.4,d:.85,height:1.36},
@@ -139,5 +148,5 @@ export const obstacles:Obstacle[]=[
   {x:-33,z:-22,w:6,d:.9,height:1.15},
   ...teaTables.map(t=>({x:t[0],z:t[2],w:1.6,d:1.2,height:.98})),
 ];
-export function walkable(x:number,z:number,margin=.5) {return x>WORLD.minX+1&&x<WORLD.maxX-1&&z>WORLD.minZ+1&&z<WORLD.maxZ-1&&!pondBlocked(x,z,margin)&&!obstacles.some(o=>Math.abs(x-o.x)<o.w/2+margin&&Math.abs(z-o.z)<o.d/2+margin);}
+export function walkable(x:number,z:number,margin=.5) {return x>WORLD.minX+1&&x<WORLD.maxX-1&&z>WORLD.minZ+1&&z<WORLD.maxZ-1&&!gateBlocked(x,z,margin)&&!pondBlocked(x,z,margin)&&!obstacles.some(o=>Math.abs(x-o.x)<o.w/2+margin&&Math.abs(z-o.z)<o.d/2+margin);}
 export function nearestSeat(p:Vec2,kinds:Seat['kind'][]=['cushion','bench','tea','dining','reading']) {return seats.filter(s=>kinds.includes(s.kind)).sort((a,b)=>distance(p,[a.position[0],a.position[2]])-distance(p,[b.position[0],b.position[2]]))[0];}

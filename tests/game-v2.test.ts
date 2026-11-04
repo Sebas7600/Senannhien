@@ -7,8 +7,8 @@ const {seats,dishes,places,distance,walkable}=await import('../src/gameData.ts')
 const {findPath,clearLine}=await import('../src/navigation.ts');
 const defaults=useGame.getInitialState();
 beforeEach(()=>useGame.setState({...defaults,inventory:{...defaults.inventory},progress:emptyProgress(),lifetime:emptyProgress(),day:localDay(),position:[0,22],peers:[],claimed:[],badges:[],visited:[],tasted:[],readBooks:[],plots:{},wishes:[]},true));
-test('156 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
-  assert.equal(seats.length,156);assert.equal(new Set(seats.map(s=>s.id)).size,156);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
+test('146 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
+  assert.equal(seats.length,146);assert.equal(new Set(seats.map(s=>s.id)).size,146);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
 
   for(const s of seats)assert.ok(walkable(s.position[0],s.position[2],.3),s.id);
 });

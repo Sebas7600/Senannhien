@@ -21,7 +21,7 @@ test('shared courtyard: live positions, room separation, exclusive seats and cha
     const message=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'Chào bạn, mời dùng bữa chay.'});assert.equal(message.status,200);await b.wait(s=>s.messages.some(m=>m.text==='Chào bạn, mời dùng bữa chay.'));assert.equal(other.state.messages.length,0);
     const duplicate=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'spam'});assert.equal(duplicate.status,429);
     const forged=await post('/api/chat',{id:'not_connected',room:'an-nhien',text:'hello'});assert.equal(forged.status,409);
-    for(const [action,seat] of [['read','reading-19'],['tea','tea-19']]){
+    for(const [action,seat] of [['read','reading-19'],['tea','tea-19'],['drawWater',null],['carryWater',null],['pourWater',null]]){
       await post('/api/state',{id:'test_player_a',room:'an-nhien',action,seat});
       await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.action===action&&p.seat===seat));
     }
@@ -47,6 +47,22 @@ test('production server sends explicit media types for mobile audio and painting
       }
     }
   }finally{await Promise.all(files.map(file=>unlink(file)));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+
+test('Quan Am incense stays at its altar, reaches late joiners, rejects remote/invalid requests and expires',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'quan_am_test_a',room:'an-nhien',...data})});return res.status};
+ try{const a=stream(base,'quan_am_test_a'),other=stream(base,'quan_am_test_other','truc-lam');all.push(a,other);await Promise.all(all.map(s=>s.opened));
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_remote'}),409);
+  await post('/api/state',{x:38.9,y:.06,z:25.25,action:'incense'});
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'wrong-altar',operation:'quan_am_invalid'}),400);
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_valid'}),200);
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_valid'}),200);
+  await a.wait(s=>s.offerings.length===1);assert.equal(a.state.offerings[0].station,'quan-am');assert.equal(other.state.offerings.length,0);
+  const late=stream(base,'quan_am_test_late');all.push(late);await late.opened;assert.equal(late.state.offerings.length,1);assert.equal(late.state.offerings[0].station,'quan-am');
+  clock+=3000;await post('/api/state',{x:0,z:-7.1});assert.equal(await post('/api/offerings',{kind:'incense',operation:'temple_after_quan_am'}),200);await late.wait(s=>s.offerings.length===2);assert.equal(late.state.offerings.find(o=>o.station===null)?.kind,'incense');
+  clock+=650001;await late.wait(s=>s.offerings.length===0);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 });
 test('room offerings: all kinds, late join, isolation, deduplication, capacity and expiry',async()=>{
  let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];

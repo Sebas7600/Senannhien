@@ -70,8 +70,10 @@ test('incense burner excludes player positions and redirects an overlapping offe
 });
 
 test('temple seats are inside the nave with an open centre aisle',async()=>{
- const {seats}=await import('../src/gameData.ts');const temple=seats.filter(s=>s.zone==='temple');assert.equal(temple.length,48);
- for(const seat of temple){assert.ok(Math.abs(seat.position[0])<11);assert.ok(Math.abs(seat.position[0])>=4);assert.ok(seat.position[2]>=-27&&seat.position[2]<-19.5);assert.equal(seat.position[1],2.28+(await import('../src/cushionData.ts')).CUSHION.seatLift);}
+ const {seats}=await import('../src/gameData.ts');const {CUSHION}=await import('../src/cushionData.ts');const temple=seats.filter(s=>s.zone==='temple');assert.equal(temple.length,40);
+ const rows=[...new Set(temple.map(s=>s.position[2]))].sort((a,b)=>a-b);assert.equal(rows.length,5);
+ for(const z of rows){const xs=temple.filter(s=>s.position[2]===z).map(s=>s.position[0]).sort((a,b)=>a-b);assert.equal(xs.length,8);assert.deepEqual(xs,xs.map(x=>-x).reverse());}
+ for(const seat of temple){assert.ok(Math.abs(seat.position[0])+CUSHION.radius<11);assert.ok(Math.abs(seat.position[0])-CUSHION.radius>3.7);assert.ok(seat.position[2]-CUSHION.radius>=-28.6&&seat.position[2]+CUSHION.radius<-20);assert.equal(seat.position[1],2.28+CUSHION.seatLift);for(const other of temple){if(other.id===seat.id)continue;assert.ok(Math.hypot(seat.position[0]-other.position[0],seat.position[2]-other.position[2])-2*CUSHION.radius>=.53,'Space between cushion edges');}}
 });
 test('flower and lamp offerings require their own station, complete once and expire independently',async()=>{
  const {defaultOfferingStation}=await import('../src/templeFixtures.ts');const {templeOffering,OFFERING_DURATION}=await import('../src/gameData.ts');let time=100000;const original=Date.now;Date.now=()=>time;

@@ -1,0 +1,34 @@
+{
+  "source": "Quan_Am_Converted.fbx",
+  "sha256": "341c6f2260607225602a8f446148649c4d495f28a7453b68f58e22fc4c86f95d",
+  "sourceBytes": 8995984,
+  "sourceMeshes": 1389,
+  "sourceTriangles": 164066,
+  "duplicateTriangles": 2,
+  "normalizedHeight": 4.8,
+  "sourceFront": "+X",
+  "normalizedFront": "+Z",
+  "originalUV": false,
+  "reconstructedLotus": true,
+  "materials": [
+    "Ngoc_trang",
+    "Vang_tram",
+    "Dai_sen_hong_da"
+  ],
+  "assets": [
+    {
+      "file": "quan-am-v1.glb",
+      "bytes": 520960,
+      "triangles": 49414,
+      "draws": 4,
+      "decodedGeometryBytes": 916972
+    },
+    {
+      "file": "quan-am-v1-low.glb",
+      "bytes": 249824,
+      "triangles": 21832,
+      "draws": 4,
+      "decodedGeometryBytes": 423856
+    }
+  ]
+}
