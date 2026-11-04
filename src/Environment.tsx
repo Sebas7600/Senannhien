@@ -3,6 +3,7 @@ import MainTempleReference from './MainTempleReference';
 import IncenseBurner from './IncenseBurner';
 import {TeaGallery} from './TeaGallery';
 import {TemplePlaque} from './TemplePlaque';
+import {KitchenStove} from './KitchenStove';
 import {TempleBell, BellFrame} from './TempleBell';
 import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
 import {mealPlan,MEAL_SCALE} from './mealService';
@@ -21,7 +22,7 @@ import * as THREE from 'three';
 import { Box, Buddha, Lantern, Roof, Tree } from './models';
 import { ServingMeal, Steam } from './Food';
 import { Character } from './Character';
-import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, WORLD, type Vec3 } from './gameData';
+import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, KITCHEN_COUNTER_TOP, WORLD, type Vec3 } from './gameData';
 import { useGame } from './gameStore';
 import {bellAngle} from './ritualMotion';
 import {useReducedMotion} from './useReducedMotion';
@@ -64,15 +65,16 @@ function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;
 </group>}
 function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} title="NHÀ ĂN HƯƠNG THIỀN" subtitle="Bữa chay thanh đạm · Mời bạn ngồi">
   <TemplePlaque kind="dining" position={[0,3.82,-8.7]}/>
-  <Box position={[0,.75,-6.1]} scale={[17,1.25,1.5]} color="#aa9471"/><Box position={[0,1.41,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
-  {[-5,-1,3].map(x=><group key={x} position={[x,1.45,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh><group position={[0,.25,0]}><Steam/></group></group>)}
+  <Box position={[0,(.16+KITCHEN_COUNTER_TOP-.08)/2,-6.1]} scale={[17,KITCHEN_COUNTER_TOP-.24,1.5]} color="#aa9471"/><Box position={[0,KITCHEN_COUNTER_TOP-.06,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
+  <KitchenStove/>
+  {[-5,5].map(x=><group key={x} position={[x,KITCHEN_COUNTER_TOP+.19,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh></group>)}
 
-  {[-8.5,8.5].map(x=><group key={x}><Box position={[x,1,-7.6]} scale={[1,1.6,1]} color="#82906c"/><mesh position={[x,2.2,-7.6]} scale={[.6,.8,.6]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#7a975e"/></mesh></group>)}
+  {[-9.8,9.8].map(x=><group key={x}><Box position={[x,1,-7.6]} scale={[1,1.6,1]} color="#82906c"/><mesh position={[x,2.2,-7.6]} scale={[.6,.8,.6]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#7a975e"/></mesh></group>)}
   {diningTables.map((table,i)=><group key={i} position={[table[0]-34,0,table[2]+27]}>
     <Box position={[0,.58,0]} scale={[2.5,.12,2.8]} color="#a38d65"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*.95,.36,t*1.05]} scale={[.13,.4,.13]} color="#7d6747"/>))}
   </group>)}
-  <WorldLabel position={[0,1.9,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
+  <WorldLabel position={[-5,2,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
 </Pavilion>}
 function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
   <TemplePlaque kind="library" position={[0,3.82,-6.7]}/>

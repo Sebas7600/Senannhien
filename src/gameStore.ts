@@ -43,7 +43,7 @@ export const achievements=[
   {id:'caretaker',title:'Lá về cội',desc:'Gom 100 chiếc lá',target:100,reward:80,metric:'sweep'},
   {id:'reader',title:'Trang sách mở',desc:'Đọc đủ 4 bài thực tập',target:4,reward:60,metric:'books'},
 ] as const;
-export interface MealOrder {dish:DishId;seatId:string;status:'preparing'|'ready'|'eating'|'finished';readyAt:number;orderedAt?:number;cookedAt?:number;kitchenAt?:number;deliveryAt?:number;homeAt?:number;eatUntil?:number}
+export interface MealOrder {dish:DishId;seatId:string;status:'preparing'|'ready'|'eating'|'finished';readyAt:number;orderedAt?:number;cookedAt?:number;counterReadyAt?:number;kitchenAt?:number;deliveryAt?:number;homeAt?:number;eatUntil?:number}
 export interface PlotState {revision?:number;by?:string;plantedAt:number;wateredAt:number|null;harvested:boolean}
 export interface Wish {text:string;at:number}
 export interface Peer {id:string;name:string;robe:string;gender?:'male'|'female';skin?:string;robeStyle?:'traditional'|'cross';x:number;y:number;z:number;heading:number;action:Action;seat:string|null;meal?:MealOrder|null}

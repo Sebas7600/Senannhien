@@ -41,7 +41,7 @@ test('all twenty meal plans enter the kitchen, pick up cooked food, deliver and 
     for(const route of [plan.toKitchen,plan.toTable,plan.toReception]){
       assert.ok(route.length>0);for(let i=1;i<route.points.length;i++)assert.ok(clearLine(route.points[i-1],route.points[i]),seat.id);
     }
-    assert.equal(servicePhase(times,1000),'toKitchen');assert.equal(counterHasMeal(times,times.cookedAt-1),false);assert.equal(counterHasMeal(times,times.cookedAt),true);
+    assert.equal(servicePhase(times,1000),'toKitchen');assert.equal(counterHasMeal(times,times.cookedAt),false);assert.equal(counterHasMeal(times,times.counterReadyAt-1),false);assert.equal(counterHasMeal(times,times.counterReadyAt),true);
     assert.equal(servicePhase(times,times.deliveryAt-1),'pickup');assert.equal(counterHasMeal(times,times.deliveryAt),false);
     assert.equal(servicePhase(times,times.deliveryAt),'delivering');assert.equal(servicePhase(times,times.readyAt-HANDOFF_MS),'handoff');
     assert.equal(servicePhase(times,times.readyAt),'returning');assert.equal(servicePhase(times,times.homeAt),'idle');

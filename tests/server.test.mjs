@@ -21,6 +21,9 @@ test('shared courtyard: live positions, room separation, exclusive seats and cha
     const message=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'Chào bạn, mời dùng bữa chay.'});assert.equal(message.status,200);await b.wait(s=>s.messages.some(m=>m.text==='Chào bạn, mời dùng bữa chay.'));assert.equal(other.state.messages.length,0);
     const duplicate=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'spam'});assert.equal(duplicate.status,429);
     const forged=await post('/api/chat',{id:'not_connected',room:'an-nhien',text:'hello'});assert.equal(forged.status,409);
+    const kitchenAt=Date.now(),meal={dish:'rice',seatId:'dining-0',status:'preparing',orderedAt:kitchenAt,cookedAt:kitchenAt+3000,counterReadyAt:kitchenAt+9000,kitchenAt:kitchenAt+5000,deliveryAt:kitchenAt+10150,readyAt:kitchenAt+18000,homeAt:kitchenAt+24000};
+    await post('/api/state',{id:'test_player_a',room:'an-nhien',action:'sit',seat:'dining-0',meal});await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.meal?.counterReadyAt===meal.counterReadyAt));
+    const {counterReadyAt,...legacyMeal}=meal;await post('/api/state',{id:'test_player_a',room:'an-nhien',meal:legacyMeal});await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.meal&&!('counterReadyAt' in p.meal)));
     for(const [action,seat] of [['read','reading-19'],['tea','tea-19']]){
       await post('/api/state',{id:'test_player_a',room:'an-nhien',action,seat});
       await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.action===action&&p.seat===seat));

@@ -30,7 +30,7 @@ test('occupied areas do not leave stale pending actions',()=>{
 });
 
 test('meal service walks around furniture to every table, using distance-based delivery times',()=>{
-  for(const seat of seats.filter(s=>s.kind==='dining')){const route=mealRoute(seat.id);assert.ok(route.length>0,seat.id);for(let i=1;i<route.points.length;i++)assert.ok(clearLine(route.points[i-1],route.points[i]),seat.id);assert.deepEqual(routePoint(route.points,0).position,route.points[0]);assert.ok(distance(routePoint(route.points,1).position,mealPlan(seat.id).destination)<.01);useGame.setState({seated:seat.id,meal:null});useGame.getState().orderMeal('bread');const order=useGame.getState().meal!;assert.ok(order.readyAt>order.deliveryAt!);assert.equal(order.cookedAt!-order.orderedAt!,4200);assert.ok(order.deliveryAt!>order.cookedAt!);assert.ok(order.homeAt!>order.readyAt);}
+  for(const seat of seats.filter(s=>s.kind==='dining')){const route=mealRoute(seat.id);assert.ok(route.length>0,seat.id);for(let i=1;i<route.points.length;i++)assert.ok(clearLine(route.points[i-1],route.points[i]),seat.id);assert.deepEqual(routePoint(route.points,0).position,route.points[0]);assert.ok(distance(routePoint(route.points,1).position,mealPlan(seat.id).destination)<.01);useGame.setState({seated:seat.id,meal:null});useGame.getState().orderMeal('bread');const order=useGame.getState().meal!;assert.ok(order.readyAt>order.deliveryAt!);assert.equal(order.cookedAt!-order.orderedAt!,3000);assert.ok(order.deliveryAt!>order.cookedAt!);assert.ok(order.homeAt!>order.readyAt);}
 });
 
 test('bell waits for the full decaying swing and does not interrupt another open panel',()=>{

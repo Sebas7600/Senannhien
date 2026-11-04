@@ -51,8 +51,11 @@ export interface Seat {id:string; label:string; zone:PlaceId; position:Vec3; rot
 export const readingTables:Vec3[]=Array.from({length:20},(_,i)=>[-40+(i%5)*3,.76,-46.8+Math.floor(i/5)*3]);
 export const teaTables:Vec3[]=Array.from({length:10},(_,i)=>[(i%5-2)*3.6,.98,-59.3+Math.floor(i/5)*5.5]);
 export const diningTables:Vec3[]=[[27.5,.64,-28.4],[39.5,.64,-28.4],[27.5,.64,-21.4],[39.5,.64,-21.4],[34,.64,-25]];
-export const KITCHEN_PICKUP:Vec2=[43.3,-33.1];
-export const PICKUP_PLATE:Vec3=[42.15,1.49,-33.1];
+export const KITCHEN_PICKUP:Vec2=[43.3,-33.55];
+export const KITCHEN_COUNTER_TOP=1.16;
+export const PICKUP_PLATE:Vec3=[42.15,KITCHEN_COUNTER_TOP,-33.55];
+export const CHEF_HOME:Vec2=[34,-34.85];
+export const CHEF_PASS:Vec2=[42.15,-34.85];
 export const RECEPTION:Vec2=[43,-19];
 export const RECEPTION_HEADING=0;
 export function usesFloorSeat(seat:Seat|undefined){return !!seat&&(seat.floorSeat===true||seat.kind==='cushion'||seat.kind==='reading');}
@@ -97,6 +100,7 @@ export const npcs = [
   {id:'guide',name:'Chú tiểu Minh',role:'Người đón khách',x:-3,z:24,robe:'#859786',lines:['Chào bạn! Qua cổng tam quan là sân bồ đề. Đi thẳng sẽ tới chánh điện.','Bạn có thể bấm vào từng bồ đoàn để ngồi. Khi muốn đứng dậy, nhấn E hoặc phím di chuyển.','Nhà ăn Hương Thiền nằm phía đông bắc. Cô Tâm có bốn món chay đợi bạn đấy.']},
   {id:'master',name:'Thầy Thiện Tâm',role:'Trông tàng kinh các',x:-26.8,z:-46.6,robe:'#a2794d',lines:['Cứ thong thả. Tu tập trong game bắt đầu từ sự chú ý với những điều nhỏ quanh mình.','Mời bạn chọn một bàn đọc. Một trang tĩnh lặng gồm bốn bài thực tập ngắn.','Hành trình có nhiều dấu mốc: ghé các khu vực, chăm cây và ngồi thiền mỗi ngày.']},
   {id:'cook',name:'Cô Tâm',role:'Đón khách · Bếp chay Hương Thiền',x:43,z:-20.15,robe:'#9b8067',lines:['Mời bạn vào dùng một bữa chay. Hôm nay có mì, cơm, hủ tiếu và bánh mì chay.','Chọn một ghế ở bàn, mở thực đơn rồi gọi món. Cô sẽ mang phần ăn tới đúng bàn của bạn.','Bữa ăn ở đây được tặng miễn phí. Cứ ăn chậm, đủ no rồi cùng chăm lại sân chùa nhé.']},
+  {id:'chef',name:'Cô An',role:'Phụ trách bếp · Nhà ăn Hương Thiền',x:CHEF_HOME[0],z:CHEF_HOME[1],robe:'#bdab87',lines:['Chào bạn, cô An phụ trách bếp Hương Thiền. Mỗi phần ăn được nấu mới khi bạn gọi món.','Cô nấu trong ba giây rồi mang khay sang bên phải quầy. Cô Tâm sẽ nhận món tại đó và mang đến bàn.','Mời bạn chọn một chỗ ngồi, dùng bữa chậm rãi và trân trọng từng hương vị.']},
   {id:'keeper',name:'Chú tiểu Hương An',role:'Hướng dẫn dâng hương',x:3,z:-8.7,robe:'#a97b44',lines:['Mời bạn đứng trước lư hương để dâng hương. Tôi đứng bên phải để nhường lối vào điện.','Bạn có thể mở túi vải để chuẩn bị hương, hoa và đèn. Bàn dâng hoa ở bên trái trong điện, bàn dâng đèn ở bên phải.']},
   {id:'gardener',name:'Bác An',role:'Chăm vườn rau',x:27,z:-48,robe:'#657b5d',lines:['Gieo hạt vào một luống đất trống, tưới nước rồi đợi cây lớn.','Sau khoảng một phút kể từ khi tưới, bạn có thể thu hoạch. Rau thu được thêm vào hành trang của bạn.','Cây cối vẫn lớn khi bạn đi dạo. Thử ghé trà đình, rồi quay lại nhìn xem nhé.']},
 ] as const;
@@ -127,7 +131,7 @@ export const obstacles:Obstacle[]=[
   ...courtyardTrees.map(t=>({x:t.x,z:t.z,w:COURTYARD_TREE.radius*2,d:COURTYARD_TREE.radius*2,navigationOnly:true})),
   ...[-1,1].map(side=>({x:-19+side*1.38,z:-13,w:.28,d:.42,height:3.84,base:.4})),
   ...diningTables.map(t=>({x:t[0],z:t[2],w:2.5,d:2.8,height:.64})),
-  {x:34,z:-33.1,w:17.3,d:1.8,height:1.47},
+  {x:34,z:-33.1,w:17.3,d:1.8,height:KITCHEN_COUNTER_TOP},
   {x:RECEPTION[0],z:RECEPTION[1],w:1.4,d:.85,height:1.36},
   ...readingTables.map(t=>({x:t[0],z:t[2],w:1.4,d:.7,height:.76})),
   ...[-40,-36,-32,-28].map(x=>({x,z:-48.3,w:2.7,d:.7,height:2.85})),

@@ -2,7 +2,7 @@ import {gardenStatus} from './gardenStatus';
 import {gardenPlots} from './gameData';
 import {nearestFeedStation} from './pondLayout';
 import {nearestOfferingStation,nearDonationChest} from './templeFixtures';
-import {servicePhase,serviceLabels} from './mealService';
+import {servicePhase,serviceLabels,chefPhase} from './mealService';
 import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Bell, BookOpen, Camera, Check, ChevronDown, ChevronRight, CircleHelp, CircleUserRound, Coffee, Compass, Flame, Flower2, Footprints, Heart, Leaf, Maximize, MessageCircle, MoreHorizontal, Package, Settings2, Sprout, UsersRound, Utensils, Volume2, VolumeX, Wind, X, Zap } from 'lucide-react';
 import { activities, useGame,visitDonationChest, type Activity, type Panel } from './gameStore';
@@ -18,7 +18,7 @@ import {nearBodhiAltar} from './bodhiData';
 import CharacterCreator from './CharacterCreator';
 const World=lazy(()=>import('./WorldV2'));
 class SceneBoundary extends Component<{children:ReactNode},{error:boolean}>{state={error:false};static getDerivedStateFromError(){return {error:true}}render(){return this.state.error?<div className="scene-error"><Flower2 size={42}/><h2>Chưa mở được khuôn viên 3D</h2><p>Bật WebGL trong trình duyệt rồi thử tải lại nhé.</p><button onClick={()=>window.location.reload()}>Mở lại khuôn viên</button></div>:this.props.children}}
-function ContextActions(){const s=useGame(),zone=zoneAt(s.position),seat=seats.find(c=>c.id===s.seated),near=nearestSeat(s.position),npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&distance(s.position,[n.x,n.z])<4);if(!s.started)return null;
+function ContextActions(){const s=useGame(),zone=zoneAt(s.position),seat=seats.find(c=>c.id===s.seated),near=nearestSeat(s.position),npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&(n.id!=='chef'||!s.meal||chefPhase(s.meal,Date.now())==='idle')&&distance(s.position,[n.x,n.z])<4);if(!s.started)return null;
   if(['incense','flower','candle'].includes(s.action))return <div className="context-actions v2-context incense-status"><span>{s.action==='flower'?'Đang dâng hoa…':s.action==='candle'?'Đang dâng đèn…':'Đang dâng hương…'} {Math.min(100,Math.round((Date.now()-(s.event?.at||Date.now()))/(s.action==='incense'?INCENSE_DURATION:OFFERING_DURATION)*100))}%</span><button onClick={()=>s.stand()}>Hủy · Esc</button></div>;
   const button=(label:string,Icon:typeof Leaf,fn:()=>void,key=label)=><button key={key} onClick={fn}><Icon size={16}/>{label}</button>;
   if(seat?.kind==='dining')return <div className="context-actions v2-context">{button('Thực đơn chay',Utensils,()=>s.set({panel:'menu'}))}{s.meal?.status==='ready'&&s.meal.seatId===seat.id&&button('Dùng bữa',Utensils,()=>s.eat())}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
