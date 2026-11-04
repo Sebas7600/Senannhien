@@ -30,7 +30,7 @@ export function bindSound(check:()=>boolean){useSound=check;}
 export function setAmbient(next:boolean){
   enabled=next;
   if(!next){stopBowlVoices();soundVersion++;stop(ambient);ambient=null;stopMedia(chant);stopMedia(bell);for(const v of [...voices])stop(v);if(master&&ctx)master.gain.setValueAtTime(0,ctx.currentTime);return;}
-  const c=context();if(!c)return;void c.resume().catch(()=>{});master!.gain.setValueAtTime(.7,c.currentTime);
+  const c=context();if(!c)return;void c.resume().catch(()=>{});master!.gain.setValueAtTime(.7,c.currentTime);void preloadBowl();
   if(!ambient){
     const b=c.createBuffer(1,c.sampleRate*5,c.sampleRate),samples=b.getChannelData(0);let last=0;
     for(let i=0;i<samples.length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;samples[i]=last*.20;}
@@ -61,17 +61,18 @@ export function playWood(){
 }
 
 let bowlBuffer:Promise<AudioBuffer|null>|null=null;
+let bowlEpoch=0;
 const bowlVoices=new Set<{source:AudioBufferSourceNode;gain:GainNode}>();
 const bowlTickets=new Map<number,object>();
 export function preloadBowl(){if(bowlBuffer)return bowlBuffer;ctx??=new AudioContext();const context=ctx;
   bowlBuffer=fetch('/assets/audio/bow-bowl.mp3').then(r=>{if(!r.ok)throw new Error('bowl audio');return r.arrayBuffer()}).then(b=>context.decodeAudioData(b)).catch(()=>{bowlBuffer=null;return null});return bowlBuffer;
 }
-function stopBowlVoices(){for(const voice of bowlVoices){voice.source.stop();voice.source.disconnect();voice.gain.disconnect()}bowlVoices.clear()}
+function stopBowlVoices(){bowlEpoch++;for(const voice of bowlVoices){voice.source.stop();voice.source.disconnect();voice.gain.disconnect()}bowlVoices.clear()}
 export function scheduleBowBowl(session:BowSession){let cancelled=false,source:AudioBufferSourceNode|null=null,start=Infinity;
   if(!useSound()||bowlTickets.has(session.at))return()=>{};const ticket={};bowlTickets.set(session.at,ticket);for(const at of bowlTickets.keys())if(Date.now()-at>30000)bowlTickets.delete(at);const discard=()=>{if(bowlTickets.get(session.at)===ticket)bowlTickets.delete(session.at)};
   ctx??=new AudioContext();const context=ctx;void context.resume();
-  const due=session.at+bowStrikeOffset(session.mode)*1000;
-  void preloadBowl().then(buffer=>{if(cancelled||!buffer||!useSound()||Date.now()>due+150){discard();return;}
+  const due=session.at+bowStrikeOffset(session.mode)*1000,epoch=bowlEpoch;
+  void preloadBowl().then(buffer=>{if(cancelled||epoch!==bowlEpoch||!buffer||!useSound()||Date.now()>due+150){discard();return;}
     if(bowlVoices.size>=2){const oldest=bowlVoices.values().next().value!;oldest.gain.gain.setTargetAtTime(0,context.currentTime,.025);oldest.source.stop(context.currentTime+.08);bowlVoices.delete(oldest)}
     source=context.createBufferSource();const gain=context.createGain(),voice={source,gain};source.buffer=buffer;gain.gain.value=.48;source.connect(gain).connect(context.destination);
     source.onended=()=>{bowlVoices.delete(voice);voice.source.disconnect();gain.disconnect()};bowlVoices.add(voice);start=context.currentTime+Math.max(0,(due-Date.now())/1000);source.start(start);

@@ -48,3 +48,54 @@ test('production server sends explicit media types for mobile audio and painting
     }
   }finally{await Promise.all(files.map(file=>unlink(file)));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });
+test('room offerings: all kinds, late join, isolation, deduplication, capacity and expiry',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'offer_player_a',room:'an-nhien',...data})});return res.status};
+ try{
+  const a=stream(base,'offer_player_a'),b=stream(base,'offer_player_b'),other=stream(base,'offer_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  assert.equal(await post('/api/offerings',{kind:'incense',operation:'incense_0001'}),409);
+  await post('/api/state',{x:0,z:-7.1});
+  assert.equal(await post('/api/offerings',{kind:'incense',operation:'incense_0001'}),200);
+  assert.equal(await post('/api/offerings',{kind:'incense',operation:'incense_0001'}),200);
+  await b.wait(s=>s.offerings.length===1);assert.equal(b.state.offerings[0].kind,'incense');assert.equal(other.state.offerings.length,0);
+  clock+=3000;await post('/api/state',{x:-3.7,z:-28});
+  assert.equal(await post('/api/offerings',{kind:'flower',station:'flower-front-0',operation:'flower_bad01'}),400);
+  assert.equal(await post('/api/offerings',{kind:'flower',station:'flower-table-1',operation:'flower_00001'}),200);
+  clock+=3000;await post('/api/state',{x:4.7,z:-28});
+  assert.equal(await post('/api/offerings',{kind:'candle',station:'candle-table-2',operation:'candle_00001'}),200);
+  const late=stream(base,'offer_player_late');all.push(late);await late.opened;assert.deepEqual(late.state.offerings.map(o=>o.kind),['incense','flower','candle']);
+  for(let i=2;i<=8;i++){clock+=3000;assert.equal(await post('/api/offerings',{kind:'candle',station:'candle-table-2',operation:'candle_0000'+i}),200)}
+  clock+=3000;assert.equal(await post('/api/offerings',{kind:'candle',station:'candle-table-2',operation:'candle_full1'}),409);
+  clock+=3000;await post('/api/state',{x:23.6,z:9});assert.equal(await post('/api/offerings',{kind:'feed',station:'shore-6',operation:'feeding_0001'}),200);await b.wait(s=>s.offerings.some(o=>o.kind==='feed'));assert.equal(other.state.offerings.length,0);
+  clock+=12001;await b.wait(s=>!s.offerings.some(o=>o.kind==='feed'));
+  clock+=480001;await b.wait(s=>s.offerings.length===1);assert.equal(b.state.offerings[0].kind,'incense');
+  clock+=170000;await b.wait(s=>s.offerings.length===0);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('shared garden: room isolation, late join, stale actions, one harvest and retry deduplication',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(route,id,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,room:'an-nhien',...data})});return res.status};
+ try{
+  const a=stream(base,'garden_player_a'),b=stream(base,'garden_player_b'),other=stream(base,'garden_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  const seed={plot:'plot-0',action:'plant',revision:0,operation:'garden_seed01'};
+  assert.equal(await post('/api/garden','garden_player_a',seed),409);
+  await Promise.all(['garden_player_a','garden_player_b'].map(id=>post('/api/state',id,{x:31,z:-51.5})));
+  assert.equal(await post('/api/garden','garden_player_a',{...seed,plot:'plot-99'}),400);
+  const planted=await Promise.all([post('/api/garden','garden_player_a',seed),post('/api/garden','garden_player_b',{...seed,operation:'garden_seed02'})]);assert.deepEqual(planted.sort(),[200,409]);
+  await b.wait(s=>s.plots['plot-0']?.revision===1);assert.deepEqual(other.state.plots,{});
+  assert.equal(await post('/api/garden','garden_player_a',{plot:'plot-0',action:'harvest',revision:1,operation:'early_harvest'}),409);
+  assert.equal(await post('/api/garden','garden_player_a',{plot:'plot-0',action:'water',revision:1,operation:'garden_water1'}),200);
+  const late=stream(base,'garden_player_late');all.push(late);await late.opened;assert.equal(late.state.plots['plot-0'].revision,2);assert.equal(late.state.plots['plot-0'].wateredAt,clock);
+  clock+=60001;
+  const harvest={plot:'plot-0',action:'harvest',revision:2,operation:'garden_pick01'};
+  const results=await Promise.all([post('/api/garden','garden_player_a',harvest),post('/api/garden','garden_player_b',{...harvest,operation:'garden_pick02'})]);assert.deepEqual([...results].sort(),[200,409]);
+  await a.wait(s=>s.plots['plot-0']?.harvested);assert.equal(a.state.plots['plot-0'].revision,3);
+  // Replaying the winning operation must acknowledge without re-harvesting or replanting.
+  const winner=results[0]===200?'garden_player_a':'garden_player_b';
+  assert.equal(await post('/api/garden',winner,{...harvest,operation:winner==='garden_player_a'?'garden_pick01':'garden_pick02'}),200);
+  assert.equal(await post('/api/garden','garden_player_a',{plot:'plot-0',action:'plant',revision:3,operation:'garden_seed03'}),200);
+  await b.wait(s=>s.plots['plot-0']?.revision===4);assert.equal(b.state.plots['plot-0'].harvested,false);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+
+});

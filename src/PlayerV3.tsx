@@ -1,10 +1,13 @@
+import {pondBlocked} from './pondLayout';
+import {offeringStation} from './templeFixtures';
 import {useEffect,useRef,useState} from 'react';
 import {useFrame,useThree} from '@react-three/fiber';
 import {Html} from '@react-three/drei';
 import {RigidBody,CapsuleCollider,useBeforePhysicsStep,useRapier,type RapierRigidBody,type RapierCollider} from '@react-three/rapier';
 import * as THREE from 'three';
 import {useGame,floorAt} from './gameStore';
-import {seats,usesFloorSeat,stepAssistHeight,CHARACTER_OFFSET,CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS,type Vec2} from './gameData';
+import {incenseSpot,incenseApproach,INCENSE_CLEARANCE,outsideIncenseBurner,seats,usesFloorSeat,stepAssistHeight,CHARACTER_OFFSET,CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS,type Vec2} from './gameData';
+
 import {findPath} from './navigation';
 import {Character} from './Character';
 import {playerMotion} from './runtime';
@@ -13,15 +16,23 @@ export const movementJoystick={x:0,y:0};
 export default function PlayerV3(){
   const body=useRef<RapierRigidBody>(null),collider=useRef<RapierCollider>(null),renderObject=useRef<THREE.Group>(null),visual=useRef<THREE.Group>(null),{world}=useRapier(),camera=useThree(s=>s.camera);
   const controller=useRef<ReturnType<typeof world.createCharacterController>|null>(null),path=useRef<Vec2[]>([]),destinationKey=useRef(''),lastTeleport=useRef(0),sync=useRef(0),seconds=useRef(0),movingRef=useRef(false),forward=useRef(new THREE.Vector3());
+  const verticalSpeed=useRef(0);
   const[moving,setMoving]=useState(false);const pose=useGame(s=>s.action),robe=useGame(s=>s.robe),name=useGame(s=>s.name),seated=useGame(s=>s.seated),gender=useGame(s=>s.gender),skin=useGame(s=>s.skin),robeStyle=useGame(s=>s.robeStyle),dish=useGame(s=>s.meal?.dish),bow=useGame(s=>s.bow);
-  useEffect(()=>{const c=world.createCharacterController(.02);c.enableAutostep(.45,.15,true);c.enableSnapToGround(.8);c.setApplyImpulsesToDynamicBodies(true);c.setCharacterMass(1);controller.current=c;playerMotion.object=renderObject.current;playerMotion.heading=Math.PI;return()=>{world.removeCharacterController(c);controller.current=null;playerMotion.object=null;movementKeys.clear();movementJoystick.x=movementJoystick.y=0}},[world]);
+  useEffect(()=>{const c=world.createCharacterController(.02);c.enableAutostep(.25,.15,true);c.enableSnapToGround(.35);c.setApplyImpulsesToDynamicBodies(true);c.setCharacterMass(1);controller.current=c;playerMotion.object=renderObject.current;playerMotion.heading=Math.PI;return()=>{world.removeCharacterController(c);controller.current=null;playerMotion.object=null;movementKeys.clear();movementJoystick.x=movementJoystick.y=0}},[world]);
   useFrame(()=>{if(visual.current)visual.current.rotation.y=playerMotion.heading});
   useBeforePhysicsStep(()=>{
     const rb=body.current,c=controller.current;if(!rb||!c||!collider.current)return;const dt=1/60,s=useGame.getState();let p=rb.translation();
-    if(s.teleport&&s.teleport.at!==lastTeleport.current){lastTeleport.current=s.teleport.at;const t=s.teleport.position;rb.setTranslation({x:t[0],y:t[1]+CHARACTER_OFFSET,z:t[2]},true);rb.setNextKinematicTranslation({x:t[0],y:t[1]+CHARACTER_OFFSET,z:t[2]});playerMotion.heading=s.teleport.heading;s.set({position:[t[0],t[2]],height:t[1],heading:s.teleport.heading});return;}
+    if(s.teleport&&s.teleport.at!==lastTeleport.current){lastTeleport.current=s.teleport.at;verticalSpeed.current=0;const t=s.teleport.position;rb.setTranslation({x:t[0],y:t[1]+CHARACTER_OFFSET,z:t[2]},true);rb.setNextKinematicTranslation({x:t[0],y:t[1]+CHARACTER_OFFSET,z:t[2]});playerMotion.heading=s.teleport.heading;s.set({position:[t[0],t[2]],height:t[1],heading:s.teleport.heading});return;}
+    if(Math.hypot(p.x-incenseSpot[0],p.z-incenseSpot[1])<INCENSE_CLEARANCE-.01){
+      const [x,z]=incenseApproach,y=floorAt(x,z)+CHARACTER_OFFSET+.02;rb.setTranslation({x,y,z},true);rb.setNextKinematicTranslation({x,y,z});s.set({position:[x,z],height:y-CHARACTER_OFFSET});return;
+    }
+
     let dx=(movementKeys.has('d')||movementKeys.has('arrowright')?1:0)-(movementKeys.has('a')||movementKeys.has('arrowleft')?1:0)+movementJoystick.x;
     let dz=(movementKeys.has('s')||movementKeys.has('arrowdown')?1:0)-(movementKeys.has('w')||movementKeys.has('arrowup')?1:0)+movementJoystick.y;
-    if(s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
+    if(['plant','water','harvest'].includes(s.action)&&s.event)playerMotion.heading=Math.atan2(s.event.x-p.x,s.event.z-p.z);
+    if(s.action==='flower'||s.action==='candle'){const station=offeringStation(s.action,s.event?.target);playerMotion.heading=Math.atan2(station.spot[0]-p.x,station.spot[1]-p.z);}
+    if(s.action==='incense')playerMotion.heading=Math.atan2(incenseSpot[0]-p.x,incenseSpot[1]-p.z);
+    if(['plant','water','harvest','feed','incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
     let walking=false;
     if(s.seated){if(dx||dz){s.stand();return;}const seat=seats.find(c=>c.id===s.seated)!;rb.setNextKinematicTranslation({x:seat.position[0],y:seat.position[1]+CHARACTER_OFFSET,z:seat.position[2]});playerMotion.heading=seat.rotation;}
     else{
@@ -34,7 +45,13 @@ export default function PlayerV3(){
       const mx=length?vx/length*speed*dt:0,mz=length?vz/length*speed*dt:0,assisted=stepAssistHeight(p.x,p.z,mx,mz,p.y);
       // Only step up at an actual height change; do not teleport 1 cm on every frame.
       if(assisted>p.y){rb.setTranslation({x:p.x,y:assisted,z:p.z},true);p=rb.translation();}
-      c.computeColliderMovement(collider.current,{x:mx,y:-.035,z:mz});const d=c.computedMovement();rb.setNextKinematicTranslation({x:p.x+d.x,y:Math.max(p.y+d.y,floorAt(p.x+d.x,p.z+d.z)+CHARACTER_OFFSET+.02),z:p.z+d.z});
+      verticalSpeed.current=Math.max(-15,verticalSpeed.current-9.81*dt);
+      c.computeColliderMovement(collider.current,{x:mx,y:verticalSpeed.current*dt,z:mz});const d=c.computedMovement();
+      if(c.computedGrounded())verticalSpeed.current=0;
+      const [safeX,safeZ]=outsideIncenseBurner(p.x+d.x,p.z+d.z);if(pondBlocked(safeX,safeZ)){rb.setNextKinematicTranslation({x:p.x,y:p.y+d.y,z:p.z});}else rb.setNextKinematicTranslation({x:safeX,y:p.y+d.y,z:safeZ});
+      if(p.y< -5){s.set({teleport:{position:[0,.08,22],heading:Math.PI,at:Date.now()}});verticalSpeed.current=0;}
+
+
       if(walking){const target=Math.atan2(vx,vz),diff=THREE.MathUtils.euclideanModulo(target-playerMotion.heading+Math.PI,Math.PI*2)-Math.PI;playerMotion.heading+=diff*Math.min(1,12*dt);}
       sync.current+=dt;if(sync.current>=.125){sync.current=0;if(Math.hypot(p.x-s.position[0],p.z-s.position[1])>.002||Math.abs(playerMotion.heading-s.heading)>.01||Math.abs(p.y-CHARACTER_OFFSET-s.height)>.015)s.set({position:[p.x,p.z],height:p.y-CHARACTER_OFFSET,heading:playerMotion.heading})}
     }
@@ -44,4 +61,3 @@ export default function PlayerV3(){
   });
   const seat=seats.find(s=>s.id===seated);return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={[0,.06+CHARACTER_OFFSET+.02,22]} enabledRotations={[false,false,false]}><CapsuleCollider ref={collider} args={[CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS]}/><group ref={renderObject} position={[0,-CHARACTER_OFFSET,0]}><group ref={visual}><Character robe={robe} pose={pose} moving={moving} seated={!!seated} dish={dish} chair={!!seat&&!usesFloorSeat(seat)} gender={gender} skin={skin} robeStyle={robeStyle} bowStartedAt={bow?.at} bowMode={bow?.mode}/></group><Html position={[0,seated?(usesFloorSeat(seat)?1.4:1.1):1.95,0]} center zIndexRange={[4,0]}><span className="nametag"><i/>{name}</span></Html></group></RigidBody>;
 }
-

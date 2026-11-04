@@ -17,7 +17,7 @@ test('the rounded seat surface supports the seated avatar and uses centered plan
     for(const [x,z] of [[0,0],[.13,.1],[-.13,.1]]){const hits=new THREE.Raycaster(new THREE.Vector3(x,1,z),new THREE.Vector3(0,-1,0)).intersectObject(mesh);assert.ok(hits.length);assert.ok(Math.abs(hits[0].point.y-(CUSHION.seatLift+.02))<.015);if(x===0){assert.ok(Math.abs(hits[0].uv!.x-.375)<.001);assert.ok(Math.abs(hits[0].uv!.y-.625)<.001);}}
   }
 });
-test('all 38 indoor and 8 bamboo cushions remain reachable with their existing IDs and raised seat anchors',()=>{
-  const cushions=seats.filter(s=>s.kind==='cushion');assert.equal(cushions.length,46);assert.equal(cushions.filter(s=>s.zone==='temple').length,18);assert.equal(cushions.filter(s=>s.zone==='hall').length,20);
-  for(const s of cushions){const base=s.zone==='temple'?.58:s.zone==='hall'?.4:.06;assert.ok(Math.abs(s.position[1]-CUSHION.seatLift-base)<1e-8);assert.ok(walkable(s.position[0],s.position[2]));const path=findPath([0,22],[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from:[number,number]=[0,22];for(const p of path){assert.ok(clearLine(from,p),s.id);from=p;}}
+test('all 68 indoor and 8 bamboo cushions remain reachable with their existing IDs and raised seat anchors',()=>{
+  const cushions=seats.filter(s=>s.kind==='cushion');assert.equal(cushions.length,76);assert.equal(cushions.filter(s=>s.zone==='temple').length,48);assert.equal(cushions.filter(s=>s.zone==='hall').length,20);
+  for(const s of cushions){const base=s.zone==='temple'?2.28:s.zone==='hall'?.4:.06;assert.ok(Math.abs(s.position[1]-CUSHION.seatLift-base)<1e-8);assert.ok(walkable(s.position[0],s.position[2]));const path=findPath([0,22],[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from:[number,number]=[0,22];for(const p of path){assert.ok(clearLine(from,p),s.id);from=p;}}
 });

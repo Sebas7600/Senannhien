@@ -13,3 +13,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode>{
 
 import './v3.css';
 import './rituals.css';
+
+import './mobile.css';

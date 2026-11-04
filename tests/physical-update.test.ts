@@ -5,6 +5,17 @@ import {CHARACTER_OFFSET,CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS,diningTables,se
 import {clearLine} from '../src/navigation';
 import {mealPlan,serviceTimes,servicePhase,counterHasMeal,sampleRoute,HANDOFF_MS} from '../src/mealService';
 import {floatingLotusPose,lanternPose,LANTERN_RISE} from '../src/ritualMotion';
+import {templeSurfaceHeight} from '../src/templeFixtures';
+import {bridgeHeight} from '../src/pondLayout';
+
+test('ritual platforms coexist with the new temple and koi bridge without lifting visitors through their sides',()=>{
+  assert.equal(surfaceHeight(0,-24),templeSurfaceHeight(0,3)+.08);
+  assert.equal(surfaceHeight(33,9),bridgeHeight(33));assert.equal(surfaceHeight(22.5,9),bridgeHeight(22.5));
+  for(const [x,z,dx,dz] of [[15,-25,-.05,0],[8.3,-14,0,-.05],[22.4,9,.05,0]]){
+    const body=.06+CHARACTER_OFFSET+.02;assert.equal(stepAssistHeight(x,z,dx,dz,body),body);
+  }
+  assert.ok(!floorSurfaces.some(s=>s.x===0&&s.z===-27),'No legacy flat temple slab');
+});
 
 test('five dining tables have twenty distinct floor cushions on the actual floor',()=>{
   assert.equal(diningTables.length,5);assert.deepEqual(diningTables[4],[34,.64,-25]);
@@ -24,10 +35,10 @@ test('real Rapier controller steps onto the bell platform instead of standing in
   try{
     world.createCollider(RAPIER.ColliderDesc.cuboid(62,.03,66).setTranslation(0,.03,-2));
     for(const f of floorSurfaces)world.createCollider(RAPIER.ColliderDesc.cuboid(f.w/2,f.height/2,f.d/2).setTranslation(f.x,f.height/2,f.z));
-    for(const o of obstacles){const h=o.height??1.4;world.createCollider(RAPIER.ColliderDesc.cuboid(o.w/2,h/2,o.d/2).setTranslation(o.x,(o.base??0)+h/2,o.z));}
+    for(const o of obstacles.filter(o=>!o.navigationOnly)){const h=o.height??1.4;world.createCollider(RAPIER.ColliderDesc.cuboid(o.w/2,h/2,o.d/2).setTranslation(o.x,(o.base??0)+h/2,o.z));}
     const body=world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(-19,.06+CHARACTER_OFFSET+.02,-9));
     const capsule=world.createCollider(RAPIER.ColliderDesc.capsule(CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS),body),controller=world.createCharacterController(.02);
-    controller.enableAutostep(.45,.15,true);controller.enableSnapToGround(.8);
+    controller.enableAutostep(.25,.15,true);controller.enableSnapToGround(.35);
     for(let i=0;i<60;i++){let p=body.translation();const assisted=stepAssistHeight(p.x,p.z,0,-.035,p.y);if(assisted>p.y){body.setTranslation({x:p.x,y:assisted,z:p.z},true);p=body.translation();}controller.computeColliderMovement(capsule,{x:0,y:-.035,z:-.035});const d=controller.computedMovement();body.setNextKinematicTranslation({x:p.x+d.x,y:p.y+d.y,z:p.z+d.z});world.step();}
     const p=body.translation();assert.ok(p.z<-10.6,`z=${p.z}`);assert.ok(p.y-CHARACTER_OFFSET>=.39,`feet=${p.y-CHARACTER_OFFSET}`);assert.ok(p.y-CHARACTER_OFFSET<.47);
     for(let i=0;i<100;i++){const p=body.translation();controller.computeColliderMovement(capsule,{x:0,y:-.035,z:-.035});const d=controller.computedMovement();body.setNextKinematicTranslation({x:p.x+d.x,y:p.y+d.y,z:p.z+d.z});world.step();}

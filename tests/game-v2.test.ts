@@ -7,8 +7,9 @@ const {seats,dishes,places,distance,walkable}=await import('../src/gameData.ts')
 const {findPath,clearLine}=await import('../src/navigation.ts');
 const defaults=useGame.getInitialState();
 beforeEach(()=>useGame.setState({...defaults,inventory:{...defaults.inventory},progress:emptyProgress(),lifetime:emptyProgress(),day:localDay(),position:[0,22],peers:[],claimed:[],badges:[],visited:[],tasted:[],readBooks:[],plots:{},wishes:[]},true));
-test('126 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
-  assert.equal(seats.length,126);assert.equal(new Set(seats.map(s=>s.id)).size,126);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
+test('156 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
+  assert.equal(seats.length,156);assert.equal(new Set(seats.map(s=>s.id)).size,156);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
+
   for(const s of seats)assert.ok(walkable(s.position[0],s.position[2],.3),s.id);
 });
 test('navigation reaches all dining seats and every practice area without crossing walls or water',()=>{
@@ -38,7 +39,7 @@ test('occupied seats cannot be selected and meditation selects an actual cushion
 });
 test('garden consumes a seed, needs water and takes 60 seconds to mature',()=>{
   let time=Date.now();const original=Date.now;Date.now=()=>time;
-  try{useGame.setState({position:[31,-53]});const seeds=useGame.getState().inventory.seed;useGame.getState().garden('plot-0');assert.equal(useGame.getState().inventory.seed,seeds-1);assert.equal(useGame.getState().plots['plot-0'].wateredAt,null);useGame.getState().garden('plot-0');assert.ok(useGame.getState().plots['plot-0'].wateredAt);useGame.getState().garden('plot-0');assert.equal(useGame.getState().progress.harvest,0);time+=60001;useGame.getState().garden('plot-0');assert.equal(useGame.getState().inventory.vegetable,3);assert.equal(useGame.getState().progress.harvest,1);useGame.getState().garden('plot-0');assert.equal(useGame.getState().progress.harvest,1);assert.equal(useGame.getState().inventory.seed,seeds-2);
+  try{useGame.setState({position:[31,-53],connection:'offline'});const seeds=useGame.getState().inventory.seed;useGame.getState().garden('plot-0');assert.equal(useGame.getState().inventory.seed,seeds-1);assert.equal(useGame.getState().plots['plot-0'].wateredAt,null);useGame.getState().garden('plot-0');assert.ok(useGame.getState().plots['plot-0'].wateredAt);useGame.getState().garden('plot-0');assert.equal(useGame.getState().progress.harvest,0);time+=60001;useGame.getState().garden('plot-0');assert.equal(useGame.getState().inventory.vegetable,3);assert.equal(useGame.getState().progress.harvest,1);useGame.getState().garden('plot-0');assert.equal(useGame.getState().progress.harvest,1);assert.equal(useGame.getState().inventory.seed,seeds-2);
   }finally{Date.now=original}
 });
 test('daily rewards and achievement rewards cannot be claimed twice',()=>{

@@ -13,4 +13,6 @@ test('bowl audio decodes once, honours mute, deduplicates cycles and cancels a p
   cancel();await Promise.resolve();assert.equal(sources[0].stops,1);
   const ringing={at:Date.now()+10,mode:'standing' as const},leave=scheduleBowBowl(ringing);await Promise.resolve();context!.currentTime=3;leave();assert.equal(sources.at(-1)!.stops,0);const count=sources.length;scheduleBowBowl(ringing);await Promise.resolve();assert.equal(sources.length,count);
   setAmbient(false);await Promise.resolve();assert.ok(sources.at(-1)!.stops>0);assert.equal(fetches,1);assert.equal(decodes,1);
+  // Muting or hiding the page also invalidates a strike still waiting for its buffer.
+  const before=sources.length;scheduleBowBowl({at:Date.now()+100,mode:'standing'});setAmbient(false);await Promise.resolve();assert.equal(sources.length,before);
 });

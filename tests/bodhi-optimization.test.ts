@@ -73,6 +73,6 @@ test('offering at the Bodhi altar consumes one incense, records once and persist
   s.perform('incense');assert.equal(useGame.getState().inventory.incense,before-1);assert.equal(useGame.getState().bodhiIncense,1);assert.equal((useGame.persist.getOptions().partialize!(s) as any).bodhiIncense,1);
 });
 test('temple offering stays separate and an empty incense bag cannot light the Bodhi altar',()=>{
-  useGame.setState({position:[0,-24]});useGame.getState().perform('incense');assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().progress.incense,1);
+  useGame.setState({position:[0,-7.1]});useGame.getState().perform('incense');useGame.setState({event:{...useGame.getState().event!,at:Date.now()-3100}});useGame.getState().tick();assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().progress.incense,1);
   useGame.setState({event:null,position:[...BODHI.offeringPoint],inventory:{...defaults.inventory,incense:0}});useGame.getState().perform('incense');assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().panel,'bag');assert.equal(useGame.getState().progress.incense,1);
 });
