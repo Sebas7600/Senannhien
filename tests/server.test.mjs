@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import {mkdir,writeFile,unlink} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
 import {createGameServer} from '../server-runtime.mjs';
 function stream(base,id,room='an-nhien'){
   let state={peers:[],messages:[]},request,buffer='',listeners=[];
@@ -19,10 +21,33 @@ test('shared courtyard: live positions, room separation, exclusive seats and cha
     const message=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'Chào bạn, mời dùng bữa chay.'});assert.equal(message.status,200);await b.wait(s=>s.messages.some(m=>m.text==='Chào bạn, mời dùng bữa chay.'));assert.equal(other.state.messages.length,0);
     const duplicate=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'spam'});assert.equal(duplicate.status,429);
     const forged=await post('/api/chat',{id:'not_connected',room:'an-nhien',text:'hello'});assert.equal(forged.status,409);
+    for(const [action,seat] of [['read','reading-19'],['tea','tea-19']]){
+      await post('/api/state',{id:'test_player_a',room:'an-nhien',action,seat});
+      await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.action===action&&p.seat===seat));
+    }
     a.close();await b.wait(s=>s.peers.length===1);assert.equal(b.state.peers[0].id,'test_player_b');
   }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });
 
+test('production server sends explicit media types for mobile audio and painting assets',async()=>{
+  const server=createGameServer(),tag=randomUUID(),files=[];
+  await mkdir(new URL('../dist/audio/',import.meta.url),{recursive:true});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try{
+    for(const [extension,type,magic] of [['mp3','audio/mpeg','ID3'],['wav','audio/wav','RIFF'],['webp','image/webp','RIFF']]){
+      const filename=`audio/qa-${tag}.${extension}`,file=new URL(`../dist/${filename}`,import.meta.url);files.push(file);await writeFile(file,magic,{flag:'wx'});
+      const response=await fetch(`http://127.0.0.1:${server.address().port}/${filename}`);
+      assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),type);assert.equal(await response.text(),magic);
+      if(type.startsWith('audio/')){
+        const url=`http://127.0.0.1:${server.address().port}/${filename}`;
+        const range=await fetch(url,{headers:{Range:'bytes=0-1'}});assert.equal(range.status,206);assert.equal(range.headers.get('content-range'),`bytes 0-1/${magic.length}`);assert.equal(await range.text(),magic.slice(0,2));
+        const suffix=await fetch(url,{headers:{Range:'bytes=-2'}});assert.equal(suffix.status,206);assert.equal(await suffix.text(),magic.slice(-2));
+        const invalid=await fetch(url,{headers:{Range:'bytes=999-'}});assert.equal(invalid.status,416);assert.equal(invalid.headers.get('content-range'),`bytes */${magic.length}`);
+        const head=await fetch(url,{method:'HEAD',headers:{Range:'bytes=0-1'}});assert.equal(head.status,206);assert.equal(head.headers.get('content-length'),'2');assert.equal(await head.text(),'');
+      }
+    }
+  }finally{await Promise.all(files.map(file=>unlink(file)));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
 test('room offerings: all kinds, late join, isolation, deduplication, capacity and expiry',async()=>{
  let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
  const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'offer_player_a',room:'an-nhien',...data})});return res.status};
@@ -72,4 +97,5 @@ test('shared garden: room isolation, late join, stale actions, one harvest and r
   assert.equal(await post('/api/garden','garden_player_a',{plot:'plot-0',action:'plant',revision:3,operation:'garden_seed03'}),200);
   await b.wait(s=>s.plots['plot-0']?.revision===4);assert.equal(b.state.plots['plot-0'].harvested,false);
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+
 });

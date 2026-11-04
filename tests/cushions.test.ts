@@ -19,5 +19,5 @@ test('the rounded seat surface supports the seated avatar and uses centered plan
 });
 test('all 68 indoor and 8 bamboo cushions remain reachable with their existing IDs and raised seat anchors',()=>{
   const cushions=seats.filter(s=>s.kind==='cushion');assert.equal(cushions.length,76);assert.equal(cushions.filter(s=>s.zone==='temple').length,48);assert.equal(cushions.filter(s=>s.zone==='hall').length,20);
-  for(const s of cushions){const base=s.zone==='temple'?2.28-CUSHION.seatLift:s.zone==='hall'?.4:.06;assert.ok(Math.abs(s.position[1]-CUSHION.seatLift-base)<1e-8);assert.ok(walkable(s.position[0],s.position[2]));const path=findPath([0,22],[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from:[number,number]=[0,22];for(const p of path){assert.ok(clearLine(from,p),s.id);from=p;}}
+  for(const s of cushions){const base=s.zone==='temple'?2.28:s.zone==='hall'?.4:.06;assert.ok(Math.abs(s.position[1]-CUSHION.seatLift-base)<1e-8);assert.ok(walkable(s.position[0],s.position[2]));const path=findPath([0,22],[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from:[number,number]=[0,22];for(const p of path){assert.ok(clearLine(from,p),s.id);from=p;}}
 });

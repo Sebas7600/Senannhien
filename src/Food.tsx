@@ -16,6 +16,6 @@ export function Food({dish,eating=false}:{dish:DishId;eating?:boolean}){
       <Steam/>
     </group>}
     <group position={[.49,.08,0]}><mesh><cylinderGeometry args={[.075,.055,.17,14]}/><meshStandardMaterial color="#b9c1a4"/></mesh><mesh position={[0,.086,0]} rotation={[-Math.PI/2,0,0]}><circleGeometry args={[.06,14]}/><meshStandardMaterial color="#958756"/></mesh></group>
-    <mesh position={[-.46,.035,0]} rotation={[0,0,.25]}><boxGeometry args={[.02,.02,.65]}/><meshStandardMaterial color="#816743"/></mesh><mesh position={[-.41,.035,0]} rotation={[0,0,.25]}><boxGeometry args={[.02,.02,.65]}/><meshStandardMaterial color="#816743"/></mesh>
+    {dish!=='bread'&&<><mesh position={[-.46,.035,0]} rotation={[0,0,.25]}><boxGeometry args={[.02,.02,.65]}/><meshStandardMaterial color="#816743"/></mesh><mesh position={[-.41,.035,0]} rotation={[0,0,.25]}><boxGeometry args={[.02,.02,.65]}/><meshStandardMaterial color="#816743"/></mesh></>}
   </group>;
 }

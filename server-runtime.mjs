@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root=path.resolve(fileURLToPath(new URL('./dist/',import.meta.url)));
-const mime={'.glb':'model/gltf-binary','.json':'application/json; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.wasm':'application/wasm','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.woff2':'font/woff2'};
+const mime={'.glb':'model/gltf-binary','.json':'application/json; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.wasm':'application/wasm','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.mp3':'audio/mpeg','.wav':'audio/wav','.ogg':'audio/ogg','.woff2':'font/woff2'};
 const allowedRooms=new Set(['an-nhien','truc-lam','huong-sen']);
 export function createGameServer({now=Date.now}={}){
   const rooms=new Map();
@@ -34,8 +34,9 @@ export function createGameServer({now=Date.now}={}){
         if(pathname==='/api/state'){
           const finite=(n,min,max,fallback)=>typeof n==='number'&&Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
           const seat=typeof b.seat==='string'&&b.seat.length<40&&!([...room.peers.values()].some(p=>p.id!==b.id&&p.seat===b.seat))?b.seat:null;
-          const actions=['plant','water','harvest','feed','flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok'];
-          const meal=b.meal&&['noodles','rice','soup','bread'].includes(b.meal.dish)&&['preparing','ready','eating','finished'].includes(b.meal.status)&&typeof b.meal.seatId==='string'?{dish:b.meal.dish,seatId:b.meal.seatId.slice(0,40),status:b.meal.status,readyAt:finite(b.meal.readyAt,0,Date.now()+60000,0),eatUntil:finite(b.meal.eatUntil,0,Date.now()+60000,0)}:null;
+          const actions=['plant','water','harvest','feed','flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok','read','tea'];
+          const meal=b.meal&&['noodles','rice','soup','bread'].includes(b.meal.dish)&&['preparing','ready','eating','finished'].includes(b.meal.status)&&typeof b.meal.seatId==='string'?{dish:b.meal.dish,seatId:b.meal.seatId.slice(0,40),status:b.meal.status,orderedAt:finite(b.meal.orderedAt,0,Date.now()+60000,0),cookedAt:finite(b.meal.cookedAt,0,Date.now()+60000,0),kitchenAt:finite(b.meal.kitchenAt,0,Date.now()+60000,0),deliveryAt:finite(b.meal.deliveryAt,0,Date.now()+60000,0),homeAt:finite(b.meal.homeAt,0,Date.now()+60000,0),readyAt:finite(b.meal.readyAt,0,Date.now()+60000,0),eatUntil:finite(b.meal.eatUntil,0,Date.now()+60000,0)}:null;
+
           room.peers.set(b.id,{...peer,name:typeof b.name==='string'?b.name.trim().slice(0,22)||'An Nhiên':peer.name,robe:typeof b.robe==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.robe)?b.robe:peer.robe,gender:b.gender==='female'?'female':'male',skin:typeof b.skin==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.skin)?b.skin:'#c99c79',robeStyle:b.robeStyle==='cross'?'cross':'traditional',x:finite(b.x,-60,60,peer.x),y:finite(b.y,-1,12,peer.y),z:finite(b.z,-66,62,peer.z),heading:finite(b.heading,-100,100,peer.heading),action:actions.includes(b.action)?b.action:'walk',seat,meal,updated:Date.now()});json(res,200,{ok:true,seat});return;
         }
         if(pathname==='/api/garden'){
@@ -92,7 +93,24 @@ export function createGameServer({now=Date.now}={}){
       if(!['GET','HEAD'].includes(req.method||'')){res.writeHead(405);res.end();return;}
       let file=path.resolve(root,'.'+pathname);if(file!==root&&!file.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}
       const info=await stat(file).catch(()=>null);if(info?.isDirectory())file=path.join(file,'index.html');if(!info){if(path.extname(pathname)){res.writeHead(404);res.end();return;}file=path.join(root,'index.html')}
-      const content=await readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':path.extname(file)==='.html'?'no-store':'public, max-age=3600'});res.end(req.method==='HEAD'?undefined:content);
+      const content=await readFile(file),extension=path.extname(file);
+      const headers={'Content-Type':mime[extension]||'application/octet-stream','Content-Length':content.length,'X-Content-Type-Options':'nosniff','Cache-Control':extension==='.html'?'no-store':'public, max-age=3600'};
+      if(['.mp3','.wav','.ogg'].includes(extension)){
+        headers['Accept-Ranges']='bytes';
+        if(req.headers.range){
+          const match=/^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
+          let start=0,end=content.length-1;
+          if(match&&(match[1]||match[2])){
+            if(match[1]){start=Number(match[1]);if(match[2])end=Math.min(end,Number(match[2]));}
+            else start=Math.max(0,content.length-Number(match[2]));
+          }else start=content.length;
+          if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>end||start>=content.length){
+            res.writeHead(416,{'Content-Range':`bytes */${content.length}`,'Content-Length':0});res.end();return;
+          }
+          const part=content.subarray(start,end+1);res.writeHead(206,{...headers,'Content-Length':part.length,'Content-Range':`bytes ${start}-${end}/${content.length}`});res.end(req.method==='HEAD'?undefined:part);return;
+        }
+      }
+      res.writeHead(200,headers);res.end(req.method==='HEAD'?undefined:content);
     }catch{if(!res.headersSent)json(res,400,{error:'invalid request'});else res.end()}
   });
   const broadcast=setInterval(()=>{for(const room of rooms.values()){for(const [id,p] of room.peers){if(Date.now()-p.updated>90000){room.streams.get(id)?.end();room.streams.delete(id);room.peers.delete(id)}}if(room.streams.size)emit(room)}},350);broadcast.unref();
@@ -101,6 +119,7 @@ export function createGameServer({now=Date.now}={}){
 }
 export function startGameServer(){
   const port=Number(process.env.PORT||5174),server=createGameServer();server.on('error',e=>{console.error(`Khong mo duoc cong ${port}: ${e.message}`);process.exitCode=1});
-  server.listen(port,'127.0.0.1',()=>console.log(`\n  SEN AN NHIEN · KHUON VIEN MO RONG\n  http://127.0.0.1:${port}\n  13 khu vuc · 94 cho ngoi · 4 mon chay\n  Phong + chat: mo cung dia chi trong cua so khac.\n  Giu cua so nay de choi. Ctrl+C de dung.\n`));
+  server.listen(port,'127.0.0.1',()=>console.log(`\n  SEN AN NHIEN · KHUON VIEN MO RONG\n  http://127.0.0.1:${port}\n  13 khu vuc · 156 cho ngoi · 4 mon chay\n  Phong + chat: mo cung dia chi trong cua so khac.\n  Giu cua so nay de choi. Ctrl+C de dung.\n`));
+
   return server;
 }

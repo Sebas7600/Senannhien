@@ -1,4 +1,5 @@
-import {pondBlocked} from './pondLayout';
+import {templeSurfaceHeight} from './templeFixtures';
+import {bridgeHeight,pondBlocked} from './pondLayout';
 import {removedTemplePost} from './templeLayout';
 import templeObjectShapes from './templeObjectColliders.json';
 import {stoneBenches,benchSeatWorld} from './stoneBenchData';
@@ -7,6 +8,11 @@ import {CUSHION} from './cushionData';
 import {courtyardTrees,COURTYARD_TREE} from './courtyardData';
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
+export const CHARACTER_RADIUS=.28;
+export const CHARACTER_HALF_SEGMENT=.54;
+export const CHARACTER_OFFSET=CHARACTER_RADIUS+CHARACTER_HALF_SEGMENT;
+export const WISH_STATION:Vec2=[13,37];
+export const WISH_APPROACH:Vec2=[13,39];
 export const incenseSpot:Vec2=[0,-8.7];
 export const incenseApproach:Vec2=[0,-7.1];
 export const INCENSE_CLEARANCE=1.1;
@@ -22,6 +28,7 @@ export const INCENSE_RANGE=2;
 export const INCENSE_DURATION=3000;
 export const INCENSE_BURN_MS=170000;
 export const INCENSE_STUB_MS=480000,INCENSE_MAX_STICKS=72;
+
 export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 62 };
 export const places = [
   { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:0, z:29, icon:'gate' },
@@ -42,13 +49,38 @@ export type PlaceId = typeof places[number]['id'];
 export function place(id: PlaceId) { return places.find(p=>p.id===id)!; }
 export function distance(a:Vec2,b:Vec2) { return Math.hypot(a[0]-b[0],a[1]-b[1]); }
 export function zoneAt(p:Vec2) { return [...places].sort((a,b)=>distance(p,[a.x,a.z])-distance(p,[b.x,b.z]))[0]; }
-export interface Seat {id:string; label:string; zone:PlaceId; position:Vec3; rotation:number; kind:'cushion'|'bench'|'dining'|'tea'; table?:Vec3}
+export interface Seat {id:string; label:string; zone:PlaceId; position:Vec3; rotation:number; kind:'cushion'|'bench'|'dining'|'tea'|'reading'; table?:Vec3; floorSeat?:boolean}
+export const readingTables:Vec3[]=Array.from({length:20},(_,i)=>[-40+(i%5)*3,.76,-46.8+Math.floor(i/5)*3]);
+export const teaTables:Vec3[]=Array.from({length:10},(_,i)=>[(i%5-2)*3.6,.98,-59.3+Math.floor(i/5)*5.5]);
+export const diningTables:Vec3[]=[[27.5,.64,-28.4],[39.5,.64,-28.4],[27.5,.64,-21.4],[39.5,.64,-21.4],[34,.64,-25]];
+export const KITCHEN_PICKUP:Vec2=[43.3,-33.1];
+export const PICKUP_PLATE:Vec3=[42.15,1.49,-33.1];
+export const RECEPTION:Vec2=[43,-19];
+export const RECEPTION_HEADING=0;
+export function usesFloorSeat(seat:Seat|undefined){return !!seat&&(seat.floorSeat===true||seat.kind==='cushion'||seat.kind==='reading');}
+export const pavilionLayouts=[{x:-33,z:-17,w:20,d:16,height:.4},{x:-34,z:-43,w:17,d:14,height:.35},{x:34,z:-27,w:23,d:18,height:.16},{x:0,z:-56,w:20,d:13,height:.3}];
+export const floorSurfaces=[
+  ...pavilionLayouts,
+  {x:-19,z:-13,w:5,d:5,height:.4},{x:19,z:-13,w:5,d:5,height:.4},
+  {x:28,z:39,w:27,d:3,height:.44},
+];
+export function surfaceHeight(x:number,z:number){if(x>22&&x<44&&Math.abs(z-9)<1.5)return bridgeHeight(x);const temple=templeSurfaceHeight(x,z+27);if(temple>0)return temple+.08;let height=.06;for(const s of floorSurfaces)if(Math.abs(x-s.x)<=s.w/2&&Math.abs(z-s.z)<=s.d/2)height=Math.max(height,s.height);return height;}
+// A capsule meets a step before its centre crosses the floor edge.
+export function stepAssistHeight(x:number,z:number,dx:number,dz:number,bodyY:number){
+  const length=Math.hypot(dx,dz),lead=length>.0001?.34/length:0;
+  const platform=(x:number,z:number)=>floorSurfaces.reduce((h,s)=>Math.abs(x-s.x)<=s.w/2&&Math.abs(z-s.z)<=s.d/2?Math.max(h,s.height):h,.06);
+  const top=Math.max(platform(x+dx,z+dz),platform(x+dx+dx*lead,z+dz+dz*lead));
+  const desired=top+CHARACTER_OFFSET+.02,climb=desired-bodyY;
+  return climb>.08&&climb<.8?desired+.015:bodyY;
+}
+export function seatExit(seat:Seat):Vec2 { const offset=seat.table?-.85:1.1;return [seat.position[0]+Math.sin(seat.rotation)*offset,seat.position[2]+Math.cos(seat.rotation)*offset]; }
 export const seats:Seat[] = [
-  ...Array.from({length:48},(_,i)=>({id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.2,-8.6,-6.2,-4.4,4.4,6.2,8.6,10.2][i%8],2.28,-27+Math.floor(i/8)*1.25] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
+  ...Array.from({length:48},(_,i)=>({id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.2,-8.6,-6.2,-4.4,4.4,6.2,8.6,10.2][i%8],2.28+CUSHION.seatLift,-27+Math.floor(i/8)*1.25] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
   ...Array.from({length:20},(_,i)=>({id:`hall-${i}`,label:`Bồ đoàn ${i+1} · Thiền đường`,zone:'hall' as const,position:[-33+(i%5-2)*2.4,.4+CUSHION.seatLift,-19+Math.floor(i/5)*2.4] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
   ...Array.from({length:8},(_,i)=>({id:`bamboo-${i}`,label:`Tọa cụ ${i+1} · Rừng trúc`,zone:'bamboo' as const,position:[-38+Math.cos(i/8*Math.PI*2)*4,.06+CUSHION.seatLift,12+Math.sin(i/8*Math.PI*2)*4] as Vec3,rotation:-i/8*Math.PI*2-Math.PI/2,kind:'cushion' as const})),
-  ...Array.from({length:16},(_,i)=>{const table=Math.floor(i/4),side=i%4;const tx=30+(table%2)*8,tz=-28+Math.floor(table/2)*8;return {id:`dining-${i}`,label:`Bàn ${table+1} · Ghế ${side+1}`,zone:'dining' as const,position:[tx+(side%2===0?-1.8:1.8),.53,tz+(side<2?-1:1)] as Vec3,rotation:side%2===0?Math.PI/2:-Math.PI/2,kind:'dining' as const,table:[tx,.96,tz] as Vec3}}),
-  ...Array.from({length:6},(_,i)=>({id:`tea-${i}`,label:`Chỗ trà ${i+1}`,zone:'terrace' as const,position:[(i%3-1)*3,.55,-55+(i<3?-1.8:1.8)] as Vec3,rotation:i<3?0:Math.PI,kind:'tea' as const,table:[(i%3-1)*3,.8,-55] as Vec3})),
+  ...diningTables.flatMap((table,i)=>Array.from({length:4},(_,side)=>({id:`dining-${i*4+side}`,label:`Bàn ${i+1}${i===4?' trung tâm':''} · Đệm ${side+1}`,zone:'dining' as const,position:[table[0]+(side%2===0?-1.85:1.85),.16,table[2]+(side<2?-.8:.8)] as Vec3,rotation:side%2===0?Math.PI/2:-Math.PI/2,kind:'dining' as const,floorSeat:true,table}))),
+  ...readingTables.map((table,i)=>({id:`reading-${i}`,label:`Bàn đọc ${i+1}`,zone:'library' as const,position:[table[0],.35,table[2]+1] as Vec3,rotation:Math.PI,kind:'reading' as const,table})),
+  ...teaTables.flatMap((table,i)=>[-1,1].map((side,j)=>({id:`tea-${i*2+j}`,label:`Bàn trà ${i+1} · Ghế ${j+1}`,zone:'terrace' as const,position:[table[0],.83,table[2]+side*1.35] as Vec3,rotation:side<0?0:Math.PI,kind:'tea' as const,table}))),
   ...stoneBenches.flatMap(b=>[0,1].map(side=>({id:`bench-${b.id}-${side}`,label:`${b.name} · Chỗ ${side+1}`,zone:b.zone,position:benchSeatWorld(b,side),rotation:b.rotation,kind:'bench' as const}))),
 ];
 export const dishes = [
@@ -66,16 +98,18 @@ export const scriptures = [
 ];
 export const npcs = [
   {id:'guide',name:'Chú tiểu Minh',role:'Người đón khách',x:-3,z:24,robe:'#859786',lines:['Chào bạn! Qua cổng tam quan là sân bồ đề. Đi thẳng sẽ tới chánh điện.','Bạn có thể bấm vào từng bồ đoàn để ngồi. Khi muốn đứng dậy, nhấn E hoặc phím di chuyển.','Nhà ăn Hương Thiền nằm phía đông bắc. Cô Tâm có bốn món chay đợi bạn đấy.']},
-  {id:'master',name:'Thầy Thiện Tâm',role:'Trông tàng kinh các',x:-28,z:-37,robe:'#a2794d',lines:['Cứ thong thả. Tu tập trong game bắt đầu từ sự chú ý với những điều nhỏ quanh mình.','Tàng kinh các có các bài thực tập ngắn. Bạn có thể đọc rồi tìm một bồ đoàn yên tĩnh để trải nghiệm.','Hành trình có nhiều dấu mốc: ghé các khu vực, chăm cây và ngồi thiền mỗi ngày.']},
-  {id:'cook',name:'Cô Tâm',role:'Bếp chay Hương Thiền',x:40,z:-33,robe:'#9b8067',lines:['Mời bạn vào dùng một bữa chay. Hôm nay có mì, cơm, hủ tiếu và bánh mì chay.','Chọn một ghế ở bàn, mở thực đơn rồi gọi món. Bếp sẽ chuẩn bị và mang phần ăn tới đúng chỗ bạn.','Bữa ăn ở đây được tặng miễn phí. Cứ ăn chậm, đủ no rồi cùng chăm lại sân chùa nhé.']},
+  {id:'master',name:'Thầy Thiện Tâm',role:'Trông tàng kinh các',x:-26.8,z:-46.6,robe:'#a2794d',lines:['Cứ thong thả. Tu tập trong game bắt đầu từ sự chú ý với những điều nhỏ quanh mình.','Mời bạn chọn một bàn đọc. Một trang tĩnh lặng gồm bốn bài thực tập ngắn.','Hành trình có nhiều dấu mốc: ghé các khu vực, chăm cây và ngồi thiền mỗi ngày.']},
+  {id:'cook',name:'Cô Tâm',role:'Đón khách · Bếp chay Hương Thiền',x:43,z:-20.15,robe:'#9b8067',lines:['Mời bạn vào dùng một bữa chay. Hôm nay có mì, cơm, hủ tiếu và bánh mì chay.','Chọn một ghế ở bàn, mở thực đơn rồi gọi món. Cô sẽ mang phần ăn tới đúng bàn của bạn.','Bữa ăn ở đây được tặng miễn phí. Cứ ăn chậm, đủ no rồi cùng chăm lại sân chùa nhé.']},
   {id:'keeper',name:'Chú tiểu Hương An',role:'Hướng dẫn dâng hương',x:3,z:-8.7,robe:'#a97b44',lines:['Mời bạn đứng trước lư hương để dâng hương. Tôi đứng bên phải để nhường lối vào điện.','Bạn có thể mở túi vải để chuẩn bị hương, hoa và đèn. Bàn dâng hoa ở bên trái trong điện, bàn dâng đèn ở bên phải.']},
+
   {id:'gardener',name:'Bác An',role:'Chăm vườn rau',x:27,z:-48,robe:'#657b5d',lines:['Gieo hạt vào một luống đất trống, tưới nước rồi đợi cây lớn.','Sau khoảng một phút kể từ khi tưới, bạn có thể thu hoạch. Rau thu được thêm vào hành trang của bạn.','Cây cối vẫn lớn khi bạn đi dạo. Thử ghé trà đình, rồi quay lại nhìn xem nhé.']},
 ] as const;
 export const flowerSpots:Vec3[]=[[-4,.3,-30],[4,.3,-30]];
 export const gardenPlots=Array.from({length:12},(_,i)=>({id:`plot-${i}`,x:31+(i%4)*3.1,z:-53+Math.floor(i/4)*3.1}));
 
-export interface Obstacle { x:number; z:number; w:number; d:number; navigationOnly?:boolean }
+export interface Obstacle { x:number; z:number; w:number; d:number; height?:number; base?:number; navigationOnly?:boolean }
 export const obstacles:Obstacle[]=[
+  {x:WISH_STATION[0],z:WISH_STATION[1],w:1.1,d:1.1},
  {x:10.6,z:-31.6,w:1,d:.74,navigationOnly:true},
  ...templeObjectShapes.filter(s=>!removedTemplePost(s.position[0],s.position[2])).filter(s=>s.position[1]+s.args[0]>2.6&&s.position[1]-s.args[0]<4).filter(s=>s.kind==='cylinder').map(s=>({x:s.position[0],z:s.position[2]-27,w:s.args[1]*2,d:s.args[1]*2,navigationOnly:true})),
   {x:-7.45,z:-19.55,w:10.3,d:.36,navigationOnly:true},{x:7.45,z:-19.55,w:10.3,d:.36,navigationOnly:true},
@@ -85,13 +119,25 @@ export const obstacles:Obstacle[]=[
   {x:28,z:34.7,w:20,d:4.4}, {x:28,z:43.3,w:20,d:4.4},
   {x:0,z:-34.625,w:25.25,d:.3,navigationOnly:true},{x:-12.6,z:-27,w:.316,d:15.4,navigationOnly:true},{x:12.6,z:-27,w:.316,d:15.4,navigationOnly:true},
   ...[-1,1].flatMap(side=>[{x:side*14,z:-27,w:.24,d:19.55,navigationOnly:true},{x:side*10.8,z:-17.35,w:6.24,d:.24,navigationOnly:true},{x:side*7.325,z:-14.035,w:.24,d:6.806,navigationOnly:true}]),
-  {x:-33,z:-24.7,w:20,d:.5},{x:-43,z:-17,w:.5,d:15},{x:-23,z:-17,w:.5,d:15},
-  {x:-34,z:-49.5,w:17,d:.5},{x:-42.5,z:-43,w:.5,d:13},{x:-25.5,z:-43,w:.5,d:13},
-  {x:34,z:-35.7,w:23,d:.6},{x:22.5,z:-27,w:.5,d:18},{x:45.5,z:-27,w:.5,d:18},
-  {x:-19,z:-13,w:4,d:4},{x:19,z:-13,w:4,d:4},
+  // Only the visible back walls and the six visible posts block an open pavilion.
+  ...pavilionLayouts.flatMap(p=>[
+    {x:p.x,z:p.z-p.d/2+.15,w:p.w,d:.2,height:4.3},
+    ...[-1,1].flatMap(side=>[-1,0,1].map(row=>({x:p.x+side*(p.w/2-.4),z:p.z+row*(p.d/2-.5),w:.3,d:.3,height:4.4}))),
+  ]),
+  ...[-19,19].flatMap(x=>[-1,1].flatMap(side=>[-1,1].map(row=>({x:x+side*1.8,z:-13+row*1.8,w:.25,d:.25,height:4.2})))),
+  {x:-19,z:-13,w:1.7,d:1.7,base:1.8,height:1.85},
+  {x:19,z:-13,w:1.9,d:1.3,base:1.7,height:1.9},
+
   {x:BODHI.x,z:BODHI.z,w:BODHI.radius*2,d:BODHI.radius*2,navigationOnly:true},{x:-35,z:42,w:6,d:6},
   ...courtyardTrees.map(t=>({x:t.x,z:t.z,w:COURTYARD_TREE.radius*2,d:COURTYARD_TREE.radius*2,navigationOnly:true})),
-  ...[0,1,2,3].map(i=>({x:30+(i%2)*8,z:-28+Math.floor(i/2)*8,w:2.5,d:3.8})),
+  ...[-1,1].map(side=>({x:-19+side*1.38,z:-13,w:.28,d:.42,height:3.84,base:.4})),
+  ...diningTables.map(t=>({x:t[0],z:t[2],w:2.5,d:2.8,height:.64})),
+  {x:34,z:-33.1,w:17.3,d:1.8,height:1.47},
+  {x:RECEPTION[0],z:RECEPTION[1],w:1.4,d:.85,height:1.36},
+  ...readingTables.map(t=>({x:t[0],z:t[2],w:1.4,d:.7,height:.76})),
+  ...[-40,-36,-32,-28].map(x=>({x,z:-48.3,w:2.7,d:.7,height:2.85})),
+  {x:-33,z:-22,w:6,d:.9,height:1.15},
+  ...teaTables.map(t=>({x:t[0],z:t[2],w:1.6,d:1.2,height:.98})),
 ];
 export function walkable(x:number,z:number,margin=.5) {return x>WORLD.minX+1&&x<WORLD.maxX-1&&z>WORLD.minZ+1&&z<WORLD.maxZ-1&&!pondBlocked(x,z,margin)&&!obstacles.some(o=>Math.abs(x-o.x)<o.w/2+margin&&Math.abs(z-o.z)<o.d/2+margin);}
-export function nearestSeat(p:Vec2,kinds:Seat['kind'][]=['cushion','bench','tea','dining']) {return seats.filter(s=>kinds.includes(s.kind)).sort((a,b)=>distance(p,[a.position[0],a.position[2]])-distance(p,[b.position[0],b.position[2]]))[0];}
+export function nearestSeat(p:Vec2,kinds:Seat['kind'][]=['cushion','bench','tea','dining','reading']) {return seats.filter(s=>kinds.includes(s.kind)).sort((a,b)=>distance(p,[a.position[0],a.position[2]])-distance(p,[b.position[0],b.position[2]]))[0];}
