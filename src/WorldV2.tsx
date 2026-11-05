@@ -35,9 +35,52 @@ function Keyboard(){useEffect(()=>{const down=(e:KeyboardEvent)=>{if((e.target a
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','q','c',' '].includes(k)){e.preventDefault();keys.add(k)}
   if(e.repeat)return;if(k==='e')interact();if(k==='m')s.set({panel:'map'});if(k==='b')s.set({panel:'bag'});if(k==='v')s.set({camera:s.camera==='follow'?'overview':'follow'});if(k==='f')s.set({cameraReset:s.cameraReset+1});if(k==='h')s.set({panel:'help'});
 };const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());const clear=()=>{keys.clear();joy.x=0;joy.y=0};const joystick=(e:Event)=>{Object.assign(joy,(e as CustomEvent).detail)};window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);window.addEventListener('sen-joystick',joystick);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);window.removeEventListener('sen-joystick',joystick)}},[]);return null;}
+const malaCameraAngles=[.72,-.72,1.38,-1.38];
 function CameraRig(){const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1);const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(11.56),lastDistance=useRef(11.56);
-  useFrame(({camera},dt)=>{if(!controls.current)return;const s=useGame.getState(),target=offsetTarget.current,lanternFocus=s.ceremony?.type==='lantern'||s.panel==='lanternMoment';if(lanternFocus)target.set(28,4,35.5);else if(mode==='overview')target.set(0,1,-2);else if(playerMotion.object){playerMotion.object.getWorldPosition(target);followHeight.current=THREE.MathUtils.damp(followHeight.current,s.seated?.55:1.1,8,dt);target.y+=followHeight.current;}else target.set(s.position[0],s.height+1.1,s.position[1]);
-    if(lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus){const direction=s.heading+Math.PI;offset.current.set(Math.sin(direction)*10,5.8,Math.cos(direction)*10);if(mode==='overview')offset.current.set(52,88,100);if(lanternFocus)offset.current.set(-11,5.5,13);camera.position.copy(target).add(offset.current);controls.current.target.copy(target);lastTarget.current.copy(target);lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;requestedDistance.current=lastDistance.current=offset.current.length();}
+  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3());
+  useFrame(({camera},dt)=>{
+    if(!controls.current)return;
+    const s=useGame.getState(),target=offsetTarget.current;
+    const lanternFocus=s.ceremony?.type==='lantern'||s.panel==='lanternMoment';
+    const malaFocus=s.action==='beads'&&mode==='follow'&&!lanternFocus;
+    if(lanternFocus)target.set(28,4,35.5);
+    else if(mode==='overview')target.set(0,1,-2);
+    else if(playerMotion.object){
+      playerMotion.object.getWorldPosition(target);
+      const height=s.seated?(malaFocus?.46:.55):(malaFocus?1.04:1.1);
+      followHeight.current=THREE.MathUtils.damp(followHeight.current,height,8,dt);
+      target.y+=followHeight.current;
+    }else target.set(s.position[0],s.height+1.1,s.position[1]);
+
+    const cameraReset=lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus;
+    if(cameraReset||lastMalaFocus.current!==malaFocus){
+      const heading=playerMotion.object?playerMotion.heading:s.heading;
+      const direction=heading+Math.PI;
+      offset.current.set(Math.sin(direction)*10,5.8,Math.cos(direction)*10);
+      if(mode==='overview')offset.current.set(52,88,100);
+      if(lanternFocus)offset.current.set(-11,5.5,13);
+      if(malaFocus){
+        if(!lastMalaFocus.current){
+          if(cameraReset)beforeMala.current.copy(offset.current);
+          else beforeMala.current.copy(camera.position).sub(lastTarget.current).setLength(requestedDistance.current);
+        }
+        for(const angle of malaCameraAngles){
+          offset.current.set(Math.sin(heading+angle)*2.55,.48,Math.cos(heading+angle)*2.55);
+          ray.current.set(target,viewDirection.current.copy(offset.current).normalize());
+          ray.current.near=.35;ray.current.far=offset.current.length()+.24;
+          hits.current.length=0;
+          ray.current.intersectObjects(cameraOccluders,false,hits.current);
+          if(hits.current.length===0)break;
+        }
+      }else if(lastMalaFocus.current&&!cameraReset){
+        offset.current.copy(beforeMala.current);
+      }
+      camera.position.copy(target).add(offset.current);
+      controls.current.target.copy(target);
+      lastTarget.current.copy(target);
+      lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;lastMalaFocus.current=malaFocus;
+      requestedDistance.current=lastDistance.current=offset.current.length();
+    }
     const delta=deltaTarget.current.copy(target).sub(lastTarget.current);camera.position.add(delta);controls.current.target.copy(target);lastTarget.current.copy(target);
     if(keys.has('q')||keys.has('c')){offset.current.copy(camera.position).sub(target).applyAxisAngle(new THREE.Vector3(0,1,0),(keys.has('q')?1:-1)*dt);camera.position.copy(target).add(offset.current)}
     if(mode==='follow'&&Math.abs(s.position[0])<12.2&&s.position[1]<-19.8&&s.position[1]>-34.3){

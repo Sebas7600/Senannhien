@@ -1,0 +1,51 @@
+{
+  "height": 512,
+  "variants": [
+    {
+      "width": 1254,
+      "height": 1254,
+      "file": "La_Bo_De_Vang.png",
+      "crop": [
+        269,
+        53,
+        708,
+        1148
+      ],
+      "sourceBytes": 851674,
+      "aspect": 0.6167247386759582
+    },
+    {
+      "width": 1254,
+      "height": 1254,
+      "file": "La_Bo_De_Do_Vang.png",
+      "crop": [
+        269,
+        53,
+        709,
+        1147
+      ],
+      "sourceBytes": 1033699,
+      "aspect": 0.6181342632955537
+    },
+    {
+      "width": 1254,
+      "height": 1254,
+      "file": "La_Bo_De_Xanh.png",
+      "crop": [
+        271,
+        55,
+        704,
+        1143
+      ],
+      "sourceBytes": 969506,
+      "aspect": 0.615923009623797
+    }
+  ],
+  "padding": 4,
+  "cellSize": 256,
+  "width": 512,
+  "bytes": 37106,
+  "rgbaGpuBytesWithMipmaps": 1398100,
+  "source": "La_Bo_De_Texture (2).zip",
+  "file": "bodhi-leaves-v1.webp"
+}

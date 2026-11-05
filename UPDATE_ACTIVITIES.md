@@ -47,6 +47,8 @@ Kiểm chứng bản này: 94/94 kiểm thử đạt, TypeScript/production buil
 
 Tích hợp main ngày 05/11: nhận main `58f45e6`, gồm cổng/chuông/trống GLB, tối ưu lá rơi, nhiệm vụ gánh nước và khu Quan Âm. Giữ hai NPC bếp/phục vụ cùng khay liên tục, sửa nối áo, hoành phi, nến dùng chung, bồ đoàn trà và hồ/cầu cong. Nhận bố trí mới 40 bồ đoàn chánh điện và 9 ghế đá từ main; tổng hiện tại 128 bồ đoàn + 18 chỗ ghế đá = 146 chỗ. Áp dụng tối ưu một batch bồ đoàn ở chất lượng thấp, đồng thời giữ kích thước và độ nâng chỗ ngồi theo mẫu Trúc Lâm. Giữ đường âm thanh qua JavaScript chunk/data URL và âm chén đồng tổng hợp để tránh IDM bắt link media. Kiểm chứng: 123/123 kiểm thử, production build, audit:assets và audit:water đạt; lần này chưa kiểm tra lại UI remote.
 
+Theo lựa chọn của bạn, nhập tiếp Wayne-Update `c2acbbe` ngày 05/11: chổi GLB, lá bồ đề dùng atlas, quét theo vùng tiếp xúc đầu chổi, bộ đếm lá và chuỗi hạt có thao tác lần từng hạt cùng camera cận cảnh. Ghép các động tác tay và đạo cụ với rig phục vụ món hiện tại; giữ serveFrame, áo liền eo, tạp dề/khăn đầu cô An và động tác nấu. Bộ kiểm thử mới được chia thành client/server, đồng thời giữ các kiểm thử bếp, rig và cầu sen, cùng bước sinh audio tránh IDM khi dev/build/test. Kết quả cuối: 127 kiểm thử client + 5 server = 132/132 đạt; build, audit:assets và audit:water đạt. Đã mở bản build cuối qua trình duyệt, xem chổi mới, bấm lần một hạt tăng bộ đếm, gọi mì và xác nhận món đặt lên bàn cùng hai NPC trở về vị trí nghỉ; không có lỗi JavaScript trong lần kiểm tra. Ảnh tràng hạt ở artifacts/merged-wayne-prayer-beads.jpg (không commit). Chưa đo FPS trên điện thoại thật hoặc chạy lại toàn bộ UI của 17 hoạt động.
+
 ## Kiểm chứng
 
 - TypeScript và production build đạt.
@@ -63,7 +65,7 @@ npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. Có sẵn package script test cho toàn bộ 94 kiểm thử. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 127 kiểm thử client và 5 kiểm thử server (tổng 132); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 

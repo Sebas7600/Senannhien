@@ -1,5 +1,6 @@
 import {test,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
+import {BEAD_STEP_MS,MALA_BEADS,sampleBeadMotion} from '../src/beadMotion';
 const memory=new Map<string,string>();
 Object.defineProperty(globalThis,'window',{value:{localStorage:{getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>memory.set(k,v),removeItem:(k:string)=>memory.delete(k)}}});
 const {useGame,emptyProgress,localDay}=await import('../src/gameStore.ts');
@@ -7,6 +8,48 @@ const {seats,dishes,places,distance,walkable}=await import('../src/gameData.ts')
 const {findPath,clearLine}=await import('../src/navigation.ts');
 const defaults=useGame.getInitialState();
 beforeEach(()=>useGame.setState({...defaults,inventory:{...defaults.inventory},progress:emptyProgress(),lifetime:emptyProgress(),day:localDay(),position:[0,22],peers:[],claimed:[],badges:[],visited:[],tasted:[],readBooks:[],plots:{},wishes:[]},true));
+test('one deliberate press advances one mala bead and each round reverses before the marker',()=>{
+  const originalNow=Date.now;
+  let now=originalNow();
+  Date.now=()=>now;
+  try{
+    useGame.getState().advanceBead();
+    assert.equal(useGame.getState().progress.beads,0);
+    useGame.getState().perform('beads');
+    useGame.getState().advanceBead();
+    useGame.getState().advanceBead();
+    assert.equal(useGame.getState().progress.beads,1);
+    now+=BEAD_STEP_MS;
+    useGame.getState().advanceBead();
+    assert.equal(useGame.getState().progress.beads,2);
+    assert.equal(useGame.getState().merit,0);
+    const motion={offset:0,pull:0,direction:0};
+    const last=sampleBeadMotion(MALA_BEADS,BEAD_STEP_MS,false,motion).offset;
+    assert.equal(sampleBeadMotion(MALA_BEADS+1,BEAD_STEP_MS,false,motion).offset,last);
+    assert.equal(motion.direction,-1);
+    const reversed=sampleBeadMotion(MALA_BEADS+2,BEAD_STEP_MS/2,false,motion);
+    assert.ok(reversed.offset<last&&reversed.pull>.8);
+    assert.equal(sampleBeadMotion(MALA_BEADS+2,0,true,motion).pull,0);
+  }finally{Date.now=originalNow;}
+});
+test('sweeping pays only for completed groups of ten new leaves and keeps the remainder across days',()=>{
+  useGame.setState({merit:20,lifetime:{...emptyProgress(),sweep:17}});
+  const state=useGame.getState;
+  state().record('sweep',9);
+  assert.equal(state().merit,20);
+  assert.equal(state().sweepRemainder,9);
+  useGame.setState({day:'2000-1-1'});
+  state().record('sweep');
+  assert.equal(state().progress.sweep,1);
+  assert.equal(state().sweepRemainder,0);
+  assert.equal(state().merit,21);
+  state().record('sweep',23);
+  assert.equal(state().lifetime.sweep,50);
+  assert.equal(state().sweepRemainder,3);
+  assert.equal(state().merit,23);
+  state().claim('sweep');
+  assert.equal(state().merit,23);
+});
 test('146 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
   assert.equal(seats.length,146);assert.equal(new Set(seats.map(s=>s.id)).size,146);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
 
