@@ -4,7 +4,7 @@ import {statSync} from 'node:fs';
 import * as THREE from 'three';
 import {CUSHION} from '../src/cushionData';
 import {cushionNearGeometry,cushionFarGeometry} from '../src/cushionGeometry';
-import {seats,walkable} from '../src/gameData';
+import {seats,walkable,usesFloorSeat,surfaceHeight} from '../src/gameData';
 import {findPath,clearLine} from '../src/navigation';
 test('woven cushions keep one indexed mesh per LOD, consistent bounds and a small texture download',()=>{
   assert.ok(cushionNearGeometry.index!.count/3<=1000);assert.ok(cushionFarGeometry.index!.count/3<=500);
@@ -20,4 +20,17 @@ test('the rounded seat surface supports the seated avatar and uses centered plan
 test('all 68 indoor and 8 bamboo cushions remain reachable with their existing IDs and raised seat anchors',()=>{
   const cushions=seats.filter(s=>s.kind==='cushion');assert.equal(cushions.length,76);assert.equal(cushions.filter(s=>s.zone==='temple').length,48);assert.equal(cushions.filter(s=>s.zone==='hall').length,20);
   for(const s of cushions){const base=s.zone==='temple'?2.28-CUSHION.seatLift:s.zone==='hall'?.4:.06;assert.ok(Math.abs(s.position[1]-CUSHION.seatLift-base)<1e-8);assert.ok(walkable(s.position[0],s.position[2]));const path=findPath([0,22],[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from:[number,number]=[0,22];for(const p of path){assert.ok(clearLine(from,p),s.id);from=p;}}
+});
+
+
+test('all 136 floor seats share the Truc Lam cushion anchors and keep clear accessible approaches',()=>{
+  const cushions=seats.filter(usesFloorSeat);assert.equal(cushions.length,136);assert.equal(seats.length,156);
+  for(const seat of cushions.filter(s=>s.table)){
+    assert.ok(Math.abs(seat.position[1]-CUSHION.seatLift-surfaceHeight(seat.position[0],seat.position[2]))<1e-8);
+    assert.ok(walkable(seat.position[0],seat.position[2]),seat.id);
+    const path=findPath([0,22],[seat.position[0],seat.position[2]]);assert.ok(path.length,seat.id);
+    let from:[number,number]=[0,22];for(const point of path){assert.ok(clearLine(from,point),seat.id);from=point;}
+    const table=seat.table!;assert.ok(table[1]-seat.position[1]>.2&&table[1]-seat.position[1]<.4,'Low table clears seated legs');
+  }
+  for(let i=0;i<10;i++){const pair=cushions.filter(s=>s.id===`tea-${i*2}`||s.id===`tea-${i*2+1}`);assert.equal(pair.length,2);assert.equal(pair[0].table,pair[1].table);assert.ok(Math.cos(pair[0].rotation)*(pair[0].table![2]-pair[0].position[2])>0);assert.ok(Math.cos(pair[1].rotation)*(pair[1].table![2]-pair[1].position[2])>0);}
 });

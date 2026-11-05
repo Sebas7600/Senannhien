@@ -2,7 +2,7 @@ import {useLayoutEffect,useRef} from 'react';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {Box} from './models';
-import {SacredFlame,IncenseSmoke} from './FireEffects';
+import {SacredCandle,SacredFlames,IncenseSmoke} from './FireEffects';
 import {readingTables,teaTables,diningTables,RECEPTION,type Vec3} from './gameData';
 
 function transformed(g:THREE.BufferGeometry,p:Vec3=[0,0,0],r:Vec3=[0,0,0],scale:Vec3=[1,1,1]){
@@ -10,13 +10,13 @@ function transformed(g:THREE.BufferGeometry,p:Vec3=[0,0,0],r:Vec3=[0,0,0],scale:
 }
 const ceramic=new THREE.MeshStandardMaterial({color:'#9eaf91',roughness:.42});
 const wax=new THREE.MeshStandardMaterial({color:'#f0dfb3',roughness:.8});
-const flameMaterial=new THREE.MeshBasicMaterial({color:'#ffe0a0'});
 const wood=new THREE.MeshStandardMaterial({color:'#9b7954',roughness:.85});
 const candleGeometry=mergeGeometries([
   new THREE.CylinderGeometry(.055,.055,.18,10),
   transformed(new THREE.CylinderGeometry(.085,.085,.025,12),[0,-.09,0]),
 ]);
-const flameGeometry=transformed(new THREE.SphereGeometry(1,8,6),[0,.14,0],[0,0,0],[.025,.065,.025]);
+const wickGeometry=transformed(new THREE.CylinderGeometry(.006,.006,.025,5),[0,.102,0]);
+const wickMaterial=new THREE.MeshBasicMaterial({color:'#50342a'});
 const teapotGeometry=mergeGeometries([
   new THREE.LatheGeometry([[0,0],[.11,0],[.17,.08],[.18,.17],[.14,.26],[.08,.29]].map(([x,y])=>new THREE.Vector2(x,y)),18),
   transformed(new THREE.SphereGeometry(.1,12,6),[0,.29,0],[0,0,0],[1,.28,1]),
@@ -34,10 +34,11 @@ function Instances({points,geometry,material}:{points:Vec3[];geometry:THREE.Buff
   return <instancedMesh ref={ref} args={[geometry,material,points.length]} dispose={null}/>;
 }
 const readingCandles:Vec3[]=readingTables.map(t=>[t[0]+.5,t[1]+.10,t[2]-.1]);
+const readingFlames=readingCandles.map((p,i)=>({position:[p[0],p[1]+.099,p[2]] as Vec3,scale:.8,seed:i*.73}));
 const teapots:Vec3[]=teaTables.map(t=>[t[0]-.24,t[1]+.015,t[2]-.16]);
 const chopsticks:Vec3[]=diningTables.map(t=>[t[0],t[1]+.01,t[2]-.82]);
 export function TableAccessories(){return <group dispose={null}>
-  <Instances points={readingCandles} geometry={candleGeometry} material={wax}/><Instances points={readingCandles} geometry={flameGeometry} material={flameMaterial}/>
+  <Instances points={readingCandles} geometry={candleGeometry} material={wax}/><Instances points={readingCandles} geometry={wickGeometry} material={wickMaterial}/><SacredFlames points={readingFlames}/>
   <Instances points={teapots} geometry={teapotGeometry} material={ceramic}/>
   <Instances points={chopsticks} geometry={holderGeometry} material={ceramic}/><Instances points={chopsticks} geometry={chopsticksGeometry} material={wood}/>
 </group>}
@@ -49,9 +50,7 @@ function LotusCup({position,scale=1}:{position:Vec3;scale?:number}){return <grou
 </group>}
 function AltarCandle({x}:{x:number}){return <group position={[x,0,.05]}>
   <LotusCup position={[0,0,0]}/>
-  <mesh position={[0,.33,0]}><cylinderGeometry args={[.065,.07,.46,12]}/><meshStandardMaterial color="#f5deb0"/></mesh>
-  <mesh position={[0,.571,0]}><cylinderGeometry args={[.008,.008,.03,5]}/><meshBasicMaterial color="#50342a"/></mesh>
-  <SacredFlame position={[0,.58,0]} scale={1.15} seed={x}/>
+  <SacredCandle position={[0,.1,0]} height={.46} radius={.067} flameScale={1.15} seed={x}/>
 </group>}
 function FlowerVase({x}:{x:number}){return <group position={[x,.02,-.10]}>
   <mesh><latheGeometry args={[[[.14,0],[.21,.05],[.25,.23],[.17,.43],[.10,.52],[.12,.55]].map(([a,b])=>new THREE.Vector2(a,b)),20]}/><meshStandardMaterial color="#a8b4aa" roughness={.32} metalness={.18}/></mesh>

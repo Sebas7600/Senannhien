@@ -1,12 +1,12 @@
 import {useLayoutEffect,useRef} from 'react';
 import {useFrame,type ThreeEvent} from '@react-three/fiber';
 import * as THREE from 'three';
-import {seats,type Seat} from './gameData';
+import {seats,usesFloorSeat,type Seat} from './gameData';
 import {CUSHION} from './cushionData';
 import {cushionNearGeometry,cushionFarGeometry} from './cushionGeometry';
 import {useCushionMaterial} from './cushionMaterial';
 import {useGame} from './gameStore';
-export const cushionSeats=seats.filter(s=>s.kind==='cushion');
+export const cushionSeats=seats.filter(usesFloorSeat);
 export default function CushionBatches(){
   const nearMaterial=useCushionMaterial('near'),farMaterial=useCushionMaterial('far');
   const near=useRef<THREE.InstancedMesh>(null),far=useRef<THREE.InstancedMesh>(null),nearItems=useRef<Seat[]>([]),farItems=useRef<Seat[]>([]);

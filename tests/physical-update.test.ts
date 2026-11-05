@@ -1,3 +1,5 @@
+import {CUSHION} from '../src/cushionData';
+import {LOTUS_POND} from '../src/lotusLayout';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import RAPIER from '@dimforge/rapier3d-compat';
@@ -10,7 +12,7 @@ test('five dining tables have twenty distinct floor cushions on the actual floor
   assert.equal(diningTables.length,5);assert.deepEqual(diningTables[4],[34,.64,-25]);
   for(const t of diningTables)assert.equal(seats.filter(s=>s.table===t).length,4);
   for(const s of seats.filter(s=>s.kind==='dining'||s.kind==='tea')){
-    assert.ok(Math.abs(s.position[1]-(s.kind==='dining'?0:.53)-surfaceHeight(s.position[0],s.position[2]))<.001,s.id);
+    assert.ok(Math.abs(s.position[1]-CUSHION.seatLift-surfaceHeight(s.position[0],s.position[2]))<.001,s.id);
   }
 });
 
@@ -100,5 +102,5 @@ test('lotuses remain on the water while silk lanterns rise, with allocation-free
   const out={position:[0,0,0] as [number,number,number],rotation:0,scale:1},position=out.position;
   assert.equal(lanternPose(LANTERN_RISE,123,false,out),out);assert.equal(out.position,position);assert.ok(out.position[1]>7);
   const point:[number,number,number]=[0,0,0];
-  for(let i=0;i<6;i++)for(let seconds=0;seconds<300;seconds+=5){assert.equal(floatingLotusPose(seconds,i,point),point);assert.ok(point[1]>=.13&&point[1]<=.17);assert.ok(point[2]<37.5);assert.ok(((point[0]-28)/12)**2+((point[2]-39)/9)**2<1);}
+  for(let i=0;i<6;i++)for(let seconds=0;seconds<300;seconds+=5){assert.equal(floatingLotusPose(seconds,i,point),point);assert.ok(point[1]>=LOTUS_POND.waterY+.045&&point[1]<=LOTUS_POND.waterY+.085);assert.ok(point[2]<37.5);assert.ok(((point[0]-28)/12)**2+((point[2]-39)/9)**2<1);}
 });

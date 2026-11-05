@@ -1,3 +1,4 @@
+import {CUSHION} from '../src/cushionData';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {seats,usesFloorSeat,diningTables,npcs,RECEPTION,RECEPTION_HEADING,walkable,surfaceHeight} from '../src/gameData';
@@ -5,12 +6,12 @@ import {flameFlicker} from '../src/fireMotion';
 
 test('dining floor posture clears cushions and low tabletops; local and remote avatars share the posture rule',()=>{
   for(const s of seats.filter(s=>s.kind==='dining')){
-    assert.ok(usesFloorSeat(s));assert.equal(s.position[1],surfaceHeight(s.position[0],s.position[2]));
+    assert.ok(usesFloorSeat(s));assert.equal(s.position[1],surfaceHeight(s.position[0],s.position[2])+CUSHION.seatLift);
     const t=s.table!;assert.ok(Math.abs(s.position[0]-t[0])-.36>1.25,'Crossed legs clear the table edge');
-    assert.ok(t[1]-s.position[1]>.4&&t[1]-s.position[1]<.55);
+    assert.ok(t[1]-s.position[1]>.25&&t[1]-s.position[1]<.35);
   }
   assert.equal(diningTables.length,5);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
-  assert.ok(seats.filter(s=>s.kind==='tea').every(s=>!usesFloorSeat(s)));
+  assert.ok(seats.filter(s=>s.kind==='tea').every(s=>usesFloorSeat(s)));
 });
 test('reception staff stands behind the desk facing the open entrance with a reachable guest side',()=>{
   const cook=npcs.find(n=>n.id==='cook')!;assert.equal(cook.x,RECEPTION[0]);assert.ok(cook.z<RECEPTION[1]-.8);assert.equal(RECEPTION_HEADING,0);

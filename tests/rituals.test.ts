@@ -1,3 +1,4 @@
+import {LOTUS_POND} from '../src/lotusLayout';
 import {test,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 const memory=new Map<string,string>();
@@ -10,7 +11,7 @@ const {bellAngle,lanternPose,BELL_DURATION,LANTERN_RISE,LANTERN_LIFETIME,MAX_LAN
 const defaults=useGame.getInitialState();
 beforeEach(()=>useGame.setState({...defaults,inventory:{...defaults.inventory},wishes:[],flights:[]},true));
 
-test('20 individual reading desks and 10 tables with two opposing tea chairs have safe exits',()=>{
+test('20 individual reading desks and 10 tables with two opposing tea cushions have safe exits',()=>{
   assert.equal(readingTables.length,20);assert.equal(teaTables.length,10);
   assert.equal(seats.filter(s=>s.kind==='reading').length,20);
   for(const table of teaTables){const pair=seats.filter(s=>s.table===table);assert.equal(pair.length,2);assert.ok(Math.abs(pair[0].rotation-pair[1].rotation)===Math.PI);assert.equal((pair[0].position[2]+pair[1].position[2])/2,table[2]);}
@@ -40,7 +41,7 @@ test('bell waits for the full decaying swing and does not interrupt another open
 
 test('wishes require the station, consume once, rise from the pond and reveal only at flight height',()=>{
   let now=Date.now();const original=Date.now;Date.now=()=>now;
-  try{useGame.getState().releaseWish('too far');assert.equal(useGame.getState().inventory.lantern,5);useGame.setState({position:WISH_STATION});useGame.getState().releaseWish('  Bình an  ');const at=now;assert.equal(useGame.getState().wishes[0].text,'Bình an');assert.equal(useGame.getState().inventory.lantern,4);assert.equal(useGame.getState().panel,null);useGame.getState().releaseWish('duplicate');assert.equal(useGame.getState().inventory.lantern,4);assert.deepEqual(lanternPose(0,at).position,[28,.35,35.5]);const top=lanternPose(LANTERN_RISE,at).position;assert.ok(top[1]>7);const after=lanternPose(LANTERN_RISE+1,at).position;assert.ok(Math.hypot(...top.map((v,i)=>v-after[i]))<.01);now=at+LANTERN_RISE-1;useGame.getState().tick();assert.equal(useGame.getState().panel,null);now++;useGame.getState().tick();assert.equal(useGame.getState().panel,'lanternMoment');assert.equal(useGame.getState().reflectionWish,'Bình an');assert.equal(lanternPose(LANTERN_LIFETIME,at).scale,0);now=at+LANTERN_LIFETIME;useGame.getState().tick();assert.equal(useGame.getState().flights.length,0);}finally{Date.now=original}
+  try{useGame.getState().releaseWish('too far');assert.equal(useGame.getState().inventory.lantern,5);useGame.setState({position:WISH_STATION});useGame.getState().releaseWish('  Bình an  ');const at=now;assert.equal(useGame.getState().wishes[0].text,'Bình an');assert.equal(useGame.getState().inventory.lantern,4);assert.equal(useGame.getState().panel,null);useGame.getState().releaseWish('duplicate');assert.equal(useGame.getState().inventory.lantern,4);assert.deepEqual(lanternPose(0,at).position,[28,LOTUS_POND.waterY+.265,35.5]);const top=lanternPose(LANTERN_RISE,at).position;assert.ok(top[1]>7);const after=lanternPose(LANTERN_RISE+1,at).position;assert.ok(Math.hypot(...top.map((v,i)=>v-after[i]))<.01);now=at+LANTERN_RISE-1;useGame.getState().tick();assert.equal(useGame.getState().panel,null);now++;useGame.getState().tick();assert.equal(useGame.getState().panel,'lanternMoment');assert.equal(useGame.getState().reflectionWish,'Bình an');assert.equal(lanternPose(LANTERN_LIFETIME,at).scale,0);now=at+LANTERN_LIFETIME;useGame.getState().tick();assert.equal(useGame.getState().flights.length,0);}finally{Date.now=original}
 });
 
 test('lantern pool is bounded, arbitrary text stays text, and no runtime flight state is persisted',()=>{

@@ -37,6 +37,14 @@ Cô An ngày 04/11: thời gian nấu thay thành 3.000 ms. Mốc `counterReadyA
 
 Sửa dáng đặt khay ngày 05/11: thân trên trước đây dịch về phía trước trong khi vạt áo và chân đứng yên, tạo khe hở ngang eo ở cả Cô An và Cô Tâm. Vạt áo riêng của từng NPC nay nối khít với vòng eo của thân trên, uốn theo hông và đầu gối; hai chân gập với chiều dài cố định và bàn chân giữ trên sàn. Tư thế cúi, hạ hông và đứng lên được chuyển tiếp mềm. Geometry trang phục dùng chung của các nhân vật khác không bị sửa; geometry riêng được tái sử dụng, bỏ qua cập nhật khi tư thế không đổi và giải phóng khi NPC bị tháo. Toàn bộ 90/90 kiểm thử và production build đạt, gồm kiểm tra đường nối áo, chân và chuyển tiếp ở bước thời gian tương ứng 15/30/60 FPS. Đã xem cận cảnh cả hai NPC bằng trình duyệt với chính model và bộ lấy mẫu chuyển động của game; ảnh ở artifacts/co-tam-rig-fixed.jpg và co-an-rig-fixed.jpg (không commit). Đây là kiểm tra tư thế trong cảnh thử riêng, chưa phải đo FPS trên điện thoại thật hay chạy lại toàn bộ quy trình gọi món.
 
+Đồng bộ bồ đoàn, nến và hồ sen ngày 05/11: 20 ghế trà được thay bằng bồ đoàn ngồi bệt đối diện nhau; bàn trà hạ còn cao 0,77. Toàn bộ 136 chỗ ngồi bệt (chánh điện, thiền đường, rừng trúc, nhà ăn, thư viện và trà đình) dùng chung mẫu Liên Thủy của Trúc Lâm, chia hai LOD và tối đa hai lượt vẽ chính. Các ID chỗ ngồi được giữ, điểm ngồi nhà ăn/thư viện/trà nâng theo mặt bồ đoàn và dùng cùng quy tắc tư thế cho người chơi cục bộ/từ mạng. Sơ đồ chỗ ngồi và hướng dẫn gọi món dùng tên bồ đoàn.
+
+Nến Trúc Lâm, nến trong sen nổi và nến trong lồng đèn dùng chung SacredCandle; 20 nến đọc sách dùng cùng hiệu ứng SacredFlames ba lớp (lõi sáng, lửa vàng và quầng ấm), gom thành ba instanced mesh. Tim nến, nhấp nháy và chế độ giảm chuyển động được dùng chung; không thêm point light hoặc bóng đổ cho từng nến. LanternSkin tiếp tục giữ các điểm neo để thay mẫu lồng đèn sau này.
+
+Mặt hồ sen hạ 0,56 đơn vị, tương đương khoảng một phần ba chiều cao nhân vật. Hai lớp nền đất được khoét lòng hồ và có bờ dốc; gạch lối đi không còn lấn ra mặt nước. Sen tĩnh, sen mang nến và điểm đèn bắt đầu bay cùng theo mặt nước mới, đèn vẫn lên đến độ cao cũ trước khi mở popup. Cầu mới có hai hàng lan can uốn, mố đá và ván mặt cầu theo vòm nhẹ: đỉnh cao hơn hai đầu 0,72 đơn vị. Mặt cầu hiển thị, va chạm Rapier, hỗ trợ bước lên và floorAt dùng chung profile; hai đầu nối sân ở cao độ 0,06. Chặn lòng hồ theo hình ellipse và giữ lối đi giữa cầu.
+
+Kiểm chứng bản này: 94/94 kiểm thử đạt, TypeScript/production build và audit:assets đạt. Kiểm thử gồm raycast qua lòng hồ, đo mặt cầu thật bằng raycast, capsule Rapier đi qua cầu cả hai chiều, lối đi đến đủ 136 bồ đoàn, giữ 20 điểm phục vụ món và sen/đèn theo mặt nước mới. Đã trực tiếp ngồi uống trà, đọc sách, ngồi ăn, đi lên cầu và thả đèn trong game; xem khung điện thoại 390 × 844, điện thoại ngang 960 × 540 và tablet 1180 × 820. Đã xem cận cảnh ba mẫu nến bằng source thật trong cảnh thử riêng. Ảnh lưu trong artifacts/ với hậu tố 20261105; không commit ảnh hoặc cảnh thử. Chưa đo FPS trên điện thoại thật.
+
 ## Kiểm chứng
 
 - TypeScript và production build đạt.
@@ -53,7 +61,7 @@ npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. Có sẵn package script test cho toàn bộ 81 kiểm thử. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. Có sẵn package script test cho toàn bộ 94 kiểm thử. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 
