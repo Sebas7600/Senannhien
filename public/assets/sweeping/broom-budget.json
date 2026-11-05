@@ -1,0 +1,33 @@
+{
+  "source": "Choi_Can_Go_Web (2).zip",
+  "sourceBytes": 947436,
+  "sourceSha256": "e87714da3fa4ba558990abf0d36d14f74b0b56d4c06814ef343e706688a58ffb",
+  "sourceTriangles": 21856,
+  "headPivotY": 0.39,
+  "handleMinY": 0.355,
+  "handleMaxY": 1.236,
+  "assets": [
+    {
+      "file": "broom-v1.glb",
+      "bytes": 201344,
+      "triangles": 9001,
+      "draws": 3,
+      "decodedGeometryBytes": 283952
+    },
+    {
+      "file": "broom-v1-low.glb",
+      "bytes": 82872,
+      "triangles": 2988,
+      "draws": 3,
+      "decodedGeometryBytes": 106280
+    }
+  ],
+  "textures": [
+    {
+      "file": "broom-wood-v1.jpg",
+      "bytes": 116984,
+      "width": 512,
+      "height": 512
+    }
+  ]
+}
