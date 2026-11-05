@@ -1,4 +1,4 @@
-import {memo,useMemo,useRef} from 'react';
+import {memo,useEffect,useMemo,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {useGLTF} from '@react-three/drei';
 import * as THREE from 'three';
@@ -10,8 +10,10 @@ import type {DishId} from './gameData';
 import {useReducedMotion} from './useReducedMotion';
 import {Food} from './Food';
 import type {ServeFrame} from './mealService';
+import {createServiceGarment,updateServiceGarment,serviceBodyForward,serviceKnee} from './serviceRig';
 export interface CharacterProps{robe?:string;dish?:DishId;pose?:string;moving?:boolean;chair?:boolean;seated?:boolean;gender?:'male'|'female';skin?:string;robeStyle?:'traditional'|'cross';bowStartedAt?:number;bowMode?:BowMode;bowElapsed?:number;serveFrame?:{current:ServeFrame};apron?:boolean}
 const yAxis=new THREE.Vector3(0,1,0);
+const shoeMaterial=new THREE.MeshStandardMaterial({color:'#4c463a',roughness:.85});
 const skinCache=new Map<string,THREE.MeshStandardMaterial>();
 function skinMaterial(color:string,vertexColors=false){const key=color+vertexColors;let m=skinCache.get(key);if(!m){m=new THREE.MeshStandardMaterial({color,roughness:.57,metalness:0,vertexColors});skinCache.set(key,m)}return m;}
 function Head({gender,skin,calm}:{gender:'male'|'female';skin:string;calm:boolean}){const {scene}=useGLTF('/assets/models/human-head.glb');const geometry=useMemo(()=>{let found:THREE.BufferGeometry|null=null;scene.traverse(o=>{if(o instanceof THREE.Mesh)found=o.geometry});return found!},[scene]);const skinMat=skinMaterial(skin,true);return <group scale={[gender==='female'?.95:1,1,gender==='female'?.97:1]}><mesh geometry={geometry} material={skinMat} castShadow receiveShadow/>{[-1,1].map(s=><group key={s} position={[s*.0415,.1598,.1478]}><mesh scale={[1,calm?.10:1,1]}><sphereGeometry args={[.0208,16,12]}/><meshStandardMaterial color="#dbd4c7" roughness={.28}/></mesh>{!calm&&<><mesh position={[0,0,.020]}><sphereGeometry args={[.0075,12,8]}/><meshStandardMaterial color="#5d4735" roughness={.4}/></mesh><mesh position={[0,0,.025]}><sphereGeometry args={[.0035,10,6]}/><meshStandardMaterial color="#242820"/></mesh><mesh position={[.0015,.0025,.027]}><sphereGeometry args={[.0013,6,4]}/><meshBasicMaterial color="#f5f1df"/></mesh></>}</group>)}{[-1,1].map(s=><mesh key={s} position={[s*.043,.191,.143]} rotation={[0,0,Math.PI/2+s*.08]}><capsuleGeometry args={[.0025,.032,3,8]}/><meshStandardMaterial color="#574a3a" roughness={.9}/></mesh>)}</group>}
@@ -19,22 +21,25 @@ function Hand({material}:{material:THREE.Material}){return <group><mesh material
 function setSegment(group:THREE.Group|null,a:THREE.Vector3,b:THREE.Vector3,radius:number,work:THREE.Vector3){if(!group)return;group.position.copy(a);work.copy(b).sub(a);group.scale.set(radius,work.length(),radius);group.quaternion.setFromUnitVectors(yAxis,work.normalize());}
 function RealisticCharacter({robe='#9b704a',dish='noodles',pose='walk',moving=false,chair=false,seated=false,gender='male',skin='#c99c79',robeStyle='traditional',bowStartedAt,bowMode,bowElapsed,serveFrame,apron=false}:CharacterProps){
   const reduced=useReducedMotion(),bookLeaf=useRef<THREE.Group>(null);
+  const serviceGarment=useMemo(()=>serveFrame?createServiceGarment():null,[serveFrame]),kneePoint=useRef({y:0,z:0});
+  useEffect(()=>()=>serviceGarment?.geometry.dispose(),[serviceGarment]);
   const walkLegs=useRef<THREE.Group>(null),kneelLegs=useRef<THREE.Group>(null),thighL=useRef<THREE.Mesh>(null),thighR=useRef<THREE.Mesh>(null),shinL=useRef<THREE.Mesh>(null),shinR=useRef<THREE.Mesh>(null),kneeL=useRef<THREE.Mesh>(null),kneeR=useRef<THREE.Mesh>(null),footL=useRef<THREE.Mesh>(null),footR=useRef<THREE.Mesh>(null),bowFrame=useRef({kneel:0,bend:0,reach:0,done:false});
   const waterDrops=useRef<THREE.Group>(null);const root=useRef<THREE.Group>(null),upper=useRef<THREE.Group>(null),head=useRef<THREE.Group>(null),armL=useRef<THREE.Group>(null),armR=useRef<THREE.Group>(null),foreL=useRef<THREE.Group>(null),foreR=useRef<THREE.Group>(null),handL=useRef<THREE.Group>(null),handR=useRef<THREE.Group>(null),legL=useRef<THREE.Group>(null),legR=useRef<THREE.Group>(null),coat=useRef<THREE.Mesh>(null);
-  const robeMaterial=useSurface('cloth',robe),trimMaterial=useSurface('cloth',new THREE.Color(robe).multiplyScalar(.75).getStyle()),skinMat=skinMaterial(skin),blend=useRef({prayer:0,eat:0,bend:0,hips:.84,gait:0,kneel:0,reach:0}),points=useRef(Array.from({length:8},()=>new THREE.Vector3())),work=useRef(new THREE.Vector3()),lastPose=useRef(pose),bowTime=useRef(-1);
+  const robeMaterial=useSurface('cloth',robe),trimMaterial=useSurface('cloth',new THREE.Color(robe).multiplyScalar(.75).getStyle()),skinMat=skinMaterial(skin),blend=useRef({prayer:0,eat:0,bend:0,hips:.84,gait:0,kneel:0,reach:0,forward:0}),points=useRef(Array.from({length:8},()=>new THREE.Vector3())),work=useRef(new THREE.Vector3()),lastPose=useRef(pose),bowTime=useRef(-1);
   useFrame(({clock},dt)=>{const t=clock.elapsedTime;if(waterDrops.current)waterDrops.current.children.forEach((drop,i)=>{const f=(t*1.7+i/7)%1;drop.position.set(Math.sin(i*2.4)*.045,-.04-f*.45,.3+f*.21)});const b=blend.current,mode=bowMode||(seated&&!chair?'cushion':'standing');const prayer=['incense','flower','candle','pray','beads','chant','meditate','bow'].includes(pose);if(lastPose.current!==pose||bowTime.current<0){lastPose.current=pose;bowTime.current=t;}
-    if(pose==='bow'){sampleBow(bowElapsed??(bowStartedAt===undefined?t-bowTime.current:(Date.now()-bowStartedAt)/1000),mode,bowFrame.current);b.kneel=mode==='standing'?bowFrame.current.kneel:0;b.bend=bowFrame.current.bend;b.reach=bowFrame.current.reach;}else{b.kneel=THREE.MathUtils.damp(b.kneel,0,10,dt);b.bend=THREE.MathUtils.damp(b.bend,['plant','harvest'].includes(pose)?.38:pose==='water'?.14:['incense','flower','candle'].includes(pose)?Math.sin(Math.min((t-bowTime.current)/3,1)*Math.PI)*.18:0,10,dt);b.reach=THREE.MathUtils.damp(b.reach,0,10,dt)}
-    b.prayer=THREE.MathUtils.damp(b.prayer,prayer?1:0,9,dt);b.eat=THREE.MathUtils.damp(b.eat,pose==='eat'?1:0,7,dt);const hip=seated?(chair?.10:.22):THREE.MathUtils.lerp(.84,.24,b.kneel);b.hips=pose==='bow'?hip:THREE.MathUtils.damp(b.hips,hip,12,dt);b.gait=THREE.MathUtils.damp(b.gait,moving&&!seated&&pose!=='bow'?1:0,10,dt);
+    if(pose==='bow'){sampleBow(bowElapsed??(bowStartedAt===undefined?t-bowTime.current:(Date.now()-bowStartedAt)/1000),mode,bowFrame.current);b.kneel=mode==='standing'?bowFrame.current.kneel:0;b.bend=bowFrame.current.bend;b.reach=bowFrame.current.reach;}else{b.kneel=THREE.MathUtils.damp(b.kneel,0,10,dt);b.bend=THREE.MathUtils.damp(b.bend,pose==='serve'&&serveFrame?serveFrame.current.bend:pose==='cook'?.1:['plant','harvest'].includes(pose)?.38:pose==='water'?.14:['incense','flower','candle'].includes(pose)?Math.sin(Math.min((t-bowTime.current)/3,1)*Math.PI)*.18:0,pose==='serve'?18:10,dt);b.reach=THREE.MathUtils.damp(b.reach,0,10,dt)}
+    b.prayer=THREE.MathUtils.damp(b.prayer,prayer?1:0,9,dt);b.eat=THREE.MathUtils.damp(b.eat,pose==='eat'?1:0,7,dt);const hip=pose==='serve'&&serveFrame?serveFrame.current.hips:seated?(chair?.10:.22):THREE.MathUtils.lerp(.84,.24,b.kneel);b.hips=pose==='bow'?hip:THREE.MathUtils.damp(b.hips,hip,pose==='serve'?18:12,dt);b.gait=THREE.MathUtils.damp(b.gait,moving&&!seated&&pose!=='bow'?1:0,10,dt);
     if(bookLeaf.current)bookLeaf.current.rotation.z=reduced?0:Math.sin(t*.7)*.28;
-    if(pose==='serve'&&serveFrame){b.bend=serveFrame.current.bend;b.hips=serveFrame.current.hips;}
-    if(pose==='cook')b.bend=.1;
     if(root.current)root.current.position.y=pose==='serve'?0:Math.abs(Math.sin(t*7))*b.gait*.022;
-    const bodyForward=pose==='serve'&&serveFrame?b.bend*.95:b.reach*.08;
+    b.forward=THREE.MathUtils.damp(b.forward,pose==='serve'&&serveFrame?serviceBodyForward(b.bend):0,18,dt);
+    const bodyForward=serveFrame?b.forward:b.reach*.08;
     if(upper.current){upper.current.position.y=b.hips;upper.current.position.z=bodyForward;upper.current.rotation.x=b.bend;upper.current.scale.x=gender==='female'?.95:1;}
     if(head.current)head.current.rotation.x=(['meditate','chant','read'].includes(pose)?.16:0)+b.eat*.07+b.reach*.12;
     if(legL.current&&legR.current){legL.current.rotation.x=Math.sin(t*7)*b.gait*.35;legR.current.rotation.x=-Math.sin(t*7)*b.gait*.35;}
-    if(coat.current){coat.current.rotation.x=Math.sin(t*7)*b.gait*.018;coat.current.scale.set(1,THREE.MathUtils.lerp(1,.32,b.kneel),THREE.MathUtils.lerp(1,2.05,b.kneel));}
-    if(walkLegs.current)walkLegs.current.visible=b.kneel<.001;if(kneelLegs.current)kneelLegs.current.visible=b.kneel>=.001;
+    if(coat.current){coat.current.rotation.x=serviceGarment?0:Math.sin(t*7)*b.gait*.018;coat.current.scale.set(1,THREE.MathUtils.lerp(1,.32,b.kneel),THREE.MathUtils.lerp(1,2.05,b.kneel));}
+    if(serviceGarment)updateServiceGarment(serviceGarment,b.hips,bodyForward,b.bend,gender==='female'?.95:1);
+    const serviceLegs=!!serveFrame&&!seated&&pose!=='bow'&&b.kneel<.001&&b.gait<.04;
+    if(walkLegs.current)walkLegs.current.visible=b.kneel<.001&&!serviceLegs;if(kneelLegs.current)kneelLegs.current.visible=b.kneel>=.001||serviceLegs;
     for(let i=0;i<2;i++){const s=i===0?-1:1,shoulder=points.current[0],elbow=points.current[1],wrist=points.current[2],hand=points.current[3];const swing=Math.sin(t*7+i*Math.PI)*b.gait*.13;
       shoulder.set(s*.193,.42,0);elbow.set(s*.225,.16,.015+swing);wrist.set(s*.205,-.12,.03+swing);if(seated){elbow.set(s*.26,.12,.09);wrist.set(s*.17,-.03,.23)}
       elbow.lerp(points.current[4].set(s*.27,.14,.15),b.prayer);wrist.lerp(points.current[5].set(s*.023,.33,.28),b.prayer);
@@ -58,10 +63,11 @@ function RealisticCharacter({robe='#9b704a',dish='noodles',pose='walk',moving=fa
       }
       setSegment(i?armR.current:armL.current,shoulder,elbow,.10,work.current);setSegment(i?foreR.current:foreL.current,elbow,wrist,.085,work.current);const h=i?handR.current:handL.current;if(h){h.position.copy(wrist);h.rotation.set(THREE.MathUtils.lerp((1-b.prayer)*(seated?-.8:Math.PI),Math.PI/2-b.bend,b.reach),s*b.prayer*Math.PI/2*(1-b.reach),s*.04*(1-b.prayer)*(1-b.reach));if(pose==='serve'&&serveFrame)h.rotation.x=Math.PI/2-b.bend+serveFrame.current.release*Math.PI/2;if(pose==='cook')h.rotation.set(-.4,0,0);}
     }
-    if(b.kneel>.001)for(let i=0;i<2;i++){const side=i?-1:1,hip=points.current[0].set(side*.105,b.hips,0),knee=points.current[1].set(side*THREE.MathUtils.lerp(.105,.17,b.kneel),THREE.MathUtils.lerp(.43,.10,b.kneel),THREE.MathUtils.lerp(.02,.27,b.kneel)),ankle=points.current[2].set(side*.14,.065,THREE.MathUtils.lerp(0,-.23,b.kneel));
+    if(b.kneel>.001||serviceLegs)for(let i=0;i<2;i++){const side=i?-1:1,hip=points.current[0].set(side*.105,b.hips,0),knee=points.current[1].set(side*THREE.MathUtils.lerp(.105,.17,b.kneel),THREE.MathUtils.lerp(.43,.10,b.kneel),THREE.MathUtils.lerp(.02,.27,b.kneel)),ankle=points.current[2].set(side*.14,.065,THREE.MathUtils.lerp(0,-.23,b.kneel));
+      if(serviceLegs){const p=serviceKnee(b.hips,bodyForward,kneePoint.current);hip.set(side*.095,b.hips,bodyForward);knee.set(side*.095,p.y,p.z);ankle.set(side*.095,.065,0);}
       const thigh=i?thighL.current:thighR.current,shin=i?shinL.current:shinR.current;
-      for(let j=0;j<2;j++){const mesh=j?shin:thigh,a=j?knee:hip,z=j?ankle:knee;if(mesh){mesh.position.copy(a).add(z).multiplyScalar(.5);work.current.copy(z).sub(a);const length=work.current.length();mesh.scale.set(.1,length,.1);mesh.quaternion.setFromUnitVectors(yAxis,work.current.normalize())}}
-      (i?kneeL.current:kneeR.current)?.position.copy(knee);const foot=i?footL.current:footR.current;if(foot)foot.position.set(side*.14,.045,THREE.MathUtils.lerp(.07,-.31,b.kneel));
+      for(let j=0;j<2;j++){const mesh=j?shin:thigh,a=j?knee:hip,z=j?ankle:knee;if(mesh){mesh.position.copy(a).add(z).multiplyScalar(.5);work.current.copy(z).sub(a);const length=work.current.length();mesh.scale.set(serviceLegs?.085:.1,length,serviceLegs?.085:.1);mesh.quaternion.setFromUnitVectors(yAxis,work.current.normalize())}}
+      const cap=i?kneeL.current:kneeR.current;if(cap){cap.position.copy(knee);cap.scale.set(serviceLegs?.09:.11,serviceLegs?.075:.09,serviceLegs?.095:.12);}const foot=i?footL.current:footR.current;if(foot)foot.position.set(side*(serviceLegs?.095:.14),serviceLegs?.06:.045,serviceLegs?.06:THREE.MathUtils.lerp(.07,-.31,b.kneel));
     }
   });
   const pants=useMemo(()=>clothGeometry([[0,.10],[.15,.105],[.35,.11],[.58,.105],[.70,.095]],9,.008,1),[]);
@@ -85,14 +91,14 @@ function RealisticCharacter({robe='#9b704a',dish='noodles',pose='walk',moving=fa
       {pose==='beads'&&<mesh position={[0,.29,.33]} rotation={[Math.PI/2,0,0]}><torusGeometry args={[.075,.012,6,27]}/><meshStandardMaterial color="#593c25" roughness={.8}/></mesh>}
     </group>
     <group visible={!seated}>
-      <mesh ref={coat} geometry={skirtCloth} material={robeMaterial} castShadow receiveShadow/>
+      <mesh ref={coat} geometry={serviceGarment?.geometry??skirtCloth} material={robeMaterial} castShadow receiveShadow dispose={null}/>
       <group ref={walkLegs}>
       {[legL,legR].map((ref,i)=><group key={i} ref={ref} position={[i===0?-.095:.095,.8,0]}><mesh position={[0,-.72,0]} geometry={pants} material={trimMaterial} castShadow/><mesh position={[0,-.74,.06]} scale={[.073,.04,.135]} castShadow><sphereGeometry args={[1,16,10]}/><meshStandardMaterial color="#4c463a" roughness={.85}/></mesh></group>)}
       </group>
       <group ref={kneelLegs} visible={false}>
         {[thighL,thighR,shinL,shinR].map((ref,i)=><mesh key={i} ref={ref} material={robeMaterial} castShadow><cylinderGeometry args={[1,1,1,10]}/></mesh>)}
         {[kneeL,kneeR].map((ref,i)=><mesh key={i} ref={ref} scale={[.11,.09,.12]} material={robeMaterial} castShadow><sphereGeometry args={[1,10,6]}/></mesh>)}
-        {[footL,footR].map((ref,i)=><mesh key={i} ref={ref} scale={[.08,.045,.14]} material={trimMaterial} castShadow><sphereGeometry args={[1,10,6]}/></mesh>)}
+        {[footL,footR].map((ref,i)=><mesh key={i} ref={ref} scale={[.08,.045,.14]} material={serveFrame?shoeMaterial:trimMaterial} castShadow><sphereGeometry args={[1,10,6]}/></mesh>)}
       </group>
     </group>
     <group visible={seated&&!chair}>{[-1,1].map(s=><mesh key={s} position={[s*.13,.14,.10]} rotation={[0,s*.65,s*.2]} scale={[.23,.12,.17]} material={robeMaterial} castShadow><sphereGeometry args={[1,24,16]}/></mesh>)}</group>

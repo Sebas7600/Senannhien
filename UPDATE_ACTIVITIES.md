@@ -35,6 +35,8 @@ Cô An ngày 04/11: thời gian nấu thay thành 3.000 ms. Mốc `counterReadyA
 - Lửa và khói dùng chung ở src/FireEffects.tsx; dạng nhấp nháy là hàm thuần src/fireMotion.ts.
 - Đổi bản ghi chuông/nhạc trong public/audio rồi chạy npm run build; scripts/embed-ritual-audio.mjs tạo lại các module trong src/generated (không commit). Các script dev, test và build đều tự chạy bước này. Nguồn và giấy phép nằm trong public/audio/CREDITS.md; tranh và prompt nằm trong public/art/CREDITS.md. Ghi nguồn cũng hiển thị trong Cài đặt.
 
+Sửa dáng đặt khay ngày 05/11: thân trên trước đây dịch về phía trước trong khi vạt áo và chân đứng yên, tạo khe hở ngang eo ở cả Cô An và Cô Tâm. Vạt áo riêng của từng NPC nay nối khít với vòng eo của thân trên, uốn theo hông và đầu gối; hai chân gập với chiều dài cố định và bàn chân giữ trên sàn. Tư thế cúi, hạ hông và đứng lên được chuyển tiếp mềm. Geometry trang phục dùng chung của các nhân vật khác không bị sửa; geometry riêng được tái sử dụng, bỏ qua cập nhật khi tư thế không đổi và giải phóng khi NPC bị tháo. Toàn bộ 90/90 kiểm thử và production build đạt, gồm kiểm tra đường nối áo, chân và chuyển tiếp ở bước thời gian tương ứng 15/30/60 FPS. Đã xem cận cảnh cả hai NPC bằng trình duyệt với chính model và bộ lấy mẫu chuyển động của game; ảnh ở artifacts/co-tam-rig-fixed.jpg và co-an-rig-fixed.jpg (không commit). Đây là kiểm tra tư thế trong cảnh thử riêng, chưa phải đo FPS trên điện thoại thật hay chạy lại toàn bộ quy trình gọi món.
+
 ## Kiểm chứng
 
 - TypeScript và production build đạt.
