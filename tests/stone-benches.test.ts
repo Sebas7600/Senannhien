@@ -6,8 +6,8 @@ import {seats,walkable} from '../src/gameData';
 import {findPath,clearLine} from '../src/navigation';
 import {benchSeatGeometry,benchBackGeometry,benchLegGeometry,STONE_BENCH} from '../src/benchGeometry';
 
-test('ten continuous stone benches provide twenty unique, reachable sitting positions',()=>{
-  const positions=seats.filter(s=>s.kind==='bench');assert.equal(stoneBenches.length,10);assert.equal(positions.length,20);
+test('nine continuous stone benches provide eighteen unique, reachable sitting positions',()=>{
+  const positions=seats.filter(s=>s.kind==='bench');assert.equal(stoneBenches.length,9);assert.equal(positions.length,18);
   for(const b of stoneBenches){const pair=positions.filter(s=>s.id.startsWith(`bench-${b.id}-`));assert.equal(pair.length,2);
     for(const [side,seat] of pair.entries()){assert.deepEqual(seat.position,benchSeatWorld(b,side));assert.ok(walkable(seat.position[0],seat.position[2],.3));
       const path=findPath([0,22],[seat.position[0],seat.position[2]]);assert.ok(path.length,seat.id);let prev:[number,number]=[0,22];for(const p of path){assert.ok(clearLine(prev,p),seat.id);prev=p;}

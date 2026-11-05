@@ -34,7 +34,7 @@ export function createGameServer({now=Date.now}={}){
         if(pathname==='/api/state'){
           const finite=(n,min,max,fallback)=>typeof n==='number'&&Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
           const seat=typeof b.seat==='string'&&b.seat.length<40&&!([...room.peers.values()].some(p=>p.id!==b.id&&p.seat===b.seat))?b.seat:null;
-          const actions=['plant','water','harvest','feed','flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok','read','tea'];
+          const actions=['drawWater','carryWater','pourWater','plant','water','harvest','feed','flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok','read','tea'];
           const meal=b.meal&&['noodles','rice','soup','bread'].includes(b.meal.dish)&&['preparing','ready','eating','finished'].includes(b.meal.status)&&typeof b.meal.seatId==='string'?{dish:b.meal.dish,seatId:b.meal.seatId.slice(0,40),status:b.meal.status,orderedAt:finite(b.meal.orderedAt,0,Date.now()+60000,0),cookedAt:finite(b.meal.cookedAt,0,Date.now()+60000,0),...(Number.isFinite(b.meal.counterReadyAt)?{counterReadyAt:finite(b.meal.counterReadyAt,0,Date.now()+60000,0)}:{}),kitchenAt:finite(b.meal.kitchenAt,0,Date.now()+60000,0),deliveryAt:finite(b.meal.deliveryAt,0,Date.now()+60000,0),homeAt:finite(b.meal.homeAt,0,Date.now()+60000,0),readyAt:finite(b.meal.readyAt,0,Date.now()+60000,0),eatUntil:finite(b.meal.eatUntil,0,Date.now()+60000,0)}:null;
           room.peers.set(b.id,{...peer,name:typeof b.name==='string'?b.name.trim().slice(0,22)||'An Nhiên':peer.name,robe:typeof b.robe==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.robe)?b.robe:peer.robe,gender:b.gender==='female'?'female':'male',skin:typeof b.skin==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.skin)?b.skin:'#c99c79',robeStyle:b.robeStyle==='cross'?'cross':'traditional',x:finite(b.x,-60,60,peer.x),y:finite(b.y,-1,12,peer.y),z:finite(b.z,-66,62,peer.z),heading:finite(b.heading,-100,100,peer.heading),action:actions.includes(b.action)?b.action:'walk',seat,meal,updated:Date.now()});json(res,200,{ok:true,seat});return;
         }
@@ -58,7 +58,7 @@ export function createGameServer({now=Date.now}={}){
           if(!validId(b.operation)||!['incense','flower','candle','feed'].includes(b.kind)){json(res,400,{error:'invalid offering'});return;}
           const key=b.id+':'+b.operation;
           if(room.operations.has(key)){json(res,200,{ok:true});return;}
-          let spot=[0,-8.7],target=[22,6];
+          let spot=[0,-8.7],target=[22,6];if(b.kind==='incense'&&b.station){if(b.station!=='quan-am'){json(res,400,{error:'invalid station'});return;}spot=[39.35,25.25];}
           if(b.kind==='feed'){
             const stations=[...Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return {id:'shore-'+i,spot:[33+Math.cos(a)*9.4,9+Math.sin(a)*11.9],target:[33+Math.cos(a)*7.1,9+Math.sin(a)*9.3]}}),...[-5,0,5].flatMap((x,i)=>[-1,1].map(side=>({id:'bridge-'+i+'-'+(side+1),spot:[33+x,9+side*.85],target:[33+x,9+side*3]})))];
             const station=stations.find(s=>s.id===b.station);if(!station){json(res,400,{error:'invalid station'});return;}spot=station.spot;target=station.target;
@@ -74,7 +74,7 @@ export function createGameServer({now=Date.now}={}){
           if(now()-(room.lastOffering.get(b.id)??-Infinity)<2500){json(res,429,{error:'slow down'});return;}
           if(b.kind!=='incense'&&b.kind!=='feed'&&room.offerings.filter(o=>o.kind===b.kind&&o.station===b.station).length>=8){json(res,409,{error:'station full'});return;}
           const at=Math.max(now(),...room.offerings.map(o=>o.at+1));
-          room.offerings.push({kind:b.kind,station:b.kind==='incense'?null:b.station,at,...(b.kind==='feed'?{x:target[0],z:target[1]}:{})});
+          room.offerings.push({kind:b.kind,station:b.kind==='incense'?(b.station||null):b.station,at,...(b.kind==='feed'?{x:target[0],z:target[1]}:{})});
           const feed=room.offerings.filter(o=>o.kind==='feed');if(feed.length>12){const removed=new Set(feed.slice(0,-12));room.offerings=room.offerings.filter(o=>!removed.has(o));}
           const incense=room.offerings.filter(o=>o.kind==='incense');
           if(incense.length>72){const removed=new Set(incense.slice(0,-72));room.offerings=room.offerings.filter(o=>!removed.has(o));}
@@ -118,6 +118,7 @@ export function createGameServer({now=Date.now}={}){
 }
 export function startGameServer(){
   const port=Number(process.env.PORT||5174),server=createGameServer();server.on('error',e=>{console.error(`Khong mo duoc cong ${port}: ${e.message}`);process.exitCode=1});
-  server.listen(port,'127.0.0.1',()=>console.log(`\n  SEN AN NHIEN · KHUON VIEN MO RONG\n  http://127.0.0.1:${port}\n  13 khu vuc · 156 cho ngoi · 4 mon chay\n  Phong + chat: mo cung dia chi trong cua so khac.\n  Giu cua so nay de choi. Ctrl+C de dung.\n`));
+  server.listen(port,'127.0.0.1',()=>console.log(`\n  SEN AN NHIEN · KHUON VIEN MO RONG\n  http://127.0.0.1:${port}\n  13 khu vuc · 146 cho ngoi · 4 mon chay\n  Phong + chat: mo cung dia chi trong cua so khac.\n  Giu cua so nay de choi. Ctrl+C de dung.\n`));
+
   return server;
 }

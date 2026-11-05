@@ -3,7 +3,6 @@ export const stoneBenches=[
   {id:0,x:22,z:3,rotation:Math.PI/2,zone:'pond',finish:'jade',name:'Ghế đá xanh ngọc 1'},
   {id:1,x:22,z:15,rotation:Math.PI/2,zone:'pond',finish:'ivory',name:'Ghế đá trắng ngà 2'},
   {id:2,x:42,z:18,rotation:Math.PI,zone:'pond',finish:'brick',name:'Ghế đá đỏ gạch 3'},
-  {id:3,x:37,z:28,rotation:Math.PI,zone:'lotus',finish:'jade',name:'Ghế đá xanh ngọc 4'},
   ...restingBenches,
 ] as const;
 export const BENCH_SEAT_HEIGHT=.45;

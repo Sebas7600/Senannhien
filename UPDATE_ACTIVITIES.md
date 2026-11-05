@@ -45,6 +45,8 @@ Mặt hồ sen hạ 0,56 đơn vị, tương đương khoảng một phần ba c
 
 Kiểm chứng bản này: 94/94 kiểm thử đạt, TypeScript/production build và audit:assets đạt. Kiểm thử gồm raycast qua lòng hồ, đo mặt cầu thật bằng raycast, capsule Rapier đi qua cầu cả hai chiều, lối đi đến đủ 136 bồ đoàn, giữ 20 điểm phục vụ món và sen/đèn theo mặt nước mới. Đã trực tiếp ngồi uống trà, đọc sách, ngồi ăn, đi lên cầu và thả đèn trong game; xem khung điện thoại 390 × 844, điện thoại ngang 960 × 540 và tablet 1180 × 820. Đã xem cận cảnh ba mẫu nến bằng source thật trong cảnh thử riêng. Ảnh lưu trong artifacts/ với hậu tố 20261105; không commit ảnh hoặc cảnh thử. Chưa đo FPS trên điện thoại thật.
 
+Tích hợp main ngày 05/11: nhận main `58f45e6`, gồm cổng/chuông/trống GLB, tối ưu lá rơi, nhiệm vụ gánh nước và khu Quan Âm. Giữ hai NPC bếp/phục vụ cùng khay liên tục, sửa nối áo, hoành phi, nến dùng chung, bồ đoàn trà và hồ/cầu cong. Nhận bố trí mới 40 bồ đoàn chánh điện và 9 ghế đá từ main; tổng hiện tại 128 bồ đoàn + 18 chỗ ghế đá = 146 chỗ. Áp dụng tối ưu một batch bồ đoàn ở chất lượng thấp, đồng thời giữ kích thước và độ nâng chỗ ngồi theo mẫu Trúc Lâm. Giữ đường âm thanh qua JavaScript chunk/data URL và âm chén đồng tổng hợp để tránh IDM bắt link media. Kiểm chứng: 123/123 kiểm thử, production build, audit:assets và audit:water đạt; lần này chưa kiểm tra lại UI remote.
+
 ## Kiểm chứng
 
 - TypeScript và production build đạt.

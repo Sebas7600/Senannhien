@@ -1,3 +1,4 @@
+import WaterYoke from './WaterYoke';
 import {memo,useEffect,useMemo,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {useGLTF} from '@react-three/drei';
@@ -27,7 +28,7 @@ function RealisticCharacter({robe='#9b704a',dish='noodles',pose='walk',moving=fa
   const waterDrops=useRef<THREE.Group>(null);const root=useRef<THREE.Group>(null),upper=useRef<THREE.Group>(null),head=useRef<THREE.Group>(null),armL=useRef<THREE.Group>(null),armR=useRef<THREE.Group>(null),foreL=useRef<THREE.Group>(null),foreR=useRef<THREE.Group>(null),handL=useRef<THREE.Group>(null),handR=useRef<THREE.Group>(null),legL=useRef<THREE.Group>(null),legR=useRef<THREE.Group>(null),coat=useRef<THREE.Mesh>(null);
   const robeMaterial=useSurface('cloth',robe),trimMaterial=useSurface('cloth',new THREE.Color(robe).multiplyScalar(.75).getStyle()),skinMat=skinMaterial(skin),blend=useRef({prayer:0,eat:0,bend:0,hips:.84,gait:0,kneel:0,reach:0,forward:0}),points=useRef(Array.from({length:8},()=>new THREE.Vector3())),work=useRef(new THREE.Vector3()),lastPose=useRef(pose),bowTime=useRef(-1);
   useFrame(({clock},dt)=>{const t=clock.elapsedTime;if(waterDrops.current)waterDrops.current.children.forEach((drop,i)=>{const f=(t*1.7+i/7)%1;drop.position.set(Math.sin(i*2.4)*.045,-.04-f*.45,.3+f*.21)});const b=blend.current,mode=bowMode||(seated&&!chair?'cushion':'standing');const prayer=['incense','flower','candle','pray','beads','chant','meditate','bow'].includes(pose);if(lastPose.current!==pose||bowTime.current<0){lastPose.current=pose;bowTime.current=t;}
-    if(pose==='bow'){sampleBow(bowElapsed??(bowStartedAt===undefined?t-bowTime.current:(Date.now()-bowStartedAt)/1000),mode,bowFrame.current);b.kneel=mode==='standing'?bowFrame.current.kneel:0;b.bend=bowFrame.current.bend;b.reach=bowFrame.current.reach;}else{b.kneel=THREE.MathUtils.damp(b.kneel,0,10,dt);b.bend=THREE.MathUtils.damp(b.bend,pose==='serve'&&serveFrame?serveFrame.current.bend:pose==='cook'?.1:['plant','harvest'].includes(pose)?.38:pose==='water'?.14:['incense','flower','candle'].includes(pose)?Math.sin(Math.min((t-bowTime.current)/3,1)*Math.PI)*.18:0,pose==='serve'?18:10,dt);b.reach=THREE.MathUtils.damp(b.reach,0,10,dt)}
+    if(pose==='bow'){sampleBow(bowElapsed??(bowStartedAt===undefined?t-bowTime.current:(Date.now()-bowStartedAt)/1000),mode,bowFrame.current);b.kneel=mode==='standing'?bowFrame.current.kneel:0;b.bend=bowFrame.current.bend;b.reach=bowFrame.current.reach;}else{b.kneel=THREE.MathUtils.damp(b.kneel,0,10,dt);b.bend=THREE.MathUtils.damp(b.bend,pose==='serve'&&serveFrame?serveFrame.current.bend:pose==='cook'?.1:['plant','harvest'].includes(pose)?.38:['water','drawWater','pourWater'].includes(pose)?.14:['incense','flower','candle'].includes(pose)?Math.sin(Math.min((t-bowTime.current)/3,1)*Math.PI)*.18:0,pose==='serve'?18:10,dt);b.reach=THREE.MathUtils.damp(b.reach,0,10,dt)}
     b.prayer=THREE.MathUtils.damp(b.prayer,prayer?1:0,9,dt);b.eat=THREE.MathUtils.damp(b.eat,pose==='eat'?1:0,7,dt);const hip=pose==='serve'&&serveFrame?serveFrame.current.hips:seated?(chair?.10:.22):THREE.MathUtils.lerp(.84,.24,b.kneel);b.hips=pose==='bow'?hip:THREE.MathUtils.damp(b.hips,hip,pose==='serve'?18:12,dt);b.gait=THREE.MathUtils.damp(b.gait,moving&&!seated&&pose!=='bow'?1:0,10,dt);
     if(bookLeaf.current)bookLeaf.current.rotation.z=reduced?0:Math.sin(t*.7)*.28;
     if(root.current)root.current.position.y=pose==='serve'?0:Math.abs(Math.sin(t*7))*b.gait*.022;
@@ -44,6 +45,8 @@ function RealisticCharacter({robe='#9b704a',dish='noodles',pose='walk',moving=fa
       shoulder.set(s*.193,.42,0);elbow.set(s*.225,.16,.015+swing);wrist.set(s*.205,-.12,.03+swing);if(seated){elbow.set(s*.26,.12,.09);wrist.set(s*.17,-.03,.23)}
       elbow.lerp(points.current[4].set(s*.27,.14,.15),b.prayer);wrist.lerp(points.current[5].set(s*.023,.33,.28),b.prayer);
       if(['plant','harvest'].includes(pose)){const cycle=Math.sin((t-bowTime.current)*5);elbow.set(s*.24,.08,.16);wrist.set(s*.16,-.22+cycle*.035,.38+cycle*.06);}
+      if(pose==='drawWater'){const pull=reduced?0:Math.sin((t-bowTime.current)*4+i*Math.PI)*.13;elbow.set(s*.24,.24+pull*.4,.19);wrist.set(s*.08,.27+pull,.42);}
+      if((pose==='carryWater'||pose==='pourWater')&&i===1){elbow.set(.29,.24,.08);wrist.set(.19,.49,.16);}
       if(pose==='water'){elbow.set(s*.25,.18,.20);wrist.set(s*.19,.08,.41);}
       if(pose==='feed'){const cycle=(t-bowTime.current)*4;elbow.set(s*.24,.20,.18);wrist.set(i?.25:-.12,i?.18+Math.sin(cycle)*.06:.05,i?.40+Math.cos(cycle)*.14:.24);}
       if(b.eat>0){elbow.lerp(points.current[4].set(s*.25,.27,.13),b.eat);wrist.lerp(points.current[5].set(s*.09,.35+(i?Math.sin(t*2.5)*.12:.01),.29-(i?Math.sin(t*2.5)*.11:0)),b.eat)}
@@ -61,7 +64,7 @@ function RealisticCharacter({robe='#9b704a',dish='noodles',pose='walk',moving=fa
         const ey=ground+.19-b.hips,ez=.58-forward,wy=ground+.014-b.hips,wz=.78-forward;
         elbow.lerp(points.current[4].set(s*.29,ey*cos+ez*sin,-ey*sin+ez*cos),b.reach);wrist.lerp(points.current[5].set(s*.22,wy*cos+wz*sin,-wy*sin+wz*cos),b.reach);
       }
-      setSegment(i?armR.current:armL.current,shoulder,elbow,.10,work.current);setSegment(i?foreR.current:foreL.current,elbow,wrist,.085,work.current);const h=i?handR.current:handL.current;if(h){h.position.copy(wrist);h.rotation.set(THREE.MathUtils.lerp((1-b.prayer)*(seated?-.8:Math.PI),Math.PI/2-b.bend,b.reach),s*b.prayer*Math.PI/2*(1-b.reach),s*.04*(1-b.prayer)*(1-b.reach));if(pose==='serve'&&serveFrame)h.rotation.x=Math.PI/2-b.bend+serveFrame.current.release*Math.PI/2;if(pose==='cook')h.rotation.set(-.4,0,0);}
+      setSegment(i?armR.current:armL.current,shoulder,elbow,.10,work.current);setSegment(i?foreR.current:foreL.current,elbow,wrist,.085,work.current);const h=i?handR.current:handL.current;if(h){h.position.copy(wrist);h.rotation.set(THREE.MathUtils.lerp((1-b.prayer)*(seated?-.8:Math.PI),Math.PI/2-b.bend,b.reach),s*b.prayer*Math.PI/2*(1-b.reach),s*.04*(1-b.prayer)*(1-b.reach));if(pose==='serve'&&serveFrame)h.rotation.x=Math.PI/2-b.bend+serveFrame.current.release*Math.PI/2;if((pose==='carryWater'||pose==='pourWater')&&i===1)h.rotation.set(-.45,0,.2);if(pose==='cook')h.rotation.set(-.4,0,0);}
     }
     if(b.kneel>.001||serviceLegs)for(let i=0;i<2;i++){const side=i?-1:1,hip=points.current[0].set(side*.105,b.hips,0),knee=points.current[1].set(side*THREE.MathUtils.lerp(.105,.17,b.kneel),THREE.MathUtils.lerp(.43,.10,b.kneel),THREE.MathUtils.lerp(.02,.27,b.kneel)),ankle=points.current[2].set(side*.14,.065,THREE.MathUtils.lerp(0,-.23,b.kneel));
       if(serviceLegs){const p=serviceKnee(b.hips,bodyForward,kneePoint.current);hip.set(side*.095,b.hips,bodyForward);knee.set(side*.095,p.y,p.z);ankle.set(side*.095,.065,0);}
@@ -88,6 +91,8 @@ function RealisticCharacter({robe='#9b704a',dish='noodles',pose='walk',moving=fa
       {pose==='flower'&&<group position={[0,.38,.32]}><mesh><cylinderGeometry args={[.015,.015,.4,6]}/><meshStandardMaterial color="#627d4f"/></mesh>{[-1,0,1].map(i=><mesh key={i} position={[i*.065,.22+Math.abs(i)*.025,0]} scale={[.07,.09,.06]}><sphereGeometry args={[1,10,8]}/><meshStandardMaterial color="#e0a4b1"/></mesh>)}</group>}
       {pose==='candle'&&<group position={[0,.34,.32]}><mesh><cylinderGeometry args={[.09,.06,.07,16]}/><meshStandardMaterial color="#b48b45" metalness={.6}/></mesh><mesh position={[0,.09,0]} scale={[.025,.06,.025]}><sphereGeometry args={[1,10,8]}/><meshStandardMaterial emissive="#ffad35" color="#ffe1a1" emissiveIntensity={1.5}/></mesh></group>}
       {pose==='incense'&&<mesh position={[0,.48,.28]}><cylinderGeometry args={[.009,.009,.45,6]}/><meshStandardMaterial color="#936b45"/></mesh>}
+
+      {(pose==='carryWater'||pose==='pourWater')&&<WaterYoke pouring={pose==='pourWater'} moving={moving} reduced={reduced}/>}
       {pose==='beads'&&<mesh position={[0,.29,.33]} rotation={[Math.PI/2,0,0]}><torusGeometry args={[.075,.012,6,27]}/><meshStandardMaterial color="#593c25" roughness={.8}/></mesh>}
     </group>
     <group visible={!seated}>

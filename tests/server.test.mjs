@@ -24,7 +24,7 @@ test('shared courtyard: live positions, room separation, exclusive seats and cha
     const kitchenAt=Date.now(),meal={dish:'rice',seatId:'dining-0',status:'preparing',orderedAt:kitchenAt,cookedAt:kitchenAt+3000,counterReadyAt:kitchenAt+9000,kitchenAt:kitchenAt+5000,deliveryAt:kitchenAt+10150,readyAt:kitchenAt+18000,homeAt:kitchenAt+24000};
     await post('/api/state',{id:'test_player_a',room:'an-nhien',action:'sit',seat:'dining-0',meal});await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.meal?.counterReadyAt===meal.counterReadyAt));
     const {counterReadyAt,...legacyMeal}=meal;await post('/api/state',{id:'test_player_a',room:'an-nhien',meal:legacyMeal});await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.meal&&!('counterReadyAt' in p.meal)));
-    for(const [action,seat] of [['read','reading-19'],['tea','tea-19']]){
+    for(const [action,seat] of [['read','reading-19'],['tea','tea-19'],['drawWater',null],['carryWater',null],['pourWater',null]]){
       await post('/api/state',{id:'test_player_a',room:'an-nhien',action,seat});
       await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.action===action&&p.seat===seat));
     }
@@ -32,6 +32,41 @@ test('shared courtyard: live positions, room separation, exclusive seats and cha
   }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });
 
+test('production server sends explicit media types for mobile audio and painting assets',async()=>{
+  const server=createGameServer(),tag=randomUUID(),files=[];
+  await mkdir(new URL('../dist/audio/',import.meta.url),{recursive:true});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try{
+    for(const [extension,type,magic] of [['mp3','audio/mpeg','ID3'],['wav','audio/wav','RIFF'],['webp','image/webp','RIFF']]){
+      const filename=`audio/qa-${tag}.${extension}`,file=new URL(`../dist/${filename}`,import.meta.url);files.push(file);await writeFile(file,magic,{flag:'wx'});
+      const response=await fetch(`http://127.0.0.1:${server.address().port}/${filename}`);
+      assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),type);assert.equal(await response.text(),magic);
+      if(type.startsWith('audio/')){
+        const url=`http://127.0.0.1:${server.address().port}/${filename}`;
+        const range=await fetch(url,{headers:{Range:'bytes=0-1'}});assert.equal(range.status,206);assert.equal(range.headers.get('content-range'),`bytes 0-1/${magic.length}`);assert.equal(await range.text(),magic.slice(0,2));
+        const suffix=await fetch(url,{headers:{Range:'bytes=-2'}});assert.equal(suffix.status,206);assert.equal(await suffix.text(),magic.slice(-2));
+        const invalid=await fetch(url,{headers:{Range:'bytes=999-'}});assert.equal(invalid.status,416);assert.equal(invalid.headers.get('content-range'),`bytes */${magic.length}`);
+        const head=await fetch(url,{method:'HEAD',headers:{Range:'bytes=0-1'}});assert.equal(head.status,206);assert.equal(head.headers.get('content-length'),'2');assert.equal(await head.text(),'');
+      }
+    }
+  }finally{await Promise.all(files.map(file=>unlink(file)));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+
+test('Quan Am incense stays at its altar, reaches late joiners, rejects remote/invalid requests and expires',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'quan_am_test_a',room:'an-nhien',...data})});return res.status};
+ try{const a=stream(base,'quan_am_test_a'),other=stream(base,'quan_am_test_other','truc-lam');all.push(a,other);await Promise.all(all.map(s=>s.opened));
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_remote'}),409);
+  await post('/api/state',{x:38.9,y:.06,z:25.25,action:'incense'});
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'wrong-altar',operation:'quan_am_invalid'}),400);
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_valid'}),200);
+  assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_valid'}),200);
+  await a.wait(s=>s.offerings.length===1);assert.equal(a.state.offerings[0].station,'quan-am');assert.equal(other.state.offerings.length,0);
+  const late=stream(base,'quan_am_test_late');all.push(late);await late.opened;assert.equal(late.state.offerings.length,1);assert.equal(late.state.offerings[0].station,'quan-am');
+  clock+=3000;await post('/api/state',{x:0,z:-7.1});assert.equal(await post('/api/offerings',{kind:'incense',operation:'temple_after_quan_am'}),200);await late.wait(s=>s.offerings.length===2);assert.equal(late.state.offerings.find(o=>o.station===null)?.kind,'incense');
+  clock+=650001;await late.wait(s=>s.offerings.length===0);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
 test('room offerings: all kinds, late join, isolation, deduplication, capacity and expiry',async()=>{
  let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
  const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'offer_player_a',room:'an-nhien',...data})});return res.status};
@@ -81,24 +116,5 @@ test('shared garden: room isolation, late join, stale actions, one harvest and r
   assert.equal(await post('/api/garden','garden_player_a',{plot:'plot-0',action:'plant',revision:3,operation:'garden_seed03'}),200);
   await b.wait(s=>s.plots['plot-0']?.revision===4);assert.equal(b.state.plots['plot-0'].harvested,false);
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
-});
 
-test('production server sends explicit media types for mobile audio and painting assets',async()=>{
-  const server=createGameServer(),tag=randomUUID(),files=[];
-  await mkdir(new URL('../dist/audio/',import.meta.url),{recursive:true});
-  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  try{
-    for(const [extension,type,magic] of [['mp3','audio/mpeg','ID3'],['wav','audio/wav','RIFF'],['webp','image/webp','RIFF']]){
-      const filename=`audio/qa-${tag}.${extension}`,file=new URL(`../dist/${filename}`,import.meta.url);files.push(file);await writeFile(file,magic,{flag:'wx'});
-      const response=await fetch(`http://127.0.0.1:${server.address().port}/${filename}`);
-      assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),type);assert.equal(await response.text(),magic);
-      if(type.startsWith('audio/')){
-        const url=`http://127.0.0.1:${server.address().port}/${filename}`;
-        const range=await fetch(url,{headers:{Range:'bytes=0-1'}});assert.equal(range.status,206);assert.equal(range.headers.get('content-range'),`bytes 0-1/${magic.length}`);assert.equal(await range.text(),magic.slice(0,2));
-        const suffix=await fetch(url,{headers:{Range:'bytes=-2'}});assert.equal(suffix.status,206);assert.equal(await suffix.text(),magic.slice(-2));
-        const invalid=await fetch(url,{headers:{Range:'bytes=999-'}});assert.equal(invalid.status,416);assert.equal(invalid.headers.get('content-range'),`bytes */${magic.length}`);
-        const head=await fetch(url,{method:'HEAD',headers:{Range:'bytes=0-1'}});assert.equal(head.status,206);assert.equal(head.headers.get('content-length'),'2');assert.equal(await head.text(),'');
-      }
-    }
-  }finally{await Promise.all(files.map(file=>unlink(file)));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 });

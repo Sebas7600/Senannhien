@@ -10,6 +10,9 @@ import {KitchenStove} from './KitchenStove';
 import {TempleBell, BellFrame} from './TempleBell';
 import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
 import {mealPlan,MEAL_SCALE} from './mealService';
+import QuanAmShrine from './QuanAmShrine';
+import WaterTaskWorld from './WaterTaskWorld';
+import {ImportedGate,ImportedBell,ImportedDrum} from './ImportedCourtyardProps';
 import GardenDetails from './GardenDetails';
 import BodhiTree from './BodhiTree';
 import CourtyardTrees from './CourtyardTrees';
@@ -27,8 +30,6 @@ import { ServingMeal, Steam } from './Food';
 import { Character } from './Character';
 import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, floorSurfaces, KITCHEN_COUNTER_TOP, WORLD, type Vec3 } from './gameData';
 import { useGame } from './gameStore';
-import {bellAngle} from './ritualMotion';
-import {useReducedMotion} from './useReducedMotion';
 
 export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string;subtitle?:string}){
   const ref=useRef<THREE.Group>(null),worldPoint=useRef(new THREE.Vector3()),previous=useRef(true);const [shown,show]=useState(true);
@@ -55,6 +56,7 @@ export function Ground(){return <group><IncenseBurner/>
     {obstacles.filter(o=>!o.navigationOnly).map((o,i)=>{const h=o.height??1.4;return <CuboidCollider key={i} position={[o.x,(o.base??0)+h/2,o.z]} args={[o.w/2,h/2,o.d/2]}/>})}
     {floorSurfaces.map((f,i)=><CuboidCollider key={`floor-${i}`} position={[f.x,f.height/2,f.z]} args={[f.w/2,f.height/2,f.d/2]}/>)}
     <CuboidCollider position={[33,.37,9]} args={[9,.07,1.5]}/>{[-1,1].map(side=><CuboidCollider key={'ramp'+side} position={[33+side*10,.18,9]} rotation={[0,0,-side*Math.atan(.19)]} args={[1.02,.07,1.5]}/>)}{[-1,1].map(side=><CuboidCollider key={'rail'+side} position={[33,.8,9+side*1.5]} args={[11,.6,.07]}/>)}
+
   </RigidBody>
 </group>}
 function MainTemple(){return <MainTempleReference/>}
@@ -97,27 +99,13 @@ function MeditationHall(){return <Pavilion x={-33} z={-17} w={20} d={16} title="
   <group position={[0,.4,-5.9]} scale={1.4}><Buddha/></group><Box position={[0,1,-5]} scale={[6,.3,.9]} color="#8a6445"/>
   {[-8,8].map(x=><group key={x}><Box position={[x,2.3,-6.5]} scale={[1.2,2.2,.12]} color="#7c7856"/>{[0,1,2].map(i=><mesh key={i} position={[x,3-i*.5,-6.4]}><torusGeometry args={[.13,.015,5,16]}/><meshStandardMaterial color="#d9c59a"/></mesh>)}</group>)}
 </Pavilion>}
-function Gate(){return <group position={[0,0,29]}>
-  {[-7,-2.8,2.8,7].map(x=><group key={x}><Box position={[x,2.3,0]} scale={[.8,4.6,.8]} color="#bbb599"/><Box position={[x,4.6,0]} scale={[1.1,.25,1.1]} color="#7b8b72"/></group>)}
-  <RoofSection x={0} z={29} w={18} d={24}><Box position={[0,4.3,0]} scale={[6.1,.75,.7]} color="#657b65"/><Roof y={4.7} width={9} depth={3.5} height={1.4}/>
-  {[-5,5].map(x=><group key={x} position={[x,0,0]}><Box position={[0,3.4,0]} scale={[3.8,.5,.5]} color="#76896b"/><Roof y={3.7} width={4.6} depth={2.9} height={.9}/></group>)}
-  </RoofSection><WorldLabel position={[0,3.95,.5]} title="SEN AN NHIÊN" subtitle="Chậm một bước · Nhẹ một lòng"/>
-</group>}
+function Gate(){return <ImportedGate/>}
 function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
-  const bell=useRef<THREE.Group>(null),reduced=useReducedMotion();
-  useFrame(()=>{const c=useGame.getState().ceremony;if(bell.current)bell.current.rotation.z=!drum&&c?.type==='bell'?bellAngle(Date.now()-c.at,reduced):0});
   return <group position={[x,0,-13]} onClick={e=>{if(!drum){e.stopPropagation();useGame.getState().perform('bell')}}}>
     <Box position={[0,.2,0]} scale={[5,.4,5]} color="#b4b598"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*1.8,2.2,t*1.8]} scale={[.25,4,.25]} color="#815538"/>))}
     <RoofSection x={x} z={-13} w={5} d={5}><Roof y={4.3} width={6.7} depth={6.5} height={1.6}/></RoofSection>
-    <Box position={[0,3.9,0]} scale={[3.7,.25,.3]} color="#815538"/>
-    {!drum&&<BellFrame/>}
-    {/* The pivot is at the suspension hook; the rim travels the furthest. */}
-    <group ref={bell} position={[0,3.65,0]}>
-      {drum?<mesh position={[0,-1,0]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.95,.95,1.3,24]}/><meshStandardMaterial color="#a77c4c"/></mesh>:<>
-        <TempleBell/>
-      </>}
-    </group>
+    {drum?<ImportedDrum/>:<ImportedBell/>}
     <WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'Nhịp chậm ngày an':'E · Thỉnh một tiếng chuông'}/>
   </group>
 }
@@ -142,8 +130,7 @@ function LanternPaths(){return <>{Array.from({length:14},(_,i)=>[-1,1].map(s=><g
 function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
   <CourtyardTrees/>
   {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
-  {[-1,1].flatMap(s=>[0,8,-8].map(z=><group key={`${s}-${z}`} position={[s*7.2,0,z]}><mesh position={[0,.3,0]}><cylinderGeometry args={[.45,.3,.6,16]}/><meshStandardMaterial color="#7b8e78"/></mesh><mesh position={[0,1.1,0]} scale={[.8,.9,.8]} castShadow><icosahedronGeometry args={[1,2]}/><meshStandardMaterial color="#6e895b"/></mesh></group>))}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);

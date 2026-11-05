@@ -1,4 +1,9 @@
 import {createLucideIcon, type IconNode} from 'lucide-react';
+export const CarryWater=createLucideIcon('CarryWater',[
+  ['circle',{cx:'12',cy:'3.5',r:'1.6',key:'head'}],
+  ['path',{d:'M2 8q10-3 20 0M12 7v9m0 0-3 5m3-5 3 5m-3-11 3 2',key:'yoke-body'}],
+  ['path',{d:'M3.5 8v5m17-5v5M1.5 13h4l-.5 5h-3zm17 0h4l-.5 5h-3z',key:'buckets'}],
+]);
 
 // Open, optically spaced 24 px symbols. Small UI sizes use a 1.4 px stroke;
 // avoid doubled contours and dense interior details that fill in at 21–28 px.

@@ -1,0 +1,93 @@
+{
+  "gateOpenAngles": {
+    "Central_Door_Left": 1.5533430330564586,
+    "Central_Door_Right": -1.553343033305793
+  },
+  "assets": [
+    {
+      "file": "gate-bai-dinh-v1.glb",
+      "bytes": 669632,
+      "triangles": 39092,
+      "draws": 18,
+      "decodedGeometryBytes": 1129048
+    },
+    {
+      "file": "gate-bai-dinh-v1-low.glb",
+      "bytes": 374516,
+      "triangles": 17062,
+      "draws": 18,
+      "decodedGeometryBytes": 640228
+    },
+    {
+      "file": "bell.glb",
+      "bytes": 224432,
+      "triangles": 13644,
+      "draws": 11,
+      "decodedGeometryBytes": 323336
+    },
+    {
+      "file": "bell-low.glb",
+      "bytes": 136580,
+      "triangles": 7264,
+      "draws": 11,
+      "decodedGeometryBytes": 182976
+    },
+    {
+      "file": "drum.glb",
+      "bytes": 123100,
+      "triangles": 7440,
+      "draws": 9,
+      "decodedGeometryBytes": 185856
+    },
+    {
+      "file": "drum-low.glb",
+      "bytes": 79020,
+      "triangles": 3892,
+      "draws": 9,
+      "decodedGeometryBytes": 107352
+    }
+  ],
+  "textures": [
+    {
+      "file": "Bell_Bronze_BaseColor.jpg",
+      "bytes": 73181
+    },
+    {
+      "file": "Bell_Bronze_Normal.png",
+      "bytes": 64122
+    },
+    {
+      "file": "Dai_Hong_Dinh_Dong_BaseColor.jpg",
+      "bytes": 216100
+    },
+    {
+      "file": "Mat_Da_Hoa_Trang_BaseColor.jpg",
+      "bytes": 271935
+    },
+    {
+      "file": "Than_Trong_Rong_BaseColor.jpg",
+      "bytes": 114270
+    },
+    {
+      "file": "bai-dinh-v1-brick.jpg",
+      "bytes": 62573
+    },
+    {
+      "file": "bai-dinh-v1-frieze.jpg",
+      "bytes": 90466
+    },
+    {
+      "file": "bai-dinh-v1-roof_tile.jpg",
+      "bytes": 60226
+    },
+    {
+      "file": "bai-dinh-v1-wood.jpg",
+      "bytes": 50153
+    },
+    {
+      "file": "bai-dinh-v1-wood_edge.jpg",
+      "bytes": 50200
+    }
+  ],
+  "gateSource": "Cong_Moi.zip"
+}
