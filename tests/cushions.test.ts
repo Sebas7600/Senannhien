@@ -4,8 +4,8 @@ import {statSync} from 'node:fs';
 import * as THREE from 'three';
 import {CUSHION} from '../src/cushionData';
 import {cushionNearGeometry,cushionFarGeometry} from '../src/cushionGeometry';
-import {seats,usesFloorSeat,walkable} from '../src/gameData';
-import {cushionSeats,cushionBaseY,cushionScale,LOW_CUSHION} from '../src/cushionPlacement';
+import {seats,walkable,usesFloorSeat,surfaceHeight} from '../src/gameData';
+import {cushionSeats,cushionBaseY,cushionScale} from '../src/cushionPlacement';
 import {findPath,clearLine} from '../src/navigation';
 test('woven cushions keep one indexed mesh per LOD, consistent bounds and a small texture download',()=>{
   assert.ok(cushionNearGeometry.index!.count/3<=1000);assert.ok(cushionFarGeometry.index!.count/3<=500);
@@ -24,13 +24,26 @@ test('all 60 indoor and 8 bamboo cushions remain reachable with raised seat anch
 });
 
 test('every floor seat uses the woven batch, including all dining and reading cushions, without changing seat heights',()=>{
-  assert.equal(cushionSeats.length,108);assert.equal(new Set(cushionSeats.map(s=>s.id)).size,108);
+  assert.equal(cushionSeats.length,128);assert.equal(new Set(cushionSeats.map(s=>s.id)).size,128);
   assert.deepEqual(cushionSeats.map(s=>s.id),seats.filter(usesFloorSeat).map(s=>s.id));
-  assert.deepEqual(Object.fromEntries(['temple','hall','bamboo','dining','library'].map(zone=>[zone,cushionSeats.filter(s=>s.zone===zone).length])),{temple:40,hall:20,bamboo:8,dining:20,library:20});
-  for(const seat of cushionSeats){const low=seat.kind!=='cushion',scale=cushionScale(seat),base=cushionBaseY(seat);
-    assert.equal(base,seat.position[1]-(low?0:CUSHION.seatLift));
-    assert.ok(Math.abs(CUSHION.radius*scale[0]-(low?LOW_CUSHION.radius:CUSHION.radius))<1e-9);
-    assert.ok(Math.abs(CUSHION.height*scale[1]-(low?.11:CUSHION.height))<1e-9);
-    for(const geometry of [cushionNearGeometry,cushionFarGeometry]){const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial());mesh.position.set(seat.position[0],base,seat.position[2]);mesh.scale.set(...scale);mesh.rotation.y=seat.rotation;mesh.updateMatrixWorld();const hit=new THREE.Raycaster(new THREE.Vector3(seat.position[0],base+1,seat.position[2]),new THREE.Vector3(0,-1,0)).intersectObject(mesh)[0];assert.ok(hit,seat.id);assert.ok(Math.abs(hit.uv!.x-.375)<.001&&Math.abs(hit.uv!.y-.625)<.001,'All sizes and LODs sample the same patterned top');assert.ok(hit.point.y<=base+(low?.11:CUSHION.height)+.001);}
+  assert.deepEqual(Object.fromEntries(['temple','hall','bamboo','dining','library','terrace'].map(zone=>[zone,cushionSeats.filter(s=>s.zone===zone).length])),{temple:40,hall:20,bamboo:8,dining:20,library:20,terrace:20});
+  for(const seat of cushionSeats){const scale=cushionScale(seat),base=cushionBaseY(seat);
+    assert.equal(base,seat.position[1]-CUSHION.seatLift);
+    assert.ok(Math.abs(CUSHION.radius*scale[0]-CUSHION.radius)<1e-9);
+    assert.ok(Math.abs(CUSHION.height*scale[1]-CUSHION.height)<1e-9);
+    for(const geometry of [cushionNearGeometry,cushionFarGeometry]){const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial());mesh.position.set(seat.position[0],base,seat.position[2]);mesh.scale.set(...scale);mesh.rotation.y=seat.rotation;mesh.updateMatrixWorld();const hit=new THREE.Raycaster(new THREE.Vector3(seat.position[0],base+1,seat.position[2]),new THREE.Vector3(0,-1,0)).intersectObject(mesh)[0];assert.ok(hit,seat.id);assert.ok(Math.abs(hit.uv!.x-.375)<.001&&Math.abs(hit.uv!.y-.625)<.001,'All sizes and LODs sample the same patterned top');assert.ok(hit.point.y<=base+CUSHION.height+.001);}
   }
+});
+
+
+test('all 128 floor seats share the Truc Lam cushion anchors and keep clear accessible approaches',()=>{
+  const cushions=seats.filter(usesFloorSeat);assert.equal(cushions.length,128);assert.equal(seats.length,146);
+  for(const seat of cushions.filter(s=>s.table)){
+    assert.ok(Math.abs(seat.position[1]-CUSHION.seatLift-surfaceHeight(seat.position[0],seat.position[2]))<1e-8);
+    assert.ok(walkable(seat.position[0],seat.position[2]),seat.id);
+    const path=findPath([0,22],[seat.position[0],seat.position[2]]);assert.ok(path.length,seat.id);
+    let from:[number,number]=[0,22];for(const point of path){assert.ok(clearLine(from,point),seat.id);from=point;}
+    const table=seat.table!;assert.ok(table[1]-seat.position[1]>.2&&table[1]-seat.position[1]<.4,'Low table clears seated legs');
+  }
+  for(let i=0;i<10;i++){const pair=cushions.filter(s=>s.id===`tea-${i*2}`||s.id===`tea-${i*2+1}`);assert.equal(pair.length,2);assert.equal(pair[0].table,pair[1].table);assert.ok(Math.cos(pair[0].rotation)*(pair[0].table![2]-pair[0].position[2])>0);assert.ok(Math.cos(pair[1].rotation)*(pair[1].table![2]-pair[1].position[2])>0);}
 });

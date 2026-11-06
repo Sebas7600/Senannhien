@@ -5,18 +5,19 @@ import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {useGame,type Wish} from './gameStore';
 import {lanternPose,floatingLotusPose,LANTERN_LIFETIME,WISH_STATION} from './ritualMotion';
 import {LanternPresentation} from './LanternModel';
+import {SacredCandle} from './FireEffects';
 import {useReducedMotion} from './useReducedMotion';
 import {NearbyOverlay} from './Environment';
 
 const lotusPetals=mergeGeometries(Array.from({length:8},(_,i)=>{
   const angle=i*Math.PI/4,object=new THREE.Object3D();object.position.set(Math.cos(angle)*.22,.12,Math.sin(angle)*.22);object.rotation.set(Math.sin(angle)*.75,0,-Math.cos(angle)*.75);object.scale.set(.11,.26,.11);object.updateMatrix();return new THREE.SphereGeometry(1,10,8).applyMatrix4(object.matrix);
 }));
-const lotusBase=new THREE.CylinderGeometry(.36,.32,.07,16),lotusFlame=new THREE.SphereGeometry(1,8,6);
+const lotusBase=new THREE.CylinderGeometry(.36,.32,.07,16);
 const petalMaterial=new THREE.MeshStandardMaterial({color:'#edbea8',emissive:'#ba6651',emissiveIntensity:.25,roughness:.7});
-const baseMaterial=new THREE.MeshStandardMaterial({color:'#9a9965'}),flameMaterial=new THREE.MeshBasicMaterial({color:'#ffe6a2'});
+const baseMaterial=new THREE.MeshStandardMaterial({color:'#9a9965'});
 export function LotusLantern(){return <group dispose={null}>
   <mesh geometry={lotusBase} material={baseMaterial}/><mesh geometry={lotusPetals} material={petalMaterial}/>
-  <mesh position={[0,.22,0]} scale={[.075,.17,.075]} geometry={lotusFlame} material={flameMaterial}/>
+  <SacredCandle position={[0,.055,0]} height={.15} radius={.055} flameScale={1.15}/>
 </group>}
 
 function FlyingLantern({wish}:{wish:Wish}){

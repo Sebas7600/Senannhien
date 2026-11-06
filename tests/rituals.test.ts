@@ -1,16 +1,17 @@
+import {LOTUS_POND} from '../src/lotusLayout';
 import {test,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 const memory=new Map<string,string>();
 Object.defineProperty(globalThis,'window',{value:{localStorage:{getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>memory.set(k,v),removeItem:(k:string)=>memory.delete(k)}}});
 const {useGame}=await import('../src/gameStore.ts');
 const {seats,teaTables,readingTables,seatExit,walkable,distance}=await import('../src/gameData.ts');
-const {mealRoute,routePoint}=await import('../src/mealService.ts');
+const {mealRoute,mealPlan,routePoint}=await import('../src/mealService.ts');
 const {clearLine,findPath}=await import('../src/navigation.ts');
 const {bellAngle,lanternPose,BELL_DURATION,LANTERN_RISE,LANTERN_LIFETIME,MAX_LANTERNS,WISH_STATION,WISH_APPROACH}=await import('../src/ritualMotion.ts');
 const defaults=useGame.getInitialState();
 beforeEach(()=>useGame.setState({...defaults,inventory:{...defaults.inventory},wishes:[],flights:[]},true));
 
-test('20 individual reading desks and 10 tables with two opposing tea chairs have safe exits',()=>{
+test('20 individual reading desks and 10 tables with two opposing tea cushions have safe exits',()=>{
   assert.equal(readingTables.length,20);assert.equal(teaTables.length,10);
   assert.equal(seats.filter(s=>s.kind==='reading').length,20);
   for(const table of teaTables){const pair=seats.filter(s=>s.table===table);assert.equal(pair.length,2);assert.ok(Math.abs(pair[0].rotation-pair[1].rotation)===Math.PI);assert.equal((pair[0].position[2]+pair[1].position[2])/2,table[2]);}
@@ -30,7 +31,7 @@ test('occupied areas do not leave stale pending actions',()=>{
 });
 
 test('meal service walks around furniture to every table, using distance-based delivery times',()=>{
-  for(const seat of seats.filter(s=>s.kind==='dining')){const route=mealRoute(seat.id);assert.ok(route.length>0,seat.id);for(let i=1;i<route.points.length;i++)assert.ok(clearLine(route.points[i-1],route.points[i]),seat.id);assert.deepEqual(routePoint(route.points,0).position,route.points[0]);assert.ok(distance(routePoint(route.points,1).position,seatExit(seat))<.01);useGame.setState({seated:seat.id,meal:null});useGame.getState().orderMeal('bread');const order=useGame.getState().meal!;assert.ok(order.readyAt>order.deliveryAt!);assert.equal(order.cookedAt!-order.orderedAt!,4200);assert.ok(order.deliveryAt!>order.cookedAt!);assert.ok(order.homeAt!>order.readyAt);}
+  for(const seat of seats.filter(s=>s.kind==='dining')){const route=mealRoute(seat.id);assert.ok(route.length>0,seat.id);for(let i=1;i<route.points.length;i++)assert.ok(clearLine(route.points[i-1],route.points[i]),seat.id);assert.deepEqual(routePoint(route.points,0).position,route.points[0]);assert.ok(distance(routePoint(route.points,1).position,mealPlan(seat.id).destination)<.01);useGame.setState({seated:seat.id,meal:null});useGame.getState().orderMeal('bread');const order=useGame.getState().meal!;assert.ok(order.readyAt>order.deliveryAt!);assert.equal(order.cookedAt!-order.orderedAt!,3000);assert.ok(order.deliveryAt!>order.cookedAt!);assert.ok(order.homeAt!>order.readyAt);}
 });
 
 test('bell waits for the full decaying swing and does not interrupt another open panel',()=>{
@@ -40,7 +41,7 @@ test('bell waits for the full decaying swing and does not interrupt another open
 
 test('wishes require the station, consume once, rise from the pond and reveal only at flight height',()=>{
   let now=Date.now();const original=Date.now;Date.now=()=>now;
-  try{useGame.getState().releaseWish('too far');assert.equal(useGame.getState().inventory.lantern,5);useGame.setState({position:WISH_STATION});useGame.getState().releaseWish('  Bình an  ');const at=now;assert.equal(useGame.getState().wishes[0].text,'Bình an');assert.equal(useGame.getState().inventory.lantern,4);assert.equal(useGame.getState().panel,null);useGame.getState().releaseWish('duplicate');assert.equal(useGame.getState().inventory.lantern,4);assert.deepEqual(lanternPose(0,at).position,[28,.35,35.5]);const top=lanternPose(LANTERN_RISE,at).position;assert.ok(top[1]>7);const after=lanternPose(LANTERN_RISE+1,at).position;assert.ok(Math.hypot(...top.map((v,i)=>v-after[i]))<.01);now=at+LANTERN_RISE-1;useGame.getState().tick();assert.equal(useGame.getState().panel,null);now++;useGame.getState().tick();assert.equal(useGame.getState().panel,'lanternMoment');assert.equal(useGame.getState().reflectionWish,'Bình an');assert.equal(lanternPose(LANTERN_LIFETIME,at).scale,0);now=at+LANTERN_LIFETIME;useGame.getState().tick();assert.equal(useGame.getState().flights.length,0);}finally{Date.now=original}
+  try{useGame.getState().releaseWish('too far');assert.equal(useGame.getState().inventory.lantern,5);useGame.setState({position:WISH_STATION});useGame.getState().releaseWish('  Bình an  ');const at=now;assert.equal(useGame.getState().wishes[0].text,'Bình an');assert.equal(useGame.getState().inventory.lantern,4);assert.equal(useGame.getState().panel,null);useGame.getState().releaseWish('duplicate');assert.equal(useGame.getState().inventory.lantern,4);assert.deepEqual(lanternPose(0,at).position,[28,LOTUS_POND.waterY+.265,35.5]);const top=lanternPose(LANTERN_RISE,at).position;assert.ok(top[1]>7);const after=lanternPose(LANTERN_RISE+1,at).position;assert.ok(Math.hypot(...top.map((v,i)=>v-after[i]))<.01);now=at+LANTERN_RISE-1;useGame.getState().tick();assert.equal(useGame.getState().panel,null);now++;useGame.getState().tick();assert.equal(useGame.getState().panel,'lanternMoment');assert.equal(useGame.getState().reflectionWish,'Bình an');assert.equal(lanternPose(LANTERN_LIFETIME,at).scale,0);now=at+LANTERN_LIFETIME;useGame.getState().tick();assert.equal(useGame.getState().flights.length,0);}finally{Date.now=original}
 });
 
 test('lantern pool is bounded, arbitrary text stays text, and no runtime flight state is persisted',()=>{

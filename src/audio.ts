@@ -1,3 +1,4 @@
+import {renderBowlSamples,BOWL_SAMPLE_RATE} from './bowlSynthesis';
 import {bowStrikeOffset,type BowSession} from './bowTimeline';
 let ctx:AudioContext|null=null,master:GainNode|null=null;
 let ambient:AudioBufferSourceNode|null=null;
@@ -6,7 +7,10 @@ let enabled=false,chantRequested=false,soundVersion=0;
 let useSound=()=>false;
 const voices=new Set<AudioScheduledSourceNode>();
 const outputs=new Map<AudioScheduledSourceNode,GainNode>();
-export const audioAssets={bell:'/audio/temple-bell-jnn.mp3',chant:'/audio/truc-lam-pentatonic.wav'};
+const audioAssets={bell:()=>import('./generated/bellAudio'),chant:()=>import('./generated/chantAudio')};
+const mediaLoading=new Map<'bell'|'chant',Promise<HTMLAudioElement|null>>();
+let chantVersion=0;
+const silentWave='data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
 function context(){
   if(typeof AudioContext==='undefined')return null;
   if(!ctx)ctx=new AudioContext();if(!master){master=ctx.createGain();master.gain.value=enabled?.7:0;master.connect(ctx.destination);}
@@ -17,20 +21,25 @@ function track<T extends AudioScheduledSourceNode>(source:T){voices.add(source);
 function stop(source:AudioScheduledSourceNode|null){if(source){source.onended=null;try{source.stop()}catch{/* Already ended. */}clean(source)}}
 function media(kind:'bell'|'chant'){
   if(typeof Audio==='undefined')return null;
-  if(kind==='chant'){if(!chant){chant=new Audio(audioAssets.chant);chant.loop=true;chant.preload='metadata';chant.volume=.65;}return chant;}
-  if(!bell){bell=new Audio(audioAssets.bell);bell.preload='auto';bell.volume=.55;}return bell;
+  if(kind==='chant'){if(!chant){chant=new Audio(silentWave);chant.loop=true;chant.preload='metadata';chant.volume=.65;}return chant;}
+  if(!bell){bell=new Audio(silentWave);bell.preload='auto';bell.volume=.55;}return bell;
+}
+function prepareMedia(kind:'bell'|'chant'){
+  let loading=mediaLoading.get(kind);
+  if(!loading){const audio=media(kind);loading=audio?audioAssets[kind]().then(({default:source})=>{audio.src=source;return audio}):Promise.resolve(null);mediaLoading.set(kind,loading);void loading.catch(()=>mediaLoading.delete(kind));}
+  return loading;
 }
 function stopMedia(audio:HTMLAudioElement|null){if(audio){audio.pause();try{audio.currentTime=0}catch{/* Metadata has not loaded yet. */}}}
 /** Prime both media elements inside the tap, so later arrival callbacks also work on iOS. */
 export function unlockAudio(){
   const c=context();if(c)void c.resume().catch(()=>{});
-  for(const kind of ['bell','chant'] as const){const audio=media(kind);if(!audio||!audio.paused)continue;audio.muted=true;const playing=audio.play();audio.pause();audio.muted=false;void playing.catch(()=>{});}
+  for(const kind of ['bell','chant'] as const){const audio=media(kind);if(!audio||!audio.paused)continue;audio.muted=true;const playing=audio.play();audio.pause();audio.muted=false;void playing.catch(()=>{});void prepareMedia(kind).catch(()=>{});}
 }
 export function bindSound(check:()=>boolean){useSound=check;}
 export function setAmbient(next:boolean){
   enabled=next;
   if(!next){stopBowlVoices();soundVersion++;stop(ambient);ambient=null;stopMedia(chant);stopMedia(bell);for(const v of [...voices])stop(v);if(master&&ctx)master.gain.setValueAtTime(0,ctx.currentTime);return;}
-  const c=context();if(!c)return;void c.resume().catch(()=>{});master!.gain.setValueAtTime(.7,c.currentTime);void preloadBowl();
+  const c=context();if(!c)return;void c.resume().catch(()=>{});master!.gain.setValueAtTime(.7,c.currentTime);
   if(!ambient){
     const b=c.createBuffer(1,c.sampleRate*5,c.sampleRate),samples=b.getChannelData(0);let last=0;
     for(let i=0;i<samples.length;i++){last=(last+(Math.random()*2-1)*.02)/1.02;samples[i]=last*.20;}
@@ -38,16 +47,16 @@ export function setAmbient(next:boolean){
   }
 }
 export async function setChant(next:boolean){
-  chantRequested=next;
+  chantRequested=next;const version=++chantVersion;
   if(!next||!enabled){stopMedia(chant);return;}
   const audio=media('chant');if(!audio||!audio.paused)return;
-  try{await audio.play();if(!enabled||!chantRequested)stopMedia(audio)}catch{/* A later direct tap may unlock playback. */}
+  try{await prepareMedia('chant');if(!enabled||!chantRequested||version!==chantVersion)return;await audio.play();if(!enabled||!chantRequested)stopMedia(audio)}catch{/* A later direct tap may unlock playback. */}
 }
 export async function playBell(){
   if(!useSound()||!enabled)return;const version=++soundVersion;
   const audio=media('bell');if(!audio){const c=context();if(c)synthBell(c);return;}
   stopMedia(audio);
-  try{await audio.play();if(!enabled||!useSound())stopMedia(audio)}catch{if(enabled&&useSound()&&version===soundVersion){const c=context();if(c)synthBell(c)}}
+  try{await prepareMedia('bell');if(!enabled||!useSound()||version!==soundVersion)return;await audio.play();if(!enabled||!useSound())stopMedia(audio)}catch{if(enabled&&useSound()&&version===soundVersion){const c=context();if(c)synthBell(c)}}
 }
 function synthBell(c:AudioContext){
   // Inharmonic bronze modes and slow beating if the recording cannot be decoded.
@@ -61,18 +70,25 @@ export function playWood(){
 }
 
 let bowlBuffer:Promise<AudioBuffer|null>|null=null;
-let bowlEpoch=0;
 const bowlVoices=new Set<{source:AudioBufferSourceNode;gain:GainNode}>();
 const bowlTickets=new Map<number,object>();
-export function preloadBowl(){if(bowlBuffer)return bowlBuffer;ctx??=new AudioContext();const context=ctx;
-  bowlBuffer=fetch('/assets/audio/bow-bowl.mp3').then(r=>{if(!r.ok)throw new Error('bowl audio');return r.arrayBuffer()}).then(b=>context.decodeAudioData(b)).catch(()=>{bowlBuffer=null;return null});return bowlBuffer;
+/** Generate the same reference resonance locally; download-manager extensions cannot intercept it. */
+export function preloadBowl(){
+  if(bowlBuffer)return bowlBuffer;
+  ctx??=new AudioContext();const context=ctx;
+  bowlBuffer=Promise.resolve().then(()=>{
+    const samples=renderBowlSamples(),buffer=context.createBuffer(1,samples.length,BOWL_SAMPLE_RATE);
+    buffer.getChannelData(0).set(samples);return buffer;
+  });
+  return bowlBuffer;
 }
-function stopBowlVoices(){bowlEpoch++;for(const voice of bowlVoices){voice.source.stop();voice.source.disconnect();voice.gain.disconnect()}bowlVoices.clear()}
+
+function stopBowlVoices(){for(const voice of bowlVoices){voice.source.stop();voice.source.disconnect();voice.gain.disconnect()}bowlVoices.clear()}
 export function scheduleBowBowl(session:BowSession){let cancelled=false,source:AudioBufferSourceNode|null=null,start=Infinity;
   if(!useSound()||bowlTickets.has(session.at))return()=>{};const ticket={};bowlTickets.set(session.at,ticket);for(const at of bowlTickets.keys())if(Date.now()-at>30000)bowlTickets.delete(at);const discard=()=>{if(bowlTickets.get(session.at)===ticket)bowlTickets.delete(session.at)};
   ctx??=new AudioContext();const context=ctx;void context.resume();
-  const due=session.at+bowStrikeOffset(session.mode)*1000,epoch=bowlEpoch;
-  void preloadBowl().then(buffer=>{if(cancelled||epoch!==bowlEpoch||!buffer||!useSound()||Date.now()>due+150){discard();return;}
+  const due=session.at+bowStrikeOffset(session.mode)*1000;
+  void preloadBowl().then(buffer=>{if(cancelled||!buffer||!useSound()||Date.now()>due+150){discard();return;}
     if(bowlVoices.size>=2){const oldest=bowlVoices.values().next().value!;oldest.gain.gain.setTargetAtTime(0,context.currentTime,.025);oldest.source.stop(context.currentTime+.08);bowlVoices.delete(oldest)}
     source=context.createBufferSource();const gain=context.createGain(),voice={source,gain};source.buffer=buffer;gain.gain.value=.48;source.connect(gain).connect(context.destination);
     source.onended=()=>{bowlVoices.delete(voice);voice.source.disconnect();gain.disconnect()};bowlVoices.add(voice);start=context.currentTime+Math.max(0,(due-Date.now())/1000);source.start(start);

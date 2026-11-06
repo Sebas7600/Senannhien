@@ -1,13 +1,18 @@
-import QuanAmShrine from './QuanAmShrine';
-import WaterTaskWorld from './WaterTaskWorld';
-import {TeaGallery} from './TeaGallery';
-import {ImportedGate,ImportedBell,ImportedDrum} from './ImportedCourtyardProps';
-import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
-import {counterHasMeal} from './mealService';
+import {LOTUS_POND} from './lotusLayout';
+import {outerGroundGeometry,courtyardGroundGeometry,lotusBankGeometry} from './lotusGeometry';
+import {LotusBridgeCollision} from './LotusBridge';
 import TempleGarden from './TempleGarden';
 import MainTempleReference from './MainTempleReference';
 import IncenseBurner from './IncenseBurner';
-
+import {TeaGallery} from './TeaGallery';
+import {TemplePlaque} from './TemplePlaque';
+import {KitchenStove} from './KitchenStove';
+import {TempleBell, BellFrame} from './TempleBell';
+import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
+import {mealPlan,MEAL_SCALE} from './mealService';
+import QuanAmShrine from './QuanAmShrine';
+import WaterTaskWorld from './WaterTaskWorld';
+import {ImportedGate,ImportedBell,ImportedDrum} from './ImportedCourtyardProps';
 import GardenDetails from './GardenDetails';
 import BodhiTree from './BodhiTree';
 import CourtyardTrees from './CourtyardTrees';
@@ -21,10 +26,9 @@ import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { Box, Buddha, Lantern, Roof, Tree } from './models';
-import { Food, Steam } from './Food';
+import { ServingMeal, Steam } from './Food';
 import { Character } from './Character';
-import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, PICKUP_PLATE, WORLD, type Vec3 } from './gameData';
-
+import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, floorSurfaces, KITCHEN_COUNTER_TOP, WORLD, type Vec3 } from './gameData';
 import { useGame } from './gameStore';
 
 export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string;subtitle?:string}){
@@ -36,11 +40,13 @@ export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string
   useFrame(()=>{if(!ref.current)return;ref.current.getWorldPosition(point.current);const p=useGame.getState().position,visible=Math.hypot(p[0]-point.current.x,p[1]-point.current.z)<maxDistance;if(visible!==previous.current){previous.current=visible;show(visible)}});
   return <group ref={ref} position={position}>{shown&&<Html center distanceFactor={distanceFactor} zIndexRange={[3,0]}>{children}</Html>}</group>;
 }function RoofSection({x,z,w,d,children}:{x:number;z:number;w:number;d:number;children:React.ReactNode}){const ref=useRef<THREE.Group>(null);useFrame(()=>{if(!ref.current)return;const s=useGame.getState();ref.current.visible=!(Math.abs(s.position[0]-x)<w/2+1&&Math.abs(s.position[1]-z)<d/2+2)});return <group ref={ref}>{children}</group>}
-function Pavers(){const material=useSurface('stone','#e7dfc8');const ref=useRef<THREE.InstancedMesh>(null);const cells=useMemo(()=>{const a:Vec3[]=[];for(let x=-14;x<=14;x++)for(let z=-17;z<=27;z++)a.push([x,0,z]);for(let x=-47;x<=47;x++)for(const z of [-7,-6,-5,-4,-33,-32])if(Math.abs(x)>14)a.push([x,0,z]);for(let z=-57;z<=47;z++)for(const x of [-18,-17,17,18])if(z<-17||z>27)a.push([x,0,z]);return a},[]);useEffect(()=>{const m=new THREE.Object3D();if(!ref.current)return;cells.forEach((p,i)=>{m.position.set(p[0],.025,p[2]);m.scale.set(.975,.05,.975);m.updateMatrix();ref.current!.setMatrixAt(i,m.matrix);ref.current!.setColorAt(i,new THREE.Color(['#c8c0a5','#cfc7ac','#c2bba0','#d4cbb0'][i%4]))});ref.current.instanceMatrix.needsUpdate=true},[cells]);return <instancedMesh ref={ref} args={[undefined,undefined,cells.length]} frustumCulled={false} receiveShadow material={material}><boxGeometry/></instancedMesh>}
+function Pavers(){const material=useSurface('stone','#e7dfc8');const ref=useRef<THREE.InstancedMesh>(null);const cells=useMemo(()=>{const a:Vec3[]=[];for(let x=-14;x<=14;x++)for(let z=-17;z<=27;z++)a.push([x,0,z]);for(let x=-47;x<=47;x++)for(const z of [-7,-6,-5,-4,-33,-32])if(Math.abs(x)>14)a.push([x,0,z]);for(let z=-57;z<=47;z++)for(const x of [-18,-17,17,18])if(z<-17||z>27)a.push([x,0,z]);return a.filter(([x,,z])=>((x-LOTUS_POND.x)/(LOTUS_POND.rx+.65))**2+((z-LOTUS_POND.z)/(LOTUS_POND.rz+.65))**2>=1)},[]);useEffect(()=>{const m=new THREE.Object3D();if(!ref.current)return;cells.forEach((p,i)=>{m.position.set(p[0],.025,p[2]);m.scale.set(.975,.05,.975);m.updateMatrix();ref.current!.setMatrixAt(i,m.matrix);ref.current!.setColorAt(i,new THREE.Color(['#c8c0a5','#cfc7ac','#c2bba0','#d4cbb0'][i%4]))});ref.current.instanceMatrix.needsUpdate=true},[cells]);return <instancedMesh ref={ref} args={[undefined,undefined,cells.length]} frustumCulled={false} receiveShadow material={material}><boxGeometry/></instancedMesh>}
 function WalkSurface(){const click=(e:ThreeEvent<MouseEvent>)=>{if(e.delta>5)return;e.stopPropagation();const s=useGame.getState();s.stand();s.set({destination:[e.point.x,e.point.z],pendingSeat:null});};return <mesh position={[0,.065,0]} rotation={[-Math.PI/2,0,0]} onClick={click}><planeGeometry args={[124,132]}/><meshBasicMaterial transparent opacity={0} depthWrite={false}/></mesh>}
 export function Ground(){return <group><IncenseBurner/>
-  <mesh position={[0,-.15,0]} receiveShadow rotation={[-Math.PI/2,0,0]}><planeGeometry args={[350,350]}/><meshStandardMaterial color="#a6b18a"/></mesh>
-  <mesh position={[0,-.04,-2]} receiveShadow><boxGeometry args={[124,.1,132]}/><meshStandardMaterial color="#a4ad83"/></mesh>
+  <mesh position={[0,-.15,0]} geometry={outerGroundGeometry} receiveShadow dispose={null}><meshStandardMaterial color="#a6b18a"/></mesh>
+  <mesh position={[0,.01,0]} geometry={courtyardGroundGeometry} receiveShadow dispose={null}><meshStandardMaterial color="#a4ad83"/></mesh>
+  <mesh geometry={lotusBankGeometry} receiveShadow dispose={null}><meshStandardMaterial color="#8e9474" roughness={1}/></mesh>
+  <LotusBridgeCollision/>
   <Pavers/><WalkSurface/>
   {[-1,1].map(s=><group key={s}><Box position={[s*60,.8,-2]} scale={[.35,1.6,128]} color="#b7b89c"/>{Array.from({length:33},(_,i)=><Box key={i} position={[s*60,1.35,-64+i*4]} scale={[.65,2.7,.65]} color="#acb095"/>)}</group>)}
   {[-66,62].map(z=><Box key={z} position={[0,.8,z]} scale={[120,1.6,.35]} color="#b7b89c"/>)}
@@ -64,23 +70,21 @@ function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;
   <WorldLabel position={[0,4.1,d/2+.3]} title={title} subtitle={subtitle}/>
   {children}
 </group>}
-function KitchenMeal(){
-  const meal=useGame(s=>s.meal),ref=useRef<THREE.Group>(null);
-  useFrame(()=>{if(ref.current)ref.current.visible=counterHasMeal(meal,Date.now())});
-  return meal?<group ref={ref} visible={false} position={PICKUP_PLATE} scale={.75}><Food dish={meal.dish}/></group>:null;
-}
 function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} title="NHÀ ĂN HƯƠNG THIỀN" subtitle="Bữa chay thanh đạm · Mời bạn ngồi">
-  <Box position={[0,.75,-6.1]} scale={[17,1.25,1.5]} color="#aa9471"/><Box position={[0,1.41,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
-  {[-5,-1,3].map(x=><group key={x} position={[x,1.45,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh><group position={[0,.25,0]}><Steam/></group></group>)}
+  <TemplePlaque kind="dining" position={[0,3.82,-8.7]}/>
+  <Box position={[0,(.16+KITCHEN_COUNTER_TOP-.08)/2,-6.1]} scale={[17,KITCHEN_COUNTER_TOP-.24,1.5]} color="#aa9471"/><Box position={[0,KITCHEN_COUNTER_TOP-.06,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
+  <KitchenStove/>
+  {[-5,5].map(x=><group key={x} position={[x,KITCHEN_COUNTER_TOP+.19,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh></group>)}
 
-  {[-8.5,8.5].map(x=><group key={x}><Box position={[x,1,-7.6]} scale={[1,1.6,1]} color="#82906c"/><mesh position={[x,2.2,-7.6]} scale={[.6,.8,.6]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#7a975e"/></mesh></group>)}
+  {[-9.8,9.8].map(x=><group key={x}><Box position={[x,1,-7.6]} scale={[1,1.6,1]} color="#82906c"/><mesh position={[x,2.2,-7.6]} scale={[.6,.8,.6]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#7a975e"/></mesh></group>)}
   {diningTables.map((table,i)=><group key={i} position={[table[0]-34,0,table[2]+27]}>
     <Box position={[0,.58,0]} scale={[2.5,.12,2.8]} color="#a38d65"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*.95,.36,t*1.05]} scale={[.13,.4,.13]} color="#7d6747"/>))}
   </group>)}
-  <WorldLabel position={[0,1.9,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
+  <WorldLabel position={[-5,2,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
 </Pavilion>}
 function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
+  <TemplePlaque kind="library" position={[0,3.82,-6.7]}/>
   {[-6,-2,2,6].map((x,i)=><group key={x} position={[x,0,-5.3]} onClick={e=>{e.stopPropagation();useGame.getState().perform('read')}}>
     <Box position={[0,1.6,0]} scale={[2.7,2.5,.7]} color="#8b6d49"/>{[.7,1.5,2.3].flatMap(y=>Array.from({length:9},(_,j)=><Box key={`${y}-${j}`} position={[-1.05+j*.26,y+.2,.41]} scale={[.18,.53,.2]} color={['#7d8e6c','#ac9570','#7b8f8b','#b99e7d'][(i+j)%4]}/>))}
   </group>)}
@@ -106,23 +110,19 @@ function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
   </group>
 }
 function Stupa(){return <group position={[-35,0,42]}><Box position={[0,.3,0]} scale={[9,.6,9]} color="#b8b297"/>{Array.from({length:7},(_,i)=><group key={i} position={[0,i*1.85+.6,0]}><Box position={[0,.65,0]} scale={[5.7-i*.5,1.4,5.7-i*.5]} color="#c1ac82"/>{[-1,1].map(s=><Box key={s} position={[0,.73,s*(2.9-i*.25)]} scale={[.55,.85,.05]} color="#726348"/>)}<Roof y={1.3} width={7.4-i*.65} depth={7.4-i*.65} height={.75}/></group>)}<mesh position={[0,14.2,0]}><coneGeometry args={[.35,2,8]}/><meshStandardMaterial color="#c2a268"/></mesh><WorldLabel position={[0,2,5]} title="BẢO THÁP AN LẠC" subtitle="Bảy tầng tĩnh lặng"/></group>}
-function TeaTerrace(){return <Pavilion x={0} z={-56} w={20} d={13} floor={.3} title="TRÀ ĐÌNH VỌNG SƠN" subtitle="10 bàn đôi · Hai ghế đối diện · Một tách trà an nhiên">
+function TeaTerrace(){return <Pavilion x={0} z={-56} w={20} d={13} floor={.3} title="TRÀ ĐÌNH VỌNG SƠN" subtitle="10 bàn đôi · Hai bồ đoàn đối diện · Một tách trà an nhiên">
   <TeaGallery/>
   {teaTables.map((t,i)=><group key={i} position={[t[0],0,t[2]+56]}>
-    <Box position={[0,.92,0]} scale={[1.6,.12,1.2]} color="#9f8861"/>
-    {[-.6,.6].flatMap(x=>[-.4,.4].map(z=><Box key={`${x}-${z}`} position={[x,.6,z]} scale={[.1,.6,.1]} color="#816c4e"/>))}
+    <Box position={[0,t[1]-.06,0]} scale={[1.6,.12,1.2]} color="#9f8861"/>
+    {[-.6,.6].flatMap(x=>[-.4,.4].map(z=><Box key={`${x}-${z}`} position={[x,(.3+t[1]-.12)/2,z]} scale={[.1,t[1]-.42,.1]} color="#816c4e"/>))}
 
-    {[-.35,.35].map(z=><group key={z} position={[.32,1.05,z]}><mesh><cylinderGeometry args={[.07,.05,.1,10]}/><meshStandardMaterial color="#c6c8ac"/></mesh><Steam/></group>)}
+    {[-.35,.35].map(z=><group key={z} position={[.32,t[1]+.07,z]}><mesh><cylinderGeometry args={[.07,.05,.1,10]}/><meshStandardMaterial color="#c6c8ac"/></mesh><Steam/></group>)}
   </group>)}
 </Pavilion>}
 
-export function Seats(){const seated=useGame(s=>s.seated);return <><BenchBatches/><CushionBatches/>{seats.filter(s=>s.kind!=='bench'&&!usesFloorSeat(s)).map(s=><group key={s.id} position={s.position} rotation={[0,s.rotation,0]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().sit(s.id)}}>
-    <Box position={[0,-.06,0]} scale={[.85,.14,.85]} color="#a49370"/>
-    <Box position={[0,.35,-.4]} scale={[.85,.7,.09]} color="#9c8b66"/>
-    {[-1,1].flatMap(a=>[-1,1].map(b=><Box key={`${a}-${b}`} position={[a*.3,-.28,b*.3]} scale={[.08,.5,.08]} color="#7d7156"/>))}
-  {seated===s.id&&<mesh position={[0,.03,0]}><cylinderGeometry args={[.73,.73,.08,16]}/><meshBasicMaterial color="#e0c98a" transparent opacity={.2} depthWrite={false}/></mesh>}
-</group>)}</>}
-export function MealPlates(){const meal=useGame(s=>s.meal),peers=useGame(s=>s.peers);const all=[...(meal?[{meal,key:'self'}]:[]),...peers.filter(p=>p.meal).map(p=>({meal:p.meal!,key:p.id}))];return <>{all.filter(o=>o.meal.status==='ready'||o.meal.status==='eating').map(o=>{const seat=seats.find(s=>s.id===o.meal.seatId);if(!seat?.table)return null;const x=seat.position[0]<seat.table[0]?-.65:.65,z=seat.position[2]<seat.table[2]?-.8:.8;return <group key={o.key} position={[seat.table[0]+x,seat.table[1]+.06,seat.table[2]+z]} scale={.85}><Food dish={o.meal.dish} eating={o.meal.status==='eating'}/></group>})}</>}
+export function Seats(){return <><BenchBatches/><CushionBatches/></>}
+// The local plate is animated by Cô Tâm and stays the same mesh after placement.
+export function MealPlates(){const peers=useGame(s=>s.peers);return <>{peers.filter(p=>p.meal&&(p.meal.status==='ready'||p.meal.status==='eating')).map(p=>{const meal=p.meal!,seat=seats.find(s=>s.id===meal.seatId);if(!seat?.table)return null;const plan=mealPlan(seat.id);return <group key={p.id} position={plan.plate} rotation={[0,plan.heading,0]} scale={MEAL_SCALE}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>})}</>}
 export function Garden(){return <><TempleGarden/><WorldLabel position={[36,2.3,-42]} title="VƯỜN RAU TỪ TÂM" subtitle="Vườn chung · Gieo · Tưới · Thu hoạch sau 60 giây"/></>}
 function Forest(){const trunks=useRef<THREE.InstancedMesh>(null),leaves=useRef<THREE.InstancedMesh>(null);const coords=useMemo(()=>{const a:Vec3[]=[];for(let i=0;i<145;i++){const angle=i*2.399,r=64+(i%9)*3;a.push([Math.sin(angle)*r,0,Math.cos(angle)*r-5])}for(let i=0;i<30;i++)a.push([-47+Math.sin(i*2.4)*8,0,-5+i*1.6]);return a},[]);useEffect(()=>{const m=new THREE.Object3D();coords.forEach(([x,y,z],i)=>{const size=.75+i%4*.18;m.position.set(x,2*size,z);m.scale.set(.28*size,4*size,.28*size);m.rotation.set(0,i,0);m.updateMatrix();trunks.current?.setMatrixAt(i,m.matrix);for(let j=0;j<3;j++){m.position.set(x+Math.sin(j*2.4+i)*size,y+(4+j*.5)*size,z+Math.cos(j*2.4+i)*size);m.scale.set(2.5*size,1.5*size,2.3*size);m.updateMatrix();leaves.current?.setMatrixAt(i*3+j,m.matrix);leaves.current?.setColorAt(i*3+j,new THREE.Color(['#517454','#68825a','#84966a'][(i+j)%3]));}});if(trunks.current)trunks.current.instanceMatrix.needsUpdate=true;if(leaves.current)leaves.current.instanceMatrix.needsUpdate=true},[coords]);return <><instancedMesh ref={trunks} args={[undefined,undefined,coords.length]} castShadow><cylinderGeometry args={[1,1.3,1,6]}/><meshStandardMaterial color="#7f7258"/></instancedMesh><instancedMesh ref={leaves} args={[undefined,undefined,coords.length*3]} castShadow><icosahedronGeometry args={[1,1]}/><meshStandardMaterial roughness={1}/></instancedMesh></>}
 function Bamboo(){const ref=useRef<THREE.InstancedMesh>(null);useEffect(()=>{if(!ref.current)return;const m=new THREE.Object3D();for(let i=0;i<80;i++){const a=i*2.399,r=6+(i%9)*.9;m.position.set(-38+Math.sin(a)*r,2.4+(i%3)*.3,12+Math.cos(a)*r);m.scale.set(.06,4.8+(i%3)*.6,.06);m.rotation.set(Math.sin(i)*.04,0,Math.cos(i)*.05);m.updateMatrix();ref.current.setMatrixAt(i,m.matrix);}ref.current.instanceMatrix.needsUpdate=true},[]);return <group><instancedMesh ref={ref} args={[undefined,undefined,80]}><cylinderGeometry args={[1,1,1,6]}/><meshStandardMaterial color="#72885b"/></instancedMesh>{Array.from({length:15},(_,i)=>{const a=i*2.4;return <mesh key={i} position={[-38+Math.sin(a)*8,5.5,12+Math.cos(a)*8]} scale={[2,.3,2]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#71945f"/></mesh>})}</group>}
@@ -132,5 +132,5 @@ function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/
   {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><KitchenMeal/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);

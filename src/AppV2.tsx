@@ -1,8 +1,8 @@
 import {QUAN_AM,nearQuanAm} from './quanAmData';
 import WaterTaskHUD from './WaterTaskHUD';
 import {nearWaterWell} from './waterTaskData';
+import {BEAD_STEP_MS,MALA_BEADS} from './beadMotion';
 import {CarryWater} from './practiceIcons';
-import {servicePhase,serviceLabels} from './mealService';
 import {useStore} from 'zustand';
 import {gateState} from './gateState';
 import {nearGate} from './courtyardPropsData';
@@ -11,10 +11,10 @@ import {gardenStatus} from './gardenStatus';
 import {gardenPlots} from './gameData';
 import {nearestFeedStation} from './pondLayout';
 import {nearestOfferingStation,nearDonationChest} from './templeFixtures';
-
+import {servicePhase,serviceLabels,chefPhase} from './mealService';
 import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Bell, BookOpen, Camera, Check, ChevronDown, ChevronRight, CircleHelp, CircleUserRound, Coffee, Compass, Flame, Flower2, Footprints, Heart, Leaf, Maximize, MessageCircle, MoreHorizontal, Package, Settings2, Sprout, UsersRound, Utensils, Volume2, VolumeX, Wind, X, Zap } from 'lucide-react';
-import { activities, useGame,visitDonationChest, type Activity, type Panel } from './gameStore';
+import { activities, LEAVES_PER_MERIT, useGame,visitDonationChest, type Activity, type Panel } from './gameStore';
 import { OFFERING_RANGE, OFFERING_DURATION, incenseSpot, INCENSE_RANGE, INCENSE_DURATION, dishes, distance, nearestSeat, npcs, seats, zoneAt } from './gameData';
 import { activityIcons } from './uiIcons';
 import {KneelingSit,SeatedMeditation} from './practiceIcons';
@@ -27,7 +27,7 @@ import {nearBodhiAltar} from './bodhiData';
 import CharacterCreator from './CharacterCreator';
 const World=lazy(()=>import('./WorldV2'));
 class SceneBoundary extends Component<{children:ReactNode},{error:boolean}>{state={error:false};static getDerivedStateFromError(){return {error:true}}render(){return this.state.error?<div className="scene-error"><Flower2 size={42}/><h2>Chưa mở được khuôn viên 3D</h2><p>Bật WebGL trong trình duyệt rồi thử tải lại nhé.</p><button onClick={()=>window.location.reload()}>Mở lại khuôn viên</button></div>:this.props.children}}
-function ContextActions(){const s=useGame(),gateOpen=useStore(gateState,s=>s.open),zone=zoneAt(s.position),seat=seats.find(c=>c.id===s.seated),near=nearestSeat(s.position),npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&distance(s.position,[n.x,n.z])<4);if(!s.started||s.waterQuest)return null;
+function ContextActions(){const s=useGame(),gateOpen=useStore(gateState,s=>s.open),zone=zoneAt(s.position),seat=seats.find(c=>c.id===s.seated),near=nearestSeat(s.position),npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&(n.id!=='chef'||!s.meal||chefPhase(s.meal,Date.now())==='idle')&&distance(s.position,[n.x,n.z])<4);if(!s.started||s.waterQuest)return null;
   if(['incense','flower','candle'].includes(s.action))return <div className="context-actions v2-context incense-status"><span>{s.action==='flower'?'Đang dâng hoa…':s.action==='candle'?'Đang dâng đèn…':'Đang dâng hương…'} {Math.min(100,Math.round((Date.now()-(s.event?.at||Date.now()))/(s.action==='incense'?INCENSE_DURATION:OFFERING_DURATION)*100))}%</span><button onClick={()=>s.stand()}>Hủy · Esc</button></div>;
 
   const button=(label:string,Icon:typeof Leaf,fn:()=>void,key=label)=><button key={key} onClick={fn}><Icon size={16}/>{label}</button>;
@@ -50,7 +50,40 @@ function ContextActions(){const s=useGame(),gateOpen=useStore(gateState,s=>s.ope
   return buttons.length?<div className="context-actions v2-context">{buttons.slice(0,4)}</div>:null;
 
 }
-function PracticeCard(){const s=useGame(),action=s.action;if(s.panel||!['meditate','chant','beads','mok','pray'].includes(action))return null;const a=activities.find(a=>a.id===action)!,Icon=activityIcons[a.id],count=s.progress[a.id];return <section className="practice-card"><div className="practice-symbol"><Icon size={27} strokeWidth={1.2}/></div><span className="eyebrow">{seats.find(c=>c.id===s.seated)?.label||'MỘT KHOẢNH KHẮC TĨNH TẠI'}</span><h2>{action==='meditate'?'Hít vào. Thở ra.':a.name}</h2><p>{action==='chant'?'Nam mô Bổn Sư Thích Ca Mâu Ni Phật.':action==='beads'?`Hạt ${Math.floor(count)%27+1} / 27 · Chậm rãi theo từng hạt.`:action==='mok'?'Một nhịp đều, một niệm an lành.':'Buông lỏng hai vai. Trở về với chính mình.'}</p><div className="practice-count">{Math.floor(count)} <small>{action==='beads'?'hạt đã lần':action==='mok'?'nhịp đã gõ':'giây tĩnh tại'}</small></div>{(action==='beads'||action==='mok')&&<button className="button ghost" onClick={()=>{s.record(action);if(action==='mok')playWood()}}>{action==='mok'?'Gõ một nhịp':'Lần thêm một hạt'}</button>}<button className="text-btn" onClick={()=>s.set({action:s.seated?'sit':'walk'})}>Tạm dừng thực tập</button></section>}
+function BeadAdvanceButton(){
+  const at=useGame(s=>s.beadStepAt),advance=useGame(s=>s.advanceBead);
+  const [finished,setFinished]=useState(0);
+  useEffect(()=>{
+    const remaining=at+BEAD_STEP_MS-Date.now();
+    if(remaining<=0){setFinished(at);return;}
+    const timer=window.setTimeout(()=>setFinished(at),remaining);
+    return ()=>window.clearTimeout(timer);
+  },[at]);
+  return <button className="button ghost" disabled={finished<at} onClick={advance}>Lần thêm một hạt</button>;
+}
+function PracticeCard(){
+  const s=useGame(),action=s.action;
+  if(s.panel||!['meditate','chant','beads','mok','pray','sweep'].includes(action))return null;
+  const a=activities.find(a=>a.id===action)!,Icon=activityIcons[a.id],count=s.progress[a.id];
+  const stop=()=>s.set({action:s.seated?'sit':'walk'});
+  if(action==='sweep')return <section className="practice-card sweep-card" aria-label="Bộ đếm quét lá">
+    <div className="practice-symbol"><Icon size={27} strokeWidth={1.2}/></div>
+    <span className="eyebrow">CHĂM SÂN CHÙA</span>
+    <h2>Quét lá</h2>
+    <div className="practice-count" aria-live="polite">{count} <small>lá đã gom hôm nay</small></div>
+    <div className="sweep-meter">
+      <div><span>{s.sweepRemainder} / {LEAVES_PER_MERIT} lá</span><span>+1 công đức</span></div>
+      <progress aria-label="Tiến độ đến công đức tiếp theo" value={s.sweepRemainder} max={LEAVES_PER_MERIT}/>
+    </div>
+    <button className="text-btn" onClick={stop}>Dừng quét lá</button>
+  </section>;
+  const beadCount=s.lifetime.beads||0,beadInRound=beadCount?((beadCount-1)%MALA_BEADS)+1:0;
+  return <section className="practice-card"><div className="practice-symbol"><Icon size={27} strokeWidth={1.2}/></div><span className="eyebrow">{seats.find(c=>c.id===s.seated)?.label||'MỘT KHOẢNH KHẮC TĨNH TẠI'}</span><h2>{action==='meditate'?'Hít vào. Thở ra.':a.name}</h2><p>{action==='chant'?'Nam mô Bổn Sư Thích Ca Mâu Ni Phật.':action==='beads'?`${beadInRound} / ${MALA_BEADS} hạt trong vòng · Chậm rãi theo từng hạt.`:action==='mok'?'Một nhịp đều, một niệm an lành.':'Buông lỏng hai vai. Trở về với chính mình.'}</p><div className="practice-count">{Math.floor(count)} <small>{action==='beads'?'hạt đã lần hôm nay':action==='mok'?'nhịp đã gõ':'giây tĩnh tại'}</small></div>
+    {action==='beads'&&<BeadAdvanceButton/>}
+    {action==='mok'&&<button className="button ghost" onClick={()=>{s.record('mok');playWood()}}>Gõ một nhịp</button>}
+    <button className="text-btn" onClick={stop}>Tạm dừng thực tập</button>
+  </section>;
+}
 function MealStatus(){const s=useGame(),m=s.meal;if(s.waterQuest||!m||(m.status==='finished'&&zoneAt(s.position).id!=='dining'))return null;const d=dishes.find(d=>d.id===m.dish)!;const seconds=m.status==='preparing'?Math.max(0,Math.ceil((m.readyAt-Date.now())/1000)):m.status==='eating'?Math.max(0,Math.ceil(((m.eatUntil||0)-Date.now())/1000)):0;return <section className={`meal-status ${m.status}`}><header><span><Utensils size={15}/> BẾP HƯƠNG THIỀN</span>{m.status==='finished'&&<button className="icon-btn" aria-label="Đóng thông báo bữa ăn" onClick={()=>s.set({meal:null})}><X size={14}/></button>}</header><div className="meal-status-main"><span className="meal-emoji">{d.icon}</span><div><strong>{d.name}</strong><p>{m.status==='preparing'?`${serviceLabels[servicePhase(m,Date.now())]} · ${seconds}s`:m.status==='ready'?'Món đã được đặt trên bàn':m.status==='eating'?`Ăn chậm, nhai kỹ · ${seconds}s`:'Cảm ơn bạn đã dùng bữa'}</p></div></div>{m.status==='ready'?<button className="button primary" onClick={()=>s.eat()}>{s.seated===m.seatId?'Dùng bữa chay':'Trở lại chỗ ăn'}<ArrowUpRight size={14}/></button>:m.status==='eating'?<div className="meal-time-progress"><i style={{width:`${(9-seconds)/9*100}%`}}/></div>:m.status==='finished'?<span className="meal-finish"><Check size={13}/>+{d.energy} năng lượng · Một bữa chay an lành</span>:<div className="meal-time-progress"><i style={{width:`${Math.max(0,Math.min(100,(1-(m.readyAt-Date.now())/(m.readyAt-(m.orderedAt||m.readyAt-6000)))*100))}%`}}/></div>}</section>}
 export default function AppV2(){const s=useGame(),[dailyOpen,setDailyOpen]=useState(false);useSharedCourtyard();const zone=zoneAt(s.position);const toggle=(p:Panel)=>s.set({panel:s.panel===p?null:p});
   useEffect(()=>{s.checkDay();bindSound(()=>useGame.getState().sound)},[]);useEffect(()=>{const sync=()=>setAmbient(s.sound&&!document.hidden);sync();document.addEventListener('visibilitychange',sync);return()=>{document.removeEventListener('visibilitychange',sync);setAmbient(false)}},[s.sound]);useEffect(()=>{if(s.event?.type==='bell')playBell()},[s.event]);
@@ -64,7 +97,7 @@ export default function AppV2(){const s=useGame(),[dailyOpen,setDailyOpen]=useSt
     <header className="topbar"><a className="brand" href="#" onClick={e=>{e.preventDefault();toggle('help')}}><Flower2 size={35} strokeWidth={1.2}/><div><strong>SEN AN NHIÊN</strong><span>Cả một chốn để trở về</span></div></a><div className="room-picker"><span className={s.connection==='online'?'connected-dot':'offline-dot'}/><select aria-label="Chọn phòng sân chùa" value={s.room} onChange={e=>{s.cancelWaterTask();s.stand();s.set({room:e.target.value})}}><option value="an-nhien">Sân An Nhiên</option><option value="truc-lam">Sân Trúc Lâm</option><option value="huong-sen">Sân Hương Sen</option></select><UsersRound size={15}/><span>{s.peers.length+1}</span></div><div className="top-actions"><button className="donate-top" onClick={()=>toggle('donate')} aria-label="Ủng hộ Sen An Nhiên"><Heart size={16}/><span>Ủng hộ</span></button><button className="merit-pill" onClick={()=>toggle('journey')}><Flower2 size={18}/><b>{s.merit}</b><span>công đức</span></button><button className="icon-btn" aria-label={s.sound?'Tắt âm thanh':'Bật âm thanh'} onClick={()=>{if(!s.sound)unlockAudio();s.set({sound:!s.sound})}}>{s.sound?<Volume2 size={19}/>:<VolumeX size={19}/>}</button><button className="icon-btn" aria-label="Cài đặt" onClick={()=>toggle('settings')}><Settings2 size={19}/></button></div></header>
     <section className="location-card"><span className="location-icon"><Compass size={20}/></span><div><strong>{zone.name}</strong><span>{s.night?'Trăng lên · Lòng lắng lại':'Nắng sớm · Gió bình yên'}</span></div><button className="icon-btn" aria-label="Mở bản đồ khuôn viên" onClick={()=>toggle('map')}><ChevronRight size={16}/></button></section>
     <div className="quick-destinations"><button onClick={()=>s.perform('meal')}><Utensils size={15}/><span>Nhà ăn chay</span></button><button onClick={()=>s.set({panel:'seats'})}><KneelingSit size={15}/><span>Chọn chỗ ngồi</span></button></div>
-    <aside className="explore-card"><button className="minimap-header" onClick={()=>toggle('map')}><span className="eyebrow">KHUÔN VIÊN AN NHIÊN</span><ArrowUpRight size={15}/></button><button className="minimap-button" aria-label="Mở bản đồ đầy đủ" onClick={()=>toggle('map')}><MapArtwork mini/></button><div className="explore-count"><Compass size={12}/><span>Đã ghé {s.visited.length}/13 nơi</span><button onClick={()=>s.set({camera:s.camera==='follow'?'overview':'follow'})} aria-label="Đổi góc nhìn"><Camera size={14}/></button></div><button className="daily-toggle" aria-expanded={dailyOpen} onClick={()=>setDailyOpen(!dailyOpen)}><span>Việc lành hôm nay</span><b>{s.claimed.length}/6</b><ChevronDown size={13}/></button>{dailyOpen&&<div className="minimap-tasks"><Tasks compact/><button className="text-btn" onClick={()=>toggle('journey')}>Xem cả hành trình<ArrowUpRight size={13}/></button></div>}</aside>
+    <aside className="explore-card"><button className="minimap-header" onClick={()=>toggle('map')}><span className="eyebrow">KHUÔN VIÊN AN NHIÊN</span><ArrowUpRight size={15}/></button><button className="minimap-button" aria-label="Mở bản đồ đầy đủ" onClick={()=>toggle('map')}><MapArtwork mini/></button><div className="explore-count"><Compass size={12}/><span>Đã ghé {s.visited.length}/13 nơi</span><button onClick={()=>s.set({camera:s.camera==='follow'?'overview':'follow'})} aria-label="Đổi góc nhìn"><Camera size={14}/></button></div><button className="daily-toggle" aria-expanded={dailyOpen} onClick={()=>setDailyOpen(!dailyOpen)}><span>Việc lành hôm nay</span><b>{s.claimed.length+(s.progress.sweep>=LEAVES_PER_MERIT&&!s.claimed.includes("sweep")?1:0)}/6</b><ChevronDown size={13}/></button>{dailyOpen&&<div className="minimap-tasks"><Tasks compact/><button className="text-btn" onClick={()=>toggle('journey')}>Xem cả hành trình<ArrowUpRight size={13}/></button></div>}</aside>
     <nav className="v2-side-tools" aria-label="Khám phá và hành trang"><button onClick={()=>toggle('map')} aria-label="Bản đồ"><Compass size={20}/><span>Bản đồ</span></button><button onClick={()=>toggle('bag')} aria-label="Túi vải"><Package size={20}/><span>Túi vải</span></button><button onClick={()=>toggle('journey')} aria-label="Hành trình"><BookOpen size={20}/><span>Hành trình</span></button><button onClick={()=>toggle('chat')} aria-label="Chat sân chùa"><MessageCircle size={20}/><span>Lời nhắn</span>{s.chatUnread>0&&<i>{Math.min(9,s.chatUnread)}</i>}</button></nav>
     <CharacterCreator/><PracticeCard/><MealStatus/><WaterTaskHUD/><ContextActions/>
     {s.pendingSeat&&<div className="walking-note"><Footprints size={15}/>Đang đến {seats.find(c=>c.id===s.pendingSeat)?.label.toLowerCase()}…<button onClick={()=>s.set({pendingSeat:null,pendingActivity:null,destination:null})}>Dừng</button></div>}

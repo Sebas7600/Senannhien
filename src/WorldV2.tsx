@@ -26,18 +26,61 @@ import { useGame,visitDonationChest, floorAt, type Peer } from './gameStore';
 import { OFFERING_RANGE, incenseSpot, outsideIncenseBurner, INCENSE_RANGE, INCENSE_BURN_MS, distance, gardenPlots, nearestSeat, npcs, seats, usesFloorSeat, RECEPTION_HEADING, type Vec2 } from './gameData';
 
 import { findPath } from './navigation';
-import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS} from './mealService';
+import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS,MEAL_SCALE,createMealPresentation,sampleMealPresentation,sampleKitchenMeal,chefPhase,chefLabels} from './mealService';
+import {ServingMeal} from './Food';
 
 
-function interact(){const s=useGame.getState();if(['incense','flower','candle'].includes(s.action))return;if(nearQuanAm(s.position)){s.perform('incense',QUAN_AM.incenseId);return;}if(nearDonationChest(s.position)){visitDonationChest();return;}const offeringTargets=(['flower','candle'] as const).map(kind=>nearestOfferingStation(kind,s.position,s.offeringFocus)).sort((a,b)=>a.id===s.offeringFocus?-1:b.id===s.offeringFocus?1:distance(s.position,a.spot)-distance(s.position,b.spot));for(const station of offeringTargets)if(distance(s.position,station.spot)<=OFFERING_RANGE){s.perform(station.kind,station.id);return;}if(distance(s.position,incenseSpot)<=INCENSE_RANGE){s.perform('incense');return;}if(nearBodhiAltar(s.position)){s.perform('incense');return;}if(s.seated){s.stand();return;}const waterJar=nearestWaterJar(s.position,s.waterJars);if(s.waterQuest?.phase==='drawing'||s.waterQuest?.phase==='pouring')return;if(s.waterQuest?.phase==='carrying'&&waterJar&&nearWaterJar(s.position,waterJar.id)){s.waterTask(waterJar.id);return;}if(!s.waterQuest&&nearWaterWell(s.position)){s.waterTask();return;}if(nearGate(s.position)){toggleTempleGate();return;}const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot){s.garden(plot.id);return;}const npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&Math.hypot(n.x-s.position[0],n.z-s.position[1])<3);if(npc){s.set({npc:npc.id,panel:'dialogue'});return;}const seat=nearestSeat(s.position);if(seat&&distance(s.position,[seat.position[0],seat.position[2]])<2.5){s.sit(seat.id);return;}const p=s.position;if(distance(p,nearestFeedStation(p).spot)<2.5){s.perform('feed');return;}if(distance(p,[-19,-9])<7){s.perform('bell');return;}if(distance(p,[16,37])<10){s.perform('lantern');return;}if(distance(p,[0,-24])<14){s.perform('incense');return;}s.sit();}
+function interact(){const s=useGame.getState();if(['incense','flower','candle'].includes(s.action))return;if(nearQuanAm(s.position)){s.perform('incense',QUAN_AM.incenseId);return;}if(nearDonationChest(s.position)){visitDonationChest();return;}const offeringTargets=(['flower','candle'] as const).map(kind=>nearestOfferingStation(kind,s.position,s.offeringFocus)).sort((a,b)=>a.id===s.offeringFocus?-1:b.id===s.offeringFocus?1:distance(s.position,a.spot)-distance(s.position,b.spot));for(const station of offeringTargets)if(distance(s.position,station.spot)<=OFFERING_RANGE){s.perform(station.kind,station.id);return;}if(distance(s.position,incenseSpot)<=INCENSE_RANGE){s.perform('incense');return;}if(nearBodhiAltar(s.position)){s.perform('incense');return;}if(s.seated){s.stand();return;}const waterJar=nearestWaterJar(s.position,s.waterJars);if(s.waterQuest?.phase==='drawing'||s.waterQuest?.phase==='pouring')return;if(s.waterQuest?.phase==='carrying'&&waterJar&&nearWaterJar(s.position,waterJar.id)){s.waterTask(waterJar.id);return;}if(!s.waterQuest&&nearWaterWell(s.position)){s.waterTask();return;}if(nearGate(s.position)){toggleTempleGate();return;}const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot){s.garden(plot.id);return;}const npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&(n.id!=='chef'||!s.meal||chefPhase(s.meal,Date.now())==='idle')&&Math.hypot(n.x-s.position[0],n.z-s.position[1])<3);if(npc){s.set({npc:npc.id,panel:'dialogue'});return;}const seat=nearestSeat(s.position);if(seat&&distance(s.position,[seat.position[0],seat.position[2]])<2.5){s.sit(seat.id);return;}const p=s.position;if(distance(p,nearestFeedStation(p).spot)<2.5){s.perform('feed');return;}if(distance(p,[-19,-9])<7){s.perform('bell');return;}if(distance(p,[16,37])<10){s.perform('lantern');return;}if(distance(p,[0,-24])<14){s.perform('incense');return;}s.sit();}
 function Keyboard(){useEffect(()=>{const down=(e:KeyboardEvent)=>{if((e.target as HTMLElement).matches('input,textarea,select')||e.ctrlKey||e.metaKey)return;const k=e.key.toLowerCase(),s=useGame.getState();if(k==='escape'){if(s.panel){s.closePanel();return;}if(s.waterQuest){s.cancelWaterTask();return;}if(s.pendingActivity==='carryWater'){s.stand();return;}if(s.seated)s.stand();else s.set({action:'walk'});return;}if(s.panel||!s.characterConfigured)return;
-
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','q','c',' '].includes(k)){e.preventDefault();keys.add(k)}
   if(e.repeat)return;if(k==='e')interact();if(k==='m')s.set({panel:'map'});if(k==='b')s.set({panel:'bag'});if(k==='v')s.set({camera:s.camera==='follow'?'overview':'follow'});if(k==='f')s.set({cameraReset:s.cameraReset+1});if(k==='h')s.set({panel:'help'});
 };const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());const clear=()=>{keys.clear();joy.x=0;joy.y=0};const joystick=(e:Event)=>{Object.assign(joy,(e as CustomEvent).detail)};window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);window.addEventListener('sen-joystick',joystick);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);window.removeEventListener('sen-joystick',joystick)}},[]);return null;}
+const malaCameraAngles=[.72,-.72,1.38,-1.38];
 function CameraRig(){const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1);const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(11.56),lastDistance=useRef(11.56);
-  useFrame(({camera},dt)=>{if(!controls.current)return;const s=useGame.getState(),target=offsetTarget.current,lanternFocus=s.ceremony?.type==='lantern'||s.panel==='lanternMoment';if(lanternFocus)target.set(28,4,35.5);else if(mode==='overview')target.set(0,1,-2);else if(playerMotion.object){playerMotion.object.getWorldPosition(target);followHeight.current=THREE.MathUtils.damp(followHeight.current,s.seated?.55:1.1,8,dt);target.y+=followHeight.current;}else target.set(s.position[0],s.height+1.1,s.position[1]);
-    if(lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus){const direction=s.heading+Math.PI;offset.current.set(Math.sin(direction)*10,5.8,Math.cos(direction)*10);if(mode==='overview')offset.current.set(52,88,100);if(lanternFocus)offset.current.set(-11,5.5,13);camera.position.copy(target).add(offset.current);controls.current.target.copy(target);lastTarget.current.copy(target);lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;requestedDistance.current=lastDistance.current=offset.current.length();}
+  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3());
+  useFrame(({camera},dt)=>{
+    if(!controls.current)return;
+    const s=useGame.getState(),target=offsetTarget.current;
+    const lanternFocus=s.ceremony?.type==='lantern'||s.panel==='lanternMoment';
+    const malaFocus=s.action==='beads'&&mode==='follow'&&!lanternFocus;
+    if(lanternFocus)target.set(28,4,35.5);
+    else if(mode==='overview')target.set(0,1,-2);
+    else if(playerMotion.object){
+      playerMotion.object.getWorldPosition(target);
+      const height=s.seated?(malaFocus?.46:.55):(malaFocus?1.04:1.1);
+      followHeight.current=THREE.MathUtils.damp(followHeight.current,height,8,dt);
+      target.y+=followHeight.current;
+    }else target.set(s.position[0],s.height+1.1,s.position[1]);
+
+    const cameraReset=lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus;
+    if(cameraReset||lastMalaFocus.current!==malaFocus){
+      const heading=playerMotion.object?playerMotion.heading:s.heading;
+      const direction=heading+Math.PI;
+      offset.current.set(Math.sin(direction)*10,5.8,Math.cos(direction)*10);
+      if(mode==='overview')offset.current.set(52,88,100);
+      if(lanternFocus)offset.current.set(-11,5.5,13);
+      if(malaFocus){
+        if(!lastMalaFocus.current){
+          if(cameraReset)beforeMala.current.copy(offset.current);
+          else beforeMala.current.copy(camera.position).sub(lastTarget.current).setLength(requestedDistance.current);
+        }
+        for(const angle of malaCameraAngles){
+          offset.current.set(Math.sin(heading+angle)*2.55,.48,Math.cos(heading+angle)*2.55);
+          ray.current.set(target,viewDirection.current.copy(offset.current).normalize());
+          ray.current.near=.35;ray.current.far=offset.current.length()+.24;
+          hits.current.length=0;
+          ray.current.intersectObjects(cameraOccluders,false,hits.current);
+          if(hits.current.length===0)break;
+        }
+      }else if(lastMalaFocus.current&&!cameraReset){
+        offset.current.copy(beforeMala.current);
+      }
+      camera.position.copy(target).add(offset.current);
+      controls.current.target.copy(target);
+      lastTarget.current.copy(target);
+      lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;lastMalaFocus.current=malaFocus;
+      requestedDistance.current=lastDistance.current=offset.current.length();
+    }
     const delta=deltaTarget.current.copy(target).sub(lastTarget.current);camera.position.add(delta);controls.current.target.copy(target);lastTarget.current.copy(target);
     if(keys.has('q')||keys.has('c')){offset.current.copy(camera.position).sub(target).applyAxisAngle(new THREE.Vector3(0,1,0),(keys.has('q')?1:-1)*dt);camera.position.copy(target).add(offset.current)}
     if(mode==='follow'&&Math.abs(s.position[0])<12.2&&s.position[1]<-19.8&&s.position[1]>-34.3){
@@ -73,25 +116,32 @@ function RemoteAvatar({peer}:{peer:Peer}){
 
 function Others(){const peers=useGame(s=>s.peers);return <>{peers.map(p=><RemoteAvatar key={p.id} peer={p}/>)}</>}
 function Villager({n}:{n:typeof npcs[number]}){
-  const ref=useRef<THREE.Group>(null),meal=useGame(s=>n.id==='cook'?s.meal:null),plan=useMemo(()=>meal?mealPlan(meal.seatId):null,[meal?.seatId]);
-  const [motion,setMotion]=useState({walking:false,carrying:false,label:'Trò chuyện · E'}),lastMotion=useRef(''),sample=useRef({x:n.x as number,z:n.z as number,heading:0});
+  const ref=useRef<THREE.Group>(null),plate=useRef<THREE.Group>(null),presentation=useRef(createMealPresentation()),serveFrame=useRef(presentation.current.hands),meal=useGame(s=>n.id==='cook'||n.id==='chef'?s.meal:null),plan=useMemo(()=>meal&&n.id==='cook'?mealPlan(meal.seatId):null,[meal?.seatId,n.id]);
+  const [motion,setMotion]=useState({walking:false,carrying:false,cooking:false,label:'Trò chuyện · E'}),lastMotion=useRef(''),sample=useRef({x:n.x as number,y:0,z:n.z as number,heading:0});
   useFrame((_,dt)=>{if(!ref.current)return;const out=sample.current;out.x=n.x;out.z=n.z;out.heading=RECEPTION_HEADING;
-    let walking=false,carrying=false,label='Trò chuyện · E';
-    if(meal&&plan&&meal.orderedAt!==undefined&&meal.deliveryAt!==undefined&&meal.kitchenAt!==undefined){
+    let walking=false,carrying=false,cooking=false,label='Trò chuyện · E';
+    if(meal&&n.id==='chef'){
+      const k=sampleKitchenMeal(meal,Date.now(),presentation.current).kitchen;out.x=k.x;out.z=k.z;out.heading=k.heading;walking=k.walking;carrying=k.carrying;cooking=k.phase==='cooking';label=chefLabels[k.phase];
+    }else if(meal&&plan&&meal.orderedAt!==undefined&&meal.deliveryAt!==undefined&&meal.kitchenAt!==undefined){
       const now=Date.now(),phase=servicePhase(meal,now);label=phase==='idle'?'Trò chuyện · E':serviceLabels[phase];
       if(phase==='toKitchen'){sampleRoute(plan.toKitchen,(now-meal.orderedAt)/Math.max(1,meal.kitchenAt-meal.orderedAt),out);walking=true;}
-      else if(phase==='waiting'||phase==='pickup'){sampleRoute(plan.toKitchen,1,out);out.heading=-Math.PI/2;}
-      else if(phase==='delivering'||phase==='handoff'){sampleRoute(plan.toTable,(now-meal.deliveryAt)/Math.max(1,meal.readyAt-HANDOFF_MS-meal.deliveryAt),out);walking=phase==='delivering';carrying=true;}
+      else if(phase==='waiting'||phase==='pickup'){sampleRoute(plan.toKitchen,1,out);out.heading=-Math.PI/2;carrying=phase==='pickup';}
+      else if(phase==='delivering'||phase==='handoff'){sampleRoute(plan.toTable,(now-meal.deliveryAt)/Math.max(1,meal.readyAt-HANDOFF_MS-meal.deliveryAt),out);if(phase==='handoff')out.heading=plan.heading;walking=phase==='delivering';carrying=true;}
       else if(phase==='returning'){sampleRoute(plan.toReception,(now-meal.readyAt)/Math.max(1,(meal.homeAt??now)-meal.readyAt),out);walking=true;}
     }
-    ref.current.position.set(out.x,floorAt(out.x,out.z),out.z);
-    const turn=THREE.MathUtils.euclideanModulo(out.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;ref.current.rotation.y+=turn*(1-Math.exp(-Math.min(dt,.05)*12));
-    const key=`${walking}-${carrying}-${label}`;if(key!==lastMotion.current){lastMotion.current=key;setMotion({walking,carrying,label})}
-  });
-  const talk=()=>{const s=useGame.getState(),p=ref.current?.position;if(!p)return;if(motion.label!=='Trò chuyện · E'){s.notify('Cô Tâm đang phục vụ món, mời bạn chọn ghế rồi gọi món tại bàn nhé.');return;}if(distance(s.position,[p.x,p.z])>4){s.stand();s.set({destination:[p.x,p.z+1.2]});s.notify(`Đến gần ${n.name} để trò chuyện.`)}else s.set({npc:n.id,panel:'dialogue'})};
+    out.y=floorAt(out.x,out.z);ref.current.position.set(out.x,out.y,out.z);
+    const turn=THREE.MathUtils.euclideanModulo(out.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;if(n.id==='chef')ref.current.rotation.y=out.heading;else ref.current.rotation.y+=turn*(1-Math.exp(-Math.min(dt,.05)*12));
+    if(meal&&plate.current){
+      out.heading=ref.current.rotation.y;const p=sampleMealPresentation(meal,Date.now(),out,presentation.current),dx=p.position[0]-out.x,dz=p.position[2]-out.z,sin=Math.sin(out.heading),cos=Math.cos(out.heading);
+      plate.current.visible=p.visible;plate.current.position.set(dx*cos-dz*sin,p.position[1]-out.y,dx*sin+dz*cos);plate.current.rotation.y=p.heading-out.heading;
+    }
+    const key=`${walking}-${carrying}-${cooking}-${label}`;if(key!==lastMotion.current){lastMotion.current=key;setMotion({walking,carrying,cooking,label})}
+  },-1);
+  const talk=()=>{const s=useGame.getState(),p=ref.current?.position;if(!p)return;if(motion.label!=='Trò chuyện · E'){s.notify(`${n.name} đang chuẩn bị và phục vụ món, mời bạn chọn ghế rồi gọi món tại bàn nhé.`);return;}if(distance(s.position,[p.x,p.z])>4){s.stand();s.set({destination:[p.x,p.z+1.2]});s.notify(`Đến gần ${n.name} để trò chuyện.`)}else s.set({npc:n.id,panel:'dialogue'})};
   return <group ref={ref} position={[n.x,floorAt(n.x,n.z),n.z]} onClick={e=>{e.stopPropagation();talk()}}>
-    <Character robe={n.robe} gender={n.id==='cook'?'female':'male'} dish={meal?.dish} moving={motion.walking} pose={motion.carrying?'serve':'walk'}/>
-    <NearbyOverlay position={[0,1.9,0]} maxDistance={18}><button className="npc-tag" onClick={talk}>{n.name}<span>{motion.label}</span></button></NearbyOverlay>
+    <Character robe={n.robe} gender={n.id==='cook'||n.id==='chef'?'female':'male'} apron={n.id==='chef'} dish={meal?.dish} moving={motion.walking} pose={motion.cooking?'cook':motion.carrying?'serve':'walk'} serveFrame={n.id==='cook'||n.id==='chef'?serveFrame:undefined}/>
+    {meal&&n.id==='cook'&&<group ref={plate} visible={false} scale={MEAL_SCALE} onClick={e=>{e.stopPropagation();const s=useGame.getState();if(s.meal?.status==='ready')s.eat();}}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>}
+    <NearbyOverlay position={[0,n.id==='chef'?2.75:1.9,0]} maxDistance={18}><button className="npc-tag" onClick={talk}>{n.name}<span>{motion.label}</span></button></NearbyOverlay>
   </group>
 }
 function Villagers(){return <>{npcs.map(n=><Villager key={n.id} n={n}/>)}</>}
