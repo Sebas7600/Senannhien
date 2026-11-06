@@ -1,11 +1,12 @@
 import {setGardenTransport} from './gardenTransport';
+import {createClientId} from './clientIds';
 import {setOfferingTransport} from './offeringTransport';
 import { useEffect } from 'react';
 import { useGame, type ChatMessage, type Peer, type PlotState } from './gameStore';
 let clientId='';
 export function useSharedCourtyard(){const room=useGame(s=>s.room);useEffect(()=>{
   let source:EventSource|null=null,timer:ReturnType<typeof setInterval>|null=null,closed=false,lastOfferings='',lastPlots='';
-  clientId=sessionStorage.getItem('sen-player-id')||crypto.randomUUID();sessionStorage.setItem('sen-player-id',clientId);useGame.setState({playerId:clientId,connection:'connecting',peers:[],messages:[],chatUnread:0,plots:{},offerings:{flower:[],candle:[]},burningIncense:[],fishFeedAt:0,fishFeeds:[],offeringSlots:{}});
+  clientId=sessionStorage.getItem('sen-player-id')||createClientId();sessionStorage.setItem('sen-player-id',clientId);useGame.setState({playerId:clientId,connection:'connecting',peers:[],messages:[],chatUnread:0,plots:{},offerings:{flower:[],candle:[]},burningIncense:[],fishFeedAt:0,fishFeeds:[],offeringSlots:{}});
   const connect=async()=>{try{const check=await fetch('/api/health',{signal:AbortSignal.timeout(3000)});if(!check.ok||!check.headers.get('content-type')?.includes('application/json'))throw new Error('offline');if(closed)return;source=new EventSource(`/api/events?room=${encodeURIComponent(room)}&id=${encodeURIComponent(clientId)}`);
     source.addEventListener('snapshot',(event)=>{const data=JSON.parse((event as MessageEvent).data) as {peers:Peer[];messages:ChatMessage[];plots?:Record<string,PlotState>;offerings?:{kind:'incense'|'flower'|'candle'|'feed';at:number;station:string|null;x?:number;z?:number}[]};if(closed)return;const s=useGame.getState();const unread=data.messages.filter(m=>!s.messages.some(old=>old.id===m.id)&&m.name!==s.name&&!m.system).length;
       const me=data.peers.find(p=>p.id===clientId);if(me?.seat===null&&s.seated&&data.peers.some(p=>p.id!==clientId&&p.seat===s.seated)){s.stand();s.notify('Chỗ ngồi đã được chọn trước. Mời bạn chọn một chỗ khác.')}
