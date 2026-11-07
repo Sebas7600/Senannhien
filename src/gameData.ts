@@ -153,3 +153,9 @@ export const obstacles:Obstacle[]=[
 ];
 export function walkable(x:number,z:number,margin=.5) {return x>WORLD.minX+1&&x<WORLD.maxX-1&&z>WORLD.minZ+1&&z<WORLD.maxZ-1&&!gateBlocked(x,z,margin)&&!pondBlocked(x,z,margin)&&!obstacles.some(o=>Math.abs(x-o.x)<o.w/2+margin&&Math.abs(z-o.z)<o.d/2+margin);}
 export function nearestSeat(p:Vec2,kinds:Seat['kind'][]=['cushion','bench','tea','dining','reading']) {return seats.filter(s=>kinds.includes(s.kind)).sort((a,b)=>distance(p,[a.position[0],a.position[2]])-distance(p,[b.position[0],b.position[2]]))[0];}
+
+// Aim toward the altar rather than the cushion orientation.
+export function meditationHeading(seat:Seat):number {
+  const target:Vec2=seat.zone==='hall'?[-33,-22.9]:[0,-32.35];
+  return Math.atan2(target[0]-seat.position[0],target[1]-seat.position[2]);
+}

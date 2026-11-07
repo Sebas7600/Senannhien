@@ -14,7 +14,7 @@ import {nearestOfferingStation,nearDonationChest} from './templeFixtures';
 import {servicePhase,serviceLabels,chefPhase} from './mealService';
 import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Bell, BookOpen, Camera, Check, ChevronDown, ChevronRight, CircleHelp, CircleUserRound, Coffee, Compass, Flame, Flower2, Footprints, Heart, Leaf, Maximize, MessageCircle, MoreHorizontal, Package, Settings2, Sprout, UsersRound, Utensils, Volume2, VolumeX, Wind, X, Zap } from 'lucide-react';
-import { activities, LEAVES_PER_MERIT, useGame,visitDonationChest, type Activity, type Panel } from './gameStore';
+import { activities, LEAVES_PER_MERIT, MEDITATION_GOAL_SECONDS, useGame,visitDonationChest, type Activity, type Panel } from './gameStore';
 import { OFFERING_RANGE, OFFERING_DURATION, incenseSpot, INCENSE_RANGE, INCENSE_DURATION, dishes, distance, nearestSeat, npcs, seats, zoneAt } from './gameData';
 import { activityIcons } from './uiIcons';
 import {KneelingSit,SeatedMeditation} from './practiceIcons';
@@ -31,6 +31,14 @@ function ContextActions(){const s=useGame(),gateOpen=useStore(gateState,s=>s.ope
   if(['incense','flower','candle'].includes(s.action))return <div className="context-actions v2-context incense-status"><span>{s.action==='flower'?'Đang dâng hoa…':s.action==='candle'?'Đang dâng đèn…':'Đang dâng hương…'} {Math.min(100,Math.round((Date.now()-(s.event?.at||Date.now()))/(s.action==='incense'?INCENSE_DURATION:OFFERING_DURATION)*100))}%</span><button onClick={()=>s.stand()}>Hủy · Esc</button></div>;
 
   const button=(label:string,Icon:typeof Leaf,fn:()=>void,key=label)=><button key={key} onClick={fn}><Icon size={16}/>{label}</button>;
+  if (s.seated && (s.action === 'meditate' || s.meditationBow)) return <div className="context-actions v2-context incense-status">
+    <span>{s.meditationBow ? 'Chắp tay đảnh lễ' : `Đang thiền · ${s.meditationSeconds}/${MEDITATION_GOAL_SECONDS} giây`}</span>
+    {button('Kết thúc thiền', Footprints, () => s.stand())}
+  </div>;
+  if (!s.seated && s.pendingSeat && s.pendingAction === 'meditate') return <div className="context-actions v2-context incense-status">
+    <span>Đang đến bồ đoàn…</span>
+    {button('Hủy', Footprints, () => s.stand())}
+  </div>;
   if(seat?.kind==='dining')return <div className="context-actions v2-context">{button('Thực đơn chay',Utensils,()=>s.set({panel:'menu'}))}{s.meal?.status==='ready'&&s.meal.seatId===seat.id&&button('Dùng bữa',Utensils,()=>s.eat())}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
   if(seat?.kind==='reading')return <div className="context-actions v2-context">{button('Đọc sách tại bàn',BookOpen,()=>s.perform('read'))}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
   if(s.seated)return <div className="context-actions v2-context">{seat?.kind==='tea'?button('Uống một tách trà',Coffee,()=>s.perform('tea')):button('Ngồi thiền',SeatedMeditation,()=>s.perform('meditate'))}{button('Đứng dậy · E',Footprints,()=>s.stand())}</div>;
@@ -90,7 +98,7 @@ export default function AppV2(){const s=useGame(),[dailyOpen,setDailyOpen]=useSt
   useEffect(()=>{const update=()=>{const state=useGame.getState();void setChant(state.sound&&state.chantMusic&&state.action==='chant'&&!document.hidden)};update();document.addEventListener('visibilitychange',update);return()=>{document.removeEventListener('visibilitychange',update);void setChant(false)}},[s.action,s.sound,s.chantMusic]);
   useEffect(()=>{const route=()=>{if(location.hash==='#/ung-ho')useGame.getState().set({panel:'donate'})};route();window.addEventListener('hashchange',route);return()=>window.removeEventListener('hashchange',route)},[]);
   useEffect(()=>{if(s.action!=='mok'||!s.sound)return;const timer=setInterval(playWood,1800);return()=>clearInterval(timer)},[s.action,s.sound]);
-  useEffect(()=>{if(s.action==='bow'&&s.bow&&s.sound)return scheduleBowBowl(s.bow)},[s.action,s.bow,s.sound]);
+  useEffect(()=>{if(s.action==='bow'&&s.bow&&s.sound&&!s.meditationBow)return scheduleBowBowl(s.bow)},[s.action,s.bow,s.sound,s.meditationBow]);
   useEffect(()=>{if(!s.toast)return;const timer=setTimeout(()=>useGame.getState().set({toast:null}),4400);return()=>clearTimeout(timer)},[s.toast]);
   const actionButtons:Activity[]=['pray','bow','sweep','carryWater','meditate','meal'];
   return <main className="game v2-game"><div className="world" aria-label="Khuôn viên chùa mở rộng 3D"><SceneBoundary><Suspense fallback={<div className="initial-loading"><Flower2 size={35}/><span>Đang mở cánh cửa bình yên…</span></div>}><World/></Suspense></SceneBoundary></div><div className="vignette"/>
