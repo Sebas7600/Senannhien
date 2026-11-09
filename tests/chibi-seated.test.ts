@@ -12,7 +12,7 @@ test('seated activity changes keep the hip down and blend the upper body without
   const rig=createChibiPose(scene),hip=scene.getObjectByName('Hong')!,head=scene.getObjectByName('Dau')!;
   const step=(pose:string,t=0)=>{rig.restore();mixer.update(1/60);rig.update(pose,true,false,1/60,'cushion',t);scene.updateMatrixWorld(true);};
   for(let i=0;i<90;i++)step('meditate');
-  for(const pose of ['bow','meditate','pray','eat','sit','chant','bow','meditate']){
+  for(const pose of ['bow','meditate','pray','eat','tea','read','sit','chant','bow','meditate']){
     const height=hip.position.y,previous=head.quaternion.clone();step(pose);
     assert.ok(Math.abs(hip.position.y-height)<.00001,`${pose}: hip moved from ${height} to ${hip.position.y}`);
     assert.ok(previous.angleTo(head.quaternion)<.13,`${pose}: head snapped on first frame`);

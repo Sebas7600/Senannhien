@@ -1,3 +1,18 @@
+# Cập nhật nhà ăn, trà, sách và chuông — 09/11/2026
+
+Đã fast-forward từ bản làm việc cũ lên `origin/main` tại `7d78c08` trước khi sửa. Giữ nhân vật chibi, cổng và chuông nhập mới cùng toàn bộ bố trí sân/hồ của main.
+
+- Nhà ăn: có thể chọn món tại quầy Cô Tâm một lần rồi tự đi tới bàn. Lựa chọn được giữ trong `mealRequest`; khi ngồi vào chỗ trống, hệ thống tự bắt đầu đúng món và không mở thực đơn lần nữa. Bếp bắt đầu nấu sau khi đã xác định được chỗ ngồi thực tế, tránh phục vụ vào chỗ bị người khác chiếm. Ngồi trực tiếp vẫn mở thực đơn bình thường. Chặn bấm lặp, giữ món nếu dừng đường đi hoặc đổi chỗ, có nút hủy; yêu cầu chưa phục vụ không lưu qua lần tải lại trang. Thực đơn của đơn đang có chỉ hiện trạng thái và nút trở lại/dùng bữa. Bắt đầu ăn sẽ đóng popup.
+- Uống trà: mẫu chibi có động tác hai tay nâng chén, dừng ở miệng, nghiêng chén và hạ tay. Chén có nước trà, quai và hơi ấm nhẹ. Mẫu nữ dùng cùng nhịp chuyển động. Các thao tác không nâng lại hông khi đang ngồi.
+- Đọc sách: thay khối sách đóng của chibi bằng sách mở có trang và dòng chữ; tay đỡ sách và lật trang theo nhịp chậm. Mẫu nữ cũng dùng nhịp lật trang có khoảng nghỉ. Hỗ trợ giảm chuyển động cho cả hai hoạt động.
+- Popup chuông: dùng cùng GLB và lựa chọn chất lượng với chuông trong sân. Mỗi nơi có bản sao transform riêng, dùng chung dữ liệu mô hình/vật liệu. Canvas popup chỉ render khi cần (`frameloop="demand"`, DPR tối đa 1,5); không thêm đèn hay vòng lặp animation vào cảnh chính. Hook tải mô hình được tách khỏi phần vật lý sân chùa.
+
+Kiểm tra bản cuối: `npm test` đạt **150/150** (144 client, 6 server); `npm run build` thành công. Bộ kiểm thử bao gồm gọi món tại quầy/ghế, bấm lặp, đổi chỗ, chỗ bị chiếm, hết chỗ, hủy, không lưu yêu cầu tạm, đóng menu khi ăn; thử IK bằng GLB chibi thật, giữ hông ổn định khi đổi tư thế, nhịp trà/lật trang và reduced motion. Các tuyến phục vụ hai NPC và GLB sân chùa vẫn qua kiểm thử.
+
+Kiểm tra trình duyệt: giao diện ở 390 × 844 và popup ở 768 × 1024; dùng trang kiểm tra nội bộ chạy chính các component/state thật để xem cận cảnh nhân vật nam/nữ và chuyển lựa chọn ở quầy sang bàn. Trong game production đã đi tới bàn, gọi món, mở lại menu xác nhận không còn nút gọi trùng, nhận món và dùng bữa. Không thấy lỗi console ở game production. Ảnh tại `artifacts/bell-popup-mobile-20261109.png`, `artifacts/dining-single-order-mobile-20261109.png`, `artifacts/reading-mobile-20261109.png` (không commit). Chưa đo FPS trên thiết bị điện thoại thật. Cảnh báo build về kích thước physics/nhạc vốn có vẫn còn.
+
+---
+
 # Bản cập nhật sáu hoạt động — 04/11/2026
 
 Khôi phục nhánh `codex/temple-activities-mobile` lên `main` mới nhất tại `604ab35`, nhánh tích hợp `codex/restore-activities-latest`. Giữ chánh điện mới, 48 bồ đoàn trong chánh điện, hồ cá/cầu mới và đồng bộ đồ cúng/vườn rau của main. Bản làm việc trước tích hợp được giữ riêng; không đưa bản sao, node_modules, dist hoặc thông tin xác thực vào Git.

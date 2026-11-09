@@ -1,3 +1,5 @@
+import {createQuietActivityFrame,sampleQuietActivity} from './quietActivityMotion';
+import {TeaCup} from './QuietActivityProps';
 import {createSweepPose,sampleSweepPose,sweepElbow,sweepContact} from './sweepMotion';
 import SweepBroom from './SweepBroom';
 import WaterYoke from './WaterYoke';
@@ -47,6 +49,7 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
   const sweeping=useRef({pose:createSweepPose(),inverse:new THREE.Matrix4(),axis:new THREE.Vector3(),handRotation:new THREE.Quaternion(),direction:new THREE.Vector3(),pole:new THREE.Vector3()});
   const malaMotion=useRef<BeadMotion>({offset:0,pull:0,direction:1}),malaThumb=useRef<THREE.Group>(null);
 
+  const quiet=useMemo(createQuietActivityFrame,[]);
   const reduced=useReducedMotion(),bookLeaf=useRef<THREE.Group>(null);
   const serviceGarment=useMemo(()=>serveFrame?createServiceGarment():null,[serveFrame]),kneePoint=useRef({y:0,z:0});
   useEffect(()=>()=>serviceGarment?.geometry.dispose(),[serviceGarment]);
@@ -63,7 +66,8 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
     }
     if(pose==='bow'){sampleBow(bowElapsed??(bowStartedAt===undefined?t-bowTime.current:(Date.now()-bowStartedAt)/1000),mode,bowFrame.current);b.kneel=mode==='standing'?bowFrame.current.kneel:0;b.bend=bowFrame.current.bend;b.reach=bowFrame.current.reach;}else{b.kneel=THREE.MathUtils.damp(b.kneel,0,10,dt);b.bend=THREE.MathUtils.damp(b.bend,pose==='serve'&&serveFrame?serveFrame.current.bend:pose==='cook'?.1:pose==='sweep'?.07:['plant','harvest'].includes(pose)?.38:['water','drawWater','pourWater'].includes(pose)?.14:['incense','flower','candle'].includes(pose)?Math.sin(Math.min((t-bowTime.current)/3,1)*Math.PI)*.18:0,pose==='serve'?18:10,dt);b.reach=THREE.MathUtils.damp(b.reach,0,10,dt)}
     b.prayer=THREE.MathUtils.damp(b.prayer,prayer?1:0,9,dt);b.eat=THREE.MathUtils.damp(b.eat,pose==='eat'?1:0,7,dt);const hip=pose==='serve'&&serveFrame?serveFrame.current.hips:seated?(chair?.10:.22):THREE.MathUtils.lerp(.84,.24,b.kneel);b.hips=pose==='bow'?hip:THREE.MathUtils.damp(b.hips,hip,pose==='serve'?18:12,dt);b.gait=THREE.MathUtils.damp(b.gait,moving&&!seated&&pose!=='bow'?1:0,10,dt);
-    if(bookLeaf.current)bookLeaf.current.rotation.z=reduced?0:Math.sin(t*.7)*.28;
+    sampleQuietActivity(pose,t-bowTime.current,quiet,reduced);
+    if(bookLeaf.current){bookLeaf.current.rotation.z=quiet.page*Math.PI;bookLeaf.current.visible=quiet.page>0&&quiet.page<1;}
     b.climb=THREE.MathUtils.damp(b.climb,climbing&&moving&&!seated?1:0,9,dt);
     if(root.current)root.current.rotation.x=b.climb*.13;
     if(root.current)root.current.position.y=pose==='serve'?0:Math.abs(Math.sin(t*7))*b.gait*(pose==='sweep'?.007:.022);
@@ -91,12 +95,12 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
       if(pose==='water'){elbow.set(s*.25,.18,.20);wrist.set(s*.19,.08,.41);}
       if(pose==='feed'){const cycle=(t-bowTime.current)*4;elbow.set(s*.24,.20,.18);wrist.set(i?.25:-.12,i?.18+Math.sin(cycle)*.06:.05,i?.40+Math.cos(cycle)*.14:.24);}
       if(b.eat>0){elbow.lerp(points.current[4].set(s*.25,.27,.13),b.eat);wrist.lerp(points.current[5].set(s*.09,.35+(i?Math.sin(t*2.5)*.12:.01),.29-(i?Math.sin(t*2.5)*.11:0)),b.eat)}
-      if(pose==='read'){elbow.set(s*.24,.15,.12);wrist.set(s*.16,.13,.34);}
+      if(pose==='read'){elbow.set(s*.24,.15,.12);wrist.set(s*.16-(i?quiet.turnHand*.28:0),.13+quiet.breath+(i?Math.sin(quiet.page*Math.PI)*.08:0),.34);}
       if(pose==='beads'){
         elbow.set(i?.31:-.24,i?.16:.12,i?.16:.11);
         wrist.set(i?.255:-.16,i?.32:.015,i?.37:.23);
       }
-      if(pose==='tea'&&i===1){const sip=(Math.sin((reduced?0:t)*1.3)+1)/2;elbow.set(.24,.22,.14);wrist.set(.08,.22+sip*.23,.33-sip*.10);}
+      if(pose==='tea'){const sip=quiet.sip;elbow.set(s*.24,.22+sip*.1,.14);wrist.set(i?.08:.015,.22+sip*.38-(i?0:.03),.33-sip*.10);}
       if(pose==='serve'){elbow.set(s*.24,.12,.15);wrist.set(s*.17,.08,.42);}
       if(pose==='cook'){const stir=reduced?0:t*4;elbow.set(s*.26,.43,.29);wrist.set(i?.10+Math.sin(stir)*.055:-.22,i?.5:.2,i?.75+Math.cos(stir)*.055:.55);}
       if(pose==='serve'&&serveFrame){
@@ -112,6 +116,7 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
       }
       if(pose==='sweep'){const f=sweeping.current;hand.copy(i===0?f.pose.upperGrip:f.pose.lowerGrip).applyMatrix4(f.inverse);wrist.set(1,0,0).applyQuaternion(f.handRotation).multiplyScalar(i===0?.036:-.036).add(hand);sweepElbow(shoulder,wrist,s,elbow,f.direction,f.pole);}
       setSegment(i?armR.current:armL.current,shoulder,elbow,.10,work.current);setSegment(i?foreR.current:foreL.current,elbow,wrist,.085,work.current);const h=i?handR.current:handL.current;if(h){if(pose==='sweep'){h.position.copy(hand);h.quaternion.copy(sweeping.current.handRotation);if(i===0)h.rotateY(Math.PI);}else{h.position.copy(wrist);h.rotation.set(THREE.MathUtils.lerp((1-b.prayer)*(seated?-.8:Math.PI),Math.PI/2-b.bend,b.reach),s*b.prayer*Math.PI/2*(1-b.reach),s*.04*(1-b.prayer)*(1-b.reach));if((pose==='carryWater'||pose==='pourWater')&&i===1)h.rotation.set(-.45,0,.2);if(pose==='serve'&&serveFrame)h.rotation.x=Math.PI/2-b.bend+serveFrame.current.release*Math.PI/2;if(pose==='cook')h.rotation.set(-.4,0,0);if(pose==='meditate'&&seated&&!chair)h.rotation.set(-1.35,0,s*.25);}}
+      if(h&&pose==='tea'&&i===1)h.rotation.set(-quiet.cupTilt,0,0);
       if(h&&pose==='beads'){
         const pull=malaMotion.current.pull;
         if(i===1)h.rotation.set(.03+pull*.06,-.29,-.11);
@@ -136,7 +141,7 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
       {apron&&<group><mesh position={[0,.20,.17]}><boxGeometry args={[.29,.39,.012]}/><meshStandardMaterial color="#e9dfc8" roughness={.9}/></mesh><mesh position={[0,-.20,.185]}><boxGeometry args={[.38,.43,.016]}/><meshStandardMaterial color="#e2d6bb" roughness={.9}/></mesh>{[-1,1].map(s=><mesh key={s} position={[s*.11,.43,.145]} rotation={[0,0,s*.16]}><boxGeometry args={[.025,.13,.015]}/><meshStandardMaterial color="#d2c5a8"/></mesh>)}</group>}
       <mesh material={trimMaterial} position={[robeStyle==='cross'?.03:.075,.28,.147]} rotation={[0,0,robeStyle==='cross'?-.5:-.25]}><boxGeometry args={[robeStyle==='cross'?.07:.018,.50,.009]}/></mesh>
       {[armL,armR,foreL,foreR].map((ref,i)=><group key={i} ref={ref}><mesh geometry={sleeveCloth} material={robeMaterial} castShadow receiveShadow/></group>)}
-      {[handL,handR].map((ref,i)=><group key={i} ref={ref}>{pose==='beads'&&i===1?<MalaGrip material={skinMat} thumb={malaThumb} motion={malaMotion.current}/>:<Hand material={skinMat} gripping={pose==='sweep'}/>}{pose==='cook'&&i===1&&<group><mesh position={[0,0,.24]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.009,.012,.5,8]}/><meshStandardMaterial color="#876746"/></mesh><mesh position={[0,-.04,.49]} scale={[.055,.014,.07]}><sphereGeometry args={[1,10,6]}/><meshStandardMaterial color="#b8b5a0" metalness={.4}/></mesh></group>}{pose==='eat'&&dish!=='bread'&&dish!=='rice'&&i===1&&<group rotation={[.3,0,.4]}><mesh position={[0,.03,.08]}><cylinderGeometry args={[.006,.006,.32,6]}/><meshStandardMaterial color="#725639"/></mesh><mesh position={[.02,.03,.08]}><cylinderGeometry args={[.006,.006,.32,6]}/><meshStandardMaterial color="#725639"/></mesh></group>}{pose==='eat'&&dish==='rice'&&i===1&&<group><mesh position={[0,.05,.09]}><cylinderGeometry args={[.009,.009,.24,6]}/><meshStandardMaterial color="#abac9a"/></mesh><mesh position={[0,.18,.09]} scale={[.026,.045,.012]}><sphereGeometry args={[1,10,8]}/><meshStandardMaterial color="#c9cabc"/></mesh></group>}{pose==='eat'&&dish==='bread'&&i===1&&<group rotation={[.8,0,Math.PI/2]}><mesh><capsuleGeometry args={[.055,.18,5,12]}/><meshStandardMaterial color="#c89550"/></mesh><mesh position={[0,0,.045]}><boxGeometry args={[.035,.2,.02]}/><meshStandardMaterial color="#799456"/></mesh></group>}{pose==='tea'&&i===1&&<group position={[0,.03,.02]} rotation={[.8,0,0]}><mesh><cylinderGeometry args={[.05,.035,.07,12]}/><meshStandardMaterial color="#b5c19a"/></mesh><mesh position={[0,.036,0]} rotation={[-Math.PI/2,0,0]}><circleGeometry args={[.04,12]}/><meshStandardMaterial color="#7b8850"/></mesh></group>}</group>)}
+      {[handL,handR].map((ref,i)=><group key={i} ref={ref}>{pose==='beads'&&i===1?<MalaGrip material={skinMat} thumb={malaThumb} motion={malaMotion.current}/>:<Hand material={skinMat} gripping={pose==='sweep'}/>}{pose==='cook'&&i===1&&<group><mesh position={[0,0,.24]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.009,.012,.5,8]}/><meshStandardMaterial color="#876746"/></mesh><mesh position={[0,-.04,.49]} scale={[.055,.014,.07]}><sphereGeometry args={[1,10,6]}/><meshStandardMaterial color="#b8b5a0" metalness={.4}/></mesh></group>}{pose==='eat'&&dish!=='bread'&&dish!=='rice'&&i===1&&<group rotation={[.3,0,.4]}><mesh position={[0,.03,.08]}><cylinderGeometry args={[.006,.006,.32,6]}/><meshStandardMaterial color="#725639"/></mesh><mesh position={[.02,.03,.08]}><cylinderGeometry args={[.006,.006,.32,6]}/><meshStandardMaterial color="#725639"/></mesh></group>}{pose==='eat'&&dish==='rice'&&i===1&&<group><mesh position={[0,.05,.09]}><cylinderGeometry args={[.009,.009,.24,6]}/><meshStandardMaterial color="#abac9a"/></mesh><mesh position={[0,.18,.09]} scale={[.026,.045,.012]}><sphereGeometry args={[1,10,8]}/><meshStandardMaterial color="#c9cabc"/></mesh></group>}{pose==='eat'&&dish==='bread'&&i===1&&<group rotation={[.8,0,Math.PI/2]}><mesh><capsuleGeometry args={[.055,.18,5,12]}/><meshStandardMaterial color="#c89550"/></mesh><mesh position={[0,0,.045]}><boxGeometry args={[.035,.2,.02]}/><meshStandardMaterial color="#799456"/></mesh></group>}{pose==='tea'&&i===1&&<TeaCup/>}</group>)}
 
       {pose==='read'&&<group position={[0,.12,.37]} rotation={[-.35,0,0]}><mesh rotation={[0,0,.12]} position={[-.095,0,0]}><boxGeometry args={[.19,.025,.25]}/><meshStandardMaterial color="#f4ead0"/></mesh><mesh rotation={[0,0,-.12]} position={[.095,0,0]}><boxGeometry args={[.19,.025,.25]}/><meshStandardMaterial color="#f4ead0"/></mesh><group ref={bookLeaf}><mesh position={[.085,.02,0]}><boxGeometry args={[.17,.006,.24]}/><meshStandardMaterial color="#fff3d7"/></mesh></group><mesh><boxGeometry args={[.015,.025,.25]}/><meshStandardMaterial color="#9a8d68"/></mesh></group>}
       {pose==='serve'&&!serveFrame&&<group position={[0,.04,.43]}><mesh><boxGeometry args={[.48,.025,.34]}/><meshStandardMaterial color="#9a7d55"/></mesh><group position={[0,.025,0]} scale={.4}><Food dish={dish}/></group></group>}

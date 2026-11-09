@@ -1,7 +1,7 @@
 import {useLayoutEffect,useMemo,useRef} from 'react';
 import {useStore} from 'zustand';
 import {useFrame} from '@react-three/fiber';
-import {useGLTF} from '@react-three/drei';
+import {useCourtyardProp} from './courtyardModels';
 import {RigidBody,CuboidCollider,type RapierRigidBody} from '@react-three/rapier';
 import * as THREE from 'three';
 import {useGame} from './gameStore';
@@ -14,14 +14,8 @@ import {toggleTempleGate} from './gateActions';
 import {useCameraOccluder} from './cameraObstruction';
 import {finishInstanceLayout} from './geometryBatch';
 
-// Cached high/low models share material/texture objects; switching quality does not double GPU textures.
-const materials=new Map<string,THREE.Material>();
-function useProp(kind:'gate'|'bell'|'drum'){
-  const low=useGame(s=>s.quality==='low'),file=kind==='gate'?(low?GATE.lowFile:GATE.highFile):`${kind}${low?'-low':''}.glb`,{scene}=useGLTF(`/assets/courtyard/${file}`,false,true);
-  return useMemo(()=>{const model=scene.clone(true);model.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const m=o.material as THREE.MeshStandardMaterial,key=kind+':'+m.name;let shared=materials.get(key);if(!shared){m.envMapIntensity=.9;for(const texture of [m.map,m.normalMap])if(texture)texture.anisotropy=4;materials.set(key,m);shared=m;}o.material=shared;o.castShadow=!low;o.receiveShadow=true;});return model;},[scene,kind,low]);
-}
 export function ImportedGate(){
-  const model=useProp('gate'),open=useStore(gateState,s=>s.open),reduced=useReducedMotion(),progress=useRef(open?1:0),bodies=useRef<(RapierRigidBody|null)[]>([null,null]),q=useRef(new THREE.Quaternion());
+  const model=useCourtyardProp('gate'),open=useStore(gateState,s=>s.open),reduced=useReducedMotion(),progress=useRef(open?1:0),bodies=useRef<(RapierRigidBody|null)[]>([null,null]),q=useRef(new THREE.Quaternion());
   const initialPoses=useRef([gateLeafPose(-1,progress.current),gateLeafPose(1,progress.current)]),applied=useRef<THREE.Group|null>(null);
   const leaves=useMemo(()=>({left:model.getObjectByName('Central_Door_Left')!,right:model.getObjectByName('Central_Door_Right')!,bar:model.getObjectByName('Door_Crossbar')!}),[model]);
   useLayoutEffect(()=>{applied.current=null;leaves.left.rotation.y=GATE.openAngle*progress.current;leaves.right.rotation.y=-GATE.openAngle*progress.current;leaves.bar.visible=progress.current<.01},[leaves]);
@@ -61,8 +55,8 @@ function GateCameraBounds({open}:{open:boolean}){
   </instancedMesh>;
 }
 export function ImportedBell(){
-  const model=useProp('bell'),reduced=useReducedMotion(),bell=useMemo(()=>model.getObjectByName('Bell')!,[model]);
+  const model=useCourtyardProp('bell'),reduced=useReducedMotion(),bell=useMemo(()=>model.getObjectByName('Bell')!,[model]);
   useFrame(()=>{const c=useGame.getState().ceremony;bell.rotation.z=c?.type==='bell'?bellAngle(Date.now()-c.at,reduced):0;});
   return <group position={[0,.4,0]} scale={BELL_PROP.scale} dispose={null}><primitive object={model}/></group>;
 }
-export function ImportedDrum(){const model=useProp('drum');return <group position={[0,.4,0]} scale={DRUM_PROP.scale} dispose={null}><primitive object={model}/></group>;}
+export function ImportedDrum(){const model=useCourtyardProp('drum');return <group position={[0,.4,0]} scale={DRUM_PROP.scale} dispose={null}><primitive object={model}/></group>;}
