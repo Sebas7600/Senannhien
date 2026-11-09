@@ -52,6 +52,7 @@ function ContextActions(){const s=useGame(),gateOpen=useStore(gateState,s=>s.ope
   if(zone.id==='temple'&&distance(s.position,[0,-24])<15){buttons.push(button(distance(s.position,incenseSpot)>INCENSE_RANGE?'Đến lư hương':s.inventory.incense>0?`Dâng hương · E · Còn ${s.inventory.incense}`:'Hết hương · Mở túi vải',Leaf,()=>s.perform('incense')),button(distance(s.position,nearestOfferingStation('candle',s.position,s.offeringFocus).spot)>OFFERING_RANGE?'Đến bàn dâng đèn':`Dâng đèn · Còn ${s.inventory.candle}`,Flame,()=>s.perform('candle')),button(distance(s.position,nearestOfferingStation('flower',s.position,s.offeringFocus).spot)>OFFERING_RANGE?'Đến bàn dâng hoa':`Dâng hoa · Còn ${s.inventory.flower}`,Flower2,()=>s.perform('flower')))}
   if(distance(s.position,nearestFeedStation(s.position).spot)<3)buttons.push(button('Cho cá koi ăn',Leaf,()=>s.perform('feed')));
   if(zone.id==='lotus')buttons.push(button('Viết lời nguyện',Flame,()=>s.perform('lantern')));
+  if((zone.id==='pond'||zone.id==='lotus')&&!nearQuanAm(s.position))buttons.push(button('Đến đảo Quan Âm',Footprints,()=>s.perform('incense',QUAN_AM.incenseId)));
   if(zone.id==='bell')buttons.push(button('Thỉnh chuông',Bell,()=>s.perform('bell')));
   if(zone.id==='dining')buttons.push(button('Xem thực đơn chay',Utensils,()=>s.set({panel:'menu'})));
   if(zone.id==='library')buttons.push(button('Mở tàng kinh các',BookOpen,()=>s.perform('read')));

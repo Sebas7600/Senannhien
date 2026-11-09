@@ -32,5 +32,5 @@ export function FloatingLotuses(){return <>{Array.from({length:6},(_,i)=><Drifti
 export function WishStation(){return <group position={[WISH_STATION[0],.08,WISH_STATION[1]]} onClick={e=>{e.stopPropagation();useGame.getState().perform('lantern')}}>
   <mesh position={[0,.28,0]}><cylinderGeometry args={[.65,.78,.5,16]}/><meshStandardMaterial color="#a69a74"/></mesh>
   <group position={[0,.85,0]} scale={.65}><LanternPresentation/></group>
-  <NearbyOverlay position={[0,2,0]} distanceFactor={10} maxDistance={16}><button className="wish-station-tag" onClick={()=>useGame.getState().perform('lantern')}><span>✧</span> Viết lời nguyện<small>Đài hoa đăng · Hồ sen</small></button></NearbyOverlay>
+  <NearbyOverlay position={[0,1.65,0]} distanceFactor={6.5} maxDistance={13}><button className="wish-station-tag" onClick={()=>useGame.getState().perform('lantern')}><span>✧</span> Viết lời nguyện<small>Đài hoa đăng · Hồ sen</small></button></NearbyOverlay>
 </group>}

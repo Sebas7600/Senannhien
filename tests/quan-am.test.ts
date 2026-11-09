@@ -1,6 +1,7 @@
 import {test,beforeEach,afterEach} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import * as T from 'three';import {GLTFLoader,MeshoptDecoder} from 'three-stdlib';
 import {QUAN_AM,quanAmObstacles} from '../src/quanAmData';import {seats,walkable,INCENSE_DURATION,INCENSE_BURN_MS,INCENSE_STUB_MS,incenseApproach} from '../src/gameData';import {stoneBenches} from '../src/stoneBenchData';import {findPath,clearLine} from '../src/navigation';import {setOfferingTransport} from '../src/offeringTransport';import {quanAmVeinTexture} from '../src/quanAmMaterials';import * as altar from '../src/quanAmAltarGeometry';
 import {webcrypto} from 'node:crypto';
+import {GATE_ENTRY} from '../src/courtyardPropsData';
 if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});
 const memory=new Map<string,string>();Object.defineProperty(globalThis,'window',{value:{localStorage:{getItem:(k:string)=>memory.get(k)??null,setItem:(k:string,v:string)=>memory.set(k,v),removeItem:(k:string)=>memory.delete(k)}}});
 const {useGame,emptyProgress}=await import('../src/gameStore');const defaults=useGame.getInitialState(),realNow=Date.now;let now=1800000000000;
@@ -13,9 +14,9 @@ test('Quan Am web models keep face and hand detail, three materials, bounded geo
  const texture=quanAmVeinTexture.image;assert.equal(texture.width,128);assert.equal(texture.height,128);assert.equal(texture.data.byteLength,65536);
  let triangles=0;for(const value of Object.values(altar))if(value instanceof T.BufferGeometry){triangles+=(value.index?.count??value.attributes.position.count)/3;assert.ok(Array.from(value.attributes.position.array).every(Number.isFinite));}assert.ok(triangles<8000,`${triangles} altar triangles`);
 });
-test('the green lotus-side bench is removed and the shrine approach remains clear from gate and both ponds',()=>{
- assert.equal(stoneBenches.some(b=>b.id===3),false);assert.equal(seats.some(s=>s.id.startsWith('bench-3-')),false);assert.equal(seats.length,146);assert.ok(walkable(...QUAN_AM.approach));assert.ok(quanAmObstacles.length<=5);
- for(const start of [[0,22],[22,15],[13,39],[42,18]] as [number,number][]){const path=findPath(start,QUAN_AM.approach);assert.ok(path.length,`${start}`);let from=start;for(const p of path){assert.ok(clearLine(from,p));from=p;}assert.deepEqual(from,QUAN_AM.approach);}
+test('the island shrine is reachable from the gate, both shores and the wish station',()=>{
+ assert.equal(stoneBenches.some(b=>b.id===3),false);assert.equal(seats.some(s=>s.id.startsWith('bench-3-')),false);assert.equal(seats.length,146);assert.ok(walkable(...QUAN_AM.approach));assert.equal(quanAmObstacles.length,11);
+ for(const start of [GATE_ENTRY,[15,15],[16.4,38.5],[45,18]] as [number,number][]){const path=findPath(start,QUAN_AM.approach);assert.ok(path.length,`${start}`);let from=start;for(const p of path){assert.ok(clearLine(from,p));from=p;}assert.deepEqual(from,QUAN_AM.approach);}
  assert.equal(walkable(QUAN_AM.x,QUAN_AM.z),false);assert.equal(walkable(QUAN_AM.tableX,QUAN_AM.tableZ),false);
 });
 test('Quan Am incense routes to its own altar, waits three seconds and consumes/rewards exactly once',()=>{

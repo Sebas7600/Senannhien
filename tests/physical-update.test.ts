@@ -1,5 +1,4 @@
 import {CUSHION} from '../src/cushionData';
-import {LOTUS_POND} from '../src/lotusLayout';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import RAPIER from '@dimforge/rapier3d-compat';
@@ -8,7 +7,7 @@ import {clearLine} from '../src/navigation';
 import {mealPlan,serviceTimes,servicePhase,counterHasMeal,sampleRoute,HANDOFF_MS,TURN_MS,WITHDRAW_MS,MEAL_SCALE,PLATE_LIFT,createMealPresentation,sampleMealPresentation} from '../src/mealService';
 import {floatingLotusPose,lanternPose,LANTERN_RISE} from '../src/ritualMotion';
 import {templeSurfaceHeight} from '../src/templeFixtures';
-import {bridgeHeight} from '../src/pondLayout';
+import {bridgeHeight,POND,pondContains,islandContains} from '../src/pondLayout';
 
 test('ritual platforms coexist with the new temple and koi bridge without lifting visitors through their sides',()=>{
   assert.equal(surfaceHeight(0,-24),templeSurfaceHeight(0,3)+.08);
@@ -113,5 +112,9 @@ test('lotuses remain on the water while silk lanterns rise, with allocation-free
   const out={position:[0,0,0] as [number,number,number],rotation:0,scale:1},position=out.position;
   assert.equal(lanternPose(LANTERN_RISE,123,false,out),out);assert.equal(out.position,position);assert.ok(out.position[1]>7);
   const point:[number,number,number]=[0,0,0];
-  for(let i=0;i<6;i++)for(let seconds=0;seconds<300;seconds+=5){assert.equal(floatingLotusPose(seconds,i,point),point);assert.ok(point[1]>=LOTUS_POND.waterY+.045&&point[1]<=LOTUS_POND.waterY+.085);assert.ok(point[2]<37.5);assert.ok(((point[0]-28)/12)**2+((point[2]-39)/9)**2<1);}
+  for(let i=0;i<6;i++)for(let seconds=0;seconds<300;seconds+=5){
+    assert.equal(floatingLotusPose(seconds,i,point),point);
+    assert.ok(point[1]>POND.waterY&&point[1]<POND.bankY);
+    assert.ok(pondContains(point[0],point[2])&&!islandContains(point[0],point[2]));
+  }
 });
