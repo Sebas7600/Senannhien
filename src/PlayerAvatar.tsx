@@ -9,7 +9,7 @@ import {clone} from 'three/addons/utils/SkeletonUtils.js';
 import RealisticCharacter, {type CharacterProps} from './RealisticCharacter';
 import {useReducedMotion} from './useReducedMotion';
 import {ReadingBook,TeaCup} from './QuietActivityProps';
-import {NPC_CHIBI_SCALE,NPC_SERVICE_LEAD} from './npcAppearance';
+import {NPC_CHIBI_SCALE,npcServiceLead} from './npcAppearance';
 
 const modelUrl = '/assets/characters/thay-chua-chibi.glb';
 
@@ -75,7 +75,7 @@ function ChibiAvatar({moving, running, npc, serveFrame, apron, stairsDirection =
     const dt = Math.min(delta, .05);
     if (bodyVisual.current) {
       const visualHeight = seated ? 0 : moving && stairsDirection === 1 ? -.085 : -.025;
-      bodyVisual.current.position.z = MathUtils.damp(bodyVisual.current.position.z,npc&&(pose==='serve'||pose==='cook')?NPC_SERVICE_LEAD*(1-(serveFrame?.current.release??0))/NPC_CHIBI_SCALE:seated && !chair ? -.06 : 0,16,dt);
+      bodyVisual.current.position.z = MathUtils.damp(bodyVisual.current.position.z,npc&&pose==='serve'&&serveFrame?npcServiceLead(serveFrame.current)/NPC_CHIBI_SCALE:seated && !chair ? -.06 : 0,16,dt);
       bodyVisual.current.position.y = MathUtils.damp(bodyVisual.current.position.y,visualHeight,16,dt);
     }
     rig.restore();

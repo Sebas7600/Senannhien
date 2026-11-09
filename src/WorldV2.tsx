@@ -35,7 +35,7 @@ import { useGame,visitDonationChest, floorAt, type Peer } from './gameStore';
 import { OFFERING_RANGE, WISH_STATION, incenseSpot, outsideIncenseBurner, INCENSE_RANGE, INCENSE_BURN_MS, distance, gardenPlots, nearestSeat, npcs, seats, usesFloorSeat, RECEPTION_HEADING, type Vec2 } from './gameData';
 
 import { findPath } from './navigation';
-import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS,MEAL_SCALE,createMealPresentation,sampleMealPresentation,sampleKitchenMeal,chefPhase,chefLabels} from './mealService';
+import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS,MEAL_SCALE,createMealPresentation,sampleMealPresentation,sampleKitchenMeal,chefPhase,chefLabels,PICKUP_HEADING} from './mealService';
 import {ServingMeal} from './Food';
 import CourtyardNightLights from './CourtyardNightLights';
 import CourtyardSky,{fullMoonOffset,morningHorizon,morningSunOffset,nightHorizon} from './CourtyardSky';
@@ -162,7 +162,7 @@ function Villager({n}:{n:typeof npcs[number]}){
     }else if(meal&&plan&&meal.orderedAt!==undefined&&meal.deliveryAt!==undefined&&meal.kitchenAt!==undefined){
       const now=Date.now(),phase=servicePhase(meal,now);label=phase==='idle'?'Trò chuyện · E':serviceLabels[phase];
       if(phase==='toKitchen'){sampleRoute(plan.toKitchen,(now-meal.orderedAt)/Math.max(1,meal.kitchenAt-meal.orderedAt),out);walking=true;}
-      else if(phase==='waiting'||phase==='pickup'){sampleRoute(plan.toKitchen,1,out);out.heading=-Math.PI/2;carrying=phase==='pickup';}
+      else if(phase==='waiting'||phase==='pickup'){sampleRoute(plan.toKitchen,1,out);out.heading=PICKUP_HEADING;carrying=phase==='pickup';}
       else if(phase==='delivering'||phase==='handoff'){sampleRoute(plan.toTable,(now-meal.deliveryAt)/Math.max(1,meal.readyAt-HANDOFF_MS-meal.deliveryAt),out);if(phase==='handoff')out.heading=plan.heading;walking=phase==='delivering';carrying=true;}
       else if(phase==='returning'){sampleRoute(plan.toReception,(now-meal.readyAt)/Math.max(1,(meal.homeAt??now)-meal.readyAt),out);walking=true;}
     }

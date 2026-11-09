@@ -118,9 +118,9 @@ export function createChibiPose(model: Object3D) {
       if (walking) { applyStairGait(); return; }
       if(pose==='serve'&&service){
         for(const side of ['L','R'] as const){bones.get(side==='L'?'Co_Chan_L':'Co_Chan_R')!.getWorldPosition(serviceFeet[side]);model.worldToLocal(serviceFeet[side]);}
-        hip.position.y=hipY-.018-service.bend*.28;
-        hip.position.z=hipBeforeZ+(.10+service.bend*.15)*weight;
-        turn('Than',.16+service.bend*1.1);turn('Dau',-.06+service.bend*.15);
+        hip.position.y=hipY-.018-service.bend*.31;
+        hip.position.z=hipBeforeZ+(.075+service.bend*.15)*weight;
+        turn('Than',-.12+service.bend*.08);turn('Dau',-.30+service.bend*.05);
         for(const side of ['L','R'] as const){const sign=side==='L'?1:-1;
           reachHand(side,point.set((service.handX+sign*.18)/(1.3*1.08),service.handY/1.3+.025,service.handZ/(1.3*1.10)));
           reachHand(side,serviceFeet[side],true);

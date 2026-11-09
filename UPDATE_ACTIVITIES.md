@@ -103,10 +103,18 @@ npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 168 kiểm thử client và 8 kiểm thử server (tổng 176); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 169 kiểm thử client và 8 kiểm thử server (tổng 177); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 
 - Chuông và đồ cúng là mô hình tự dựng theo phong cách hiện có, chưa phải asset điêu khắc chi tiết do họa sĩ xuất GLB.
 - Bản ghi chuông là của Jnn tại chùa Chōmei-ji ở Nhật, CC BY 2.1 Japan; không phải bản thu tại chùa Việt. Nhạc thời kinh là hòa âm nhạc cụ, không có giọng tụng của tăng sĩ.
 - Cô An và Cô Tâm xử lý đơn trong phiên của mỗi người; chưa có hàng đợi NPC dùng chung toàn máy chủ. Lời nguyện và đèn vẫn riêng trên trình duyệt, chưa đồng bộ đèn/lời nguyện giữa người chơi.
+
+## Sửa mâm phục vụ của hai NPC (09/11/2026)
+
+Thu mâm theo tỉ lệ nhân vật chibi, đưa mâm ra trước thân, đặt tay dưới mép sau thay vì tâm mâm. Cô Tâm hướng đúng vào món trên quầy, nhấc mâm theo một quỹ đạo có khoảng trống, rồi hạ xuống bàn trước khi rút tay. Cô An giữ mâm thấp hơn để tránh đầu và không cúi xuyên qua món. Chỉ tiến thân khi với tới mặt bàn; bước mang món giữ thân thẳng và chân bám sàn.
+
+169 kiểm thử client + 8 server đạt, production build đạt. Kiểm thử dùng mesh GLB đã biến dạng, kiểm tra đầu/thân với thể tích mâm và món ở 611 thời điểm; hai tay tiếp xúc mục tiêu trong 2 cm và mắt cá chân giữ vị trí trong 1,2 cm. Giữ nguyên đồ họa Dante 950c79b và màu áo NPC.
+
+Đã thử trực tiếp hai lượt gọi mì qua HTTP LAN, xem nhận/đặt mâm từ góc trước và góc bên, hoàn tất dùng bữa nhận công đức; console không có lỗi mới. Ảnh artifacts/tray-placement-fixed.png không commit. Mô phỏng liên tục 916 frame ở 60 Hz không có giao cắt đầu/thân; đây không phải phép đo FPS trên điện thoại. IP kiểm tra hiện tại: http://192.168.0.24:5174/.

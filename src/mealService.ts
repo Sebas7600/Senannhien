@@ -10,7 +10,9 @@ export const PICKUP_MS=700;
 export const HANDOFF_MS=2400;
 export const TURN_MS=450;
 export const WITHDRAW_MS=600;
-export const MEAL_SCALE=.75;
+export const MEAL_SCALE=.55;
+export const CARRY_FRONT=.74,CARRY_HAND_Y=.85,TRAY_GRIP_BACK=.5*MEAL_SCALE;
+export const PICKUP_HEADING=Math.atan2(PICKUP_PLATE[0]-KITCHEN_PICKUP[0],PICKUP_PLATE[2]-KITCHEN_PICKUP[1]);
 // The serving tray extends .0675 below the food origin; its underside rests on the table.
 export const PLATE_LIFT=.0675*MEAL_SCALE;
 export const SERVICE_SPEED=2.6;
@@ -85,21 +87,21 @@ export function sampleKitchenMeal(order:ServiceTimes&{status:string},now:number,
     else if(now<s.stoveAt){sampleRoute(routes.toStove,(now-s.returnAt)/routes.duration,k);k.walking=true;}
     else k.heading=-Math.PI/2*(1-ease((now-s.stoveAt)/CHEF_TURN_MS));
   }
-  const carryY=KITCHEN_COUNTER_TOP+PLATE_LIFT+.26,pickupY=KITCHEN_COUNTER_TOP+PLATE_LIFT,reach=ease((now-s.arriveAt-CHEF_TURN_MS)/(CHEF_SETDOWN_MS-CHEF_TURN_MS));
-  p[0]=k.x+Math.sin(k.heading)*.5;p[1]=phase==='lifting'?mix(pickupY+.08,carryY,ease((now-(order.cookedAt??0))/CHEF_LIFT_MS)):carryY;p[2]=k.z+Math.cos(k.heading)*.5;out.heading=k.heading;
+  const carryY=KITCHEN_COUNTER_TOP+PLATE_LIFT+.06,pickupY=KITCHEN_COUNTER_TOP+PLATE_LIFT,reach=ease((now-s.arriveAt-CHEF_TURN_MS)/(CHEF_SETDOWN_MS-CHEF_TURN_MS));
+  p[0]=k.x+Math.sin(k.heading)*CARRY_FRONT;p[1]=phase==='lifting'?mix(pickupY+.08,carryY,ease((now-(order.cookedAt??0))/CHEF_LIFT_MS)):carryY;p[2]=k.z+Math.cos(k.heading)*CARRY_FRONT;out.heading=k.heading;
   if(phase==='settingDown'){p[0]=mix(p[0],PICKUP_PLATE[0],reach);p[1]=mix(carryY,pickupY,reach);p[2]=mix(p[2],PICKUP_PLATE[2],reach);}
   if(now>=s.counterReadyAt){p[0]=PICKUP_PLATE[0];p[1]=pickupY;p[2]=PICKUP_PLATE[2];out.heading=0;}
   out.visible=order.status!=='finished'&&order.cookedAt!==undefined&&now>=order.cookedAt;
-  h.release=phase==='withdrawing'?ease((now-s.counterReadyAt)/CHEF_WITHDRAW_MS):0;h.bend=.35*reach*(1-h.release);h.hips=.84-h.bend*.27;
+  h.release=phase==='withdrawing'?ease((now-s.counterReadyAt)/CHEF_WITHDRAW_MS):0;h.bend=.12*reach*(1-h.release);h.hips=.84-h.bend*.27;
   const dx=p[0]-k.x,dz=p[2]-k.z,sin=Math.sin(k.heading),cos=Math.cos(k.heading);
-  h.handX=mix(dx*cos-dz*sin,0,h.release);h.handY=mix(p[1]-k.y-PLATE_LIFT-.018,.72,h.release);h.handZ=mix(dx*sin+dz*cos,.03,h.release);
+  h.handX=mix(dx*cos-dz*sin,0,h.release);h.handY=mix(p[1]-k.y-PLATE_LIFT-.018,.72,h.release);h.handZ=mix(dx*sin+dz*cos-TRAY_GRIP_BACK,.03,h.release);
   return out;
 }
 /** One plate follows counter -> hands -> tabletop, without replacing or rescaling its mesh. */
 export function sampleMealPresentation(order:ServiceTimes&{seatId:string;status:string},now:number,npc:{x:number;y:number;z:number;heading:number},out:MealPresentation){
   if(order.counterReadyAt!==undefined&&now<order.counterReadyAt)return sampleKitchenMeal(order,now,out);
   const plan=mealPlan(order.seatId),phase=servicePhase(order,now),p=out.position,h=out.hands;
-  const sin=Math.sin(npc.heading),cos=Math.cos(npc.heading),carryX=npc.x+sin*.6,carryY=npc.y+.9+PLATE_LIFT+.018,carryZ=npc.z+cos*.6;
+  const sin=Math.sin(npc.heading),cos=Math.cos(npc.heading),carryX=npc.x+sin*CARRY_FRONT,carryY=npc.y+CARRY_HAND_Y+PLATE_LIFT+.018,carryZ=npc.z+cos*CARRY_FRONT;
   const elapsed=now-(order.readyAt-HANDOFF_MS),reach=ease((elapsed-TURN_MS)/(HANDOFF_MS-TURN_MS-WITHDRAW_MS)),release=ease((elapsed-(HANDOFF_MS-WITHDRAW_MS))/WITHDRAW_MS);
   out.visible=order.status!=='finished'&&(order.cookedAt===undefined?order.status==='ready'||order.status==='eating':now>=order.cookedAt);
   p[0]=carryX;p[1]=carryY;p[2]=carryZ;out.heading=npc.heading;
@@ -109,15 +111,17 @@ export function sampleMealPresentation(order:ServiceTimes&{seatId:string;status:
     p[0]=PICKUP_PLATE[0];p[1]=KITCHEN_COUNTER_TOP+PLATE_LIFT;p[2]=PICKUP_PLATE[2];out.heading=0;
   }else if(phase==='pickup'){
     const pickupStart=Math.max(counterAvailableAt(order),order.kitchenAt??0),t=ease((now-pickupStart)/PICKUP_MS);
-    p[0]=mix(PICKUP_PLATE[0],carryX,t);p[1]=mix(KITCHEN_COUNTER_TOP+PLATE_LIFT,carryY,t)+Math.sin(Math.PI*t)*.08;p[2]=mix(PICKUP_PLATE[2],carryZ,t);
-    out.heading=npc.heading*t;h.bend=.20*(1-t);
+    // Clear the counter first, keeping the rotating tray's corners away from the face.
+    const clearance=Math.sin(Math.PI*t)*.12;
+    p[0]=mix(PICKUP_PLATE[0],carryX,t)+sin*clearance;p[1]=mix(KITCHEN_COUNTER_TOP+PLATE_LIFT,carryY,t)+Math.sin(Math.PI*t)*.02;p[2]=mix(PICKUP_PLATE[2],carryZ,t)+cos*clearance;
+    out.heading=npc.heading*t;h.bend=.10*(1-t);
   }else if(phase==='handoff'){
     p[0]=mix(carryX,plan.plate[0],reach);p[1]=mix(carryY,plan.plate[1],reach)+Math.sin(Math.PI*reach)*.08;p[2]=mix(carryZ,plan.plate[2],reach);
   }
   if(phase==='handoff'){h.bend=.52*reach*(1-release);h.release=release;}
   h.hips=.84-h.bend*.27;
   const dx=p[0]-npc.x,dz=p[2]-npc.z;
-  h.handX=mix(dx*cos-dz*sin,0,h.release);h.handY=mix(p[1]-npc.y-PLATE_LIFT-.018,.72,h.release);h.handZ=mix(dx*sin+dz*cos,.03,h.release);
+  h.handX=mix(dx*cos-dz*sin,0,h.release);h.handY=mix(p[1]-npc.y-PLATE_LIFT-.018,.72,h.release);h.handZ=mix(dx*sin+dz*cos-TRAY_GRIP_BACK,.03,h.release);
   return out;
 }
 export function sampleRoute(route:Route,progress:number,out:{x:number;z:number;heading:number}){
