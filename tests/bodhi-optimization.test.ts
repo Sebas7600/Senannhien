@@ -5,6 +5,7 @@ import {benchNearGeometry,benchFarGeometry} from '../src/benchGeometry';
 import {canopyGeometry,foliageMaterial,FOLIAGE_DETAIL_CLUSTERS,LEAVES_PER_CLUSTER} from '../src/foliage';
 import {foliageTexture} from '../src/foliageTexture';
 import {BODHI} from '../src/bodhiData';
+import {GATE_ENTRY} from '../src/courtyardPropsData';
 import {walkable} from '../src/gameData';
 import {findPath,clearLine} from '../src/navigation';
 import {courtyardTrees,COURTYARD_TREE,restingBenches} from '../src/courtyardData';
@@ -38,7 +39,7 @@ test('a seat-facing camera ray detects an opaque crown and can stop before it',(
 });
 test('Bodhi altar is reachable around the enlarged tree base from the gate and pond',()=>{
   assert.ok(walkable(...BODHI.offeringPoint));assert.equal(walkable(BODHI.x,BODHI.z),false);
-  for(const start of [[0,22],[18,5]] as [number,number][]){const path=findPath(start,BODHI.offeringPoint);assert.ok(path.length);let from=start;for(const p of path){assert.ok(clearLine(from,p));from=p;}assert.ok(Math.hypot(from[0]-BODHI.offeringPoint[0],from[1]-BODHI.offeringPoint[1])<.1);}
+  for(const start of [GATE_ENTRY,[18,5]] as [number,number][]){const path=findPath(start,BODHI.offeringPoint);assert.ok(path.length);let from=start;for(const p of path){assert.ok(clearLine(from,p));from=p;}assert.ok(Math.hypot(from[0]-BODHI.offeringPoint[0],from[1]-BODHI.offeringPoint[1])<.1);}
 });
 test('three benches hug the cardinal basin faces while leaving the lamp-facing side empty',()=>{
   assert.equal(restingBenches.length,6);assert.equal(new Set(restingBenches.map(b=>b.id)).size,6);
@@ -58,7 +59,7 @@ test('three benches hug the cardinal basin faces while leaving the lamp-facing s
       assert.ok(walkable(b.x+facing.x*.8,b.z+facing.y*.8));
     }
   }
-  assert.ok(clearLine([0,29],[0,6]));assert.ok(courtyardTreeGeometry.index!.count/3<=1800);
+  assert.ok(clearLine(GATE_ENTRY,[0,6]));assert.ok(courtyardTreeGeometry.index!.count/3<=1800);
 });
 test('raised coping has the requested height while the altar front stays visible outside the ring',()=>{
   assert.ok(BODHI.wallHeight>.33);assert.ok(BODHI.wallHeight<BODHI.altarHeight);

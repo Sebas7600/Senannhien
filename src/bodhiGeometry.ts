@@ -5,6 +5,7 @@ import {BODHI} from './bodhiData';
 import {treeBasinParts} from './treeBasinGeometry';
 const bark:THREE.BufferGeometry[]=[],stone:THREE.BufferGeometry[]=[],metal:THREE.BufferGeometry[]=[],offerings:THREE.BufferGeometry[]=[];
 const trunk=taperTube([[0,.12,0],[.06,.55,0],[-.08,1.4,.04],[.05,2.7,-.05],[.1,3.9,.03],[.1,4.8,0]],[.98,.87,.66,.56,.42,.23],10);
+export const bodhiTrunkShadowGeometry=trunk;
 bark.push(coloredGeometry(trunk,'#70583d'));
 for(let i=0;i<8;i++){const a=i*Math.PI/4+.15,dx=Math.sin(a),dz=Math.cos(a),length=2.1+(i%3)*.2;
   bark.push(coloredGeometry(taperTube([[dx*.3,1.6,dz*.3],[dx*.75,.65,dz*.75],[dx*1.5,.22,dz*1.5],[dx*length,.1,dz*length]],[.35,.32,.19,.045],7),i%2?'#71593e':'#66513b'));
