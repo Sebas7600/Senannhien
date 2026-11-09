@@ -56,7 +56,7 @@ test('146 unique seats, including 20 dining cushions, are placed outside navigat
   for(const s of seats)assert.ok(walkable(s.position[0],s.position[2],.3),s.id);
 });
 test('navigation reaches all dining seats and every practice area without crossing walls or water',()=>{
-  const selected=[...seats.filter(s=>['dining','reading','tea'].includes(s.kind)),...seats.filter(s=>['temple-0','temple-17','hall-0','hall-19','bamboo-4','tea-0'].includes(s.id))];
+  const selected=[...seats.filter(s=>['dining','reading','tea'].includes(s.kind)),...seats.filter(s=>s.zone==='bamboo'||['temple-0','temple-17','hall-0','hall-19','tea-0'].includes(s.id))];
   for(const s of selected){const start:[number,number]=[0,22],path=findPath(start,[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from=start;for(const p of path){assert.ok(clearLine(from,p),`${s.id}: ${from} -> ${p}`);from=p;}assert.ok(distance(from,[s.position[0],s.position[2]])<1,s.id);}
 });
 test('meals require a dining seat and cannot be reordered before finishing',()=>{

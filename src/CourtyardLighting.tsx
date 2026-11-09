@@ -1,6 +1,7 @@
 import {useLayoutEffect,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {Stars} from '@react-three/drei';
+import CourtyardSky from './CourtyardSky';
 import * as T from 'three';
 
 
@@ -74,7 +75,7 @@ export default function CourtyardLighting(){
       shadow-mapSize={[2048,2048]} shadow-camera-left={-25} shadow-camera-right={25}
       shadow-camera-top={25} shadow-camera-bottom={-25} shadow-camera-far={112}
       shadow-bias={-.00025} shadow-normalBias={.035}/>
-    {night?<Stars radius={130} depth={25} count={1000} factor={3} fade/>:<MorningSky/>}
+    {night?<Stars radius={130} depth={25} count={1000} factor={3} fade/>:<CourtyardSky night={false}/>}
   </>;
 }
 

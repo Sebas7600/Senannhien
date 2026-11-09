@@ -27,7 +27,7 @@ export function lanternPose(age: number, seed: number, reduced = false,out:{posi
 
 export function floatingLotusPose(seconds:number,index:number,out:Vec3=[0,0,0]){
   const angle=seconds*.035+index*Math.PI/3,radius=3.2+(index%3)*1.1;
-  out[0]=28+Math.cos(angle)*radius;out[1]=POND.waterY+.035+Math.sin(seconds*.65+index)*.015;out[2]=34.8+Math.sin(angle)*1.65;
+  out[0]=POND.x-1+Math.cos(angle)*radius;out[1]=POND.waterY+.035+Math.sin(seconds*.65+index)*.015;out[2]=POND.z+8.5+Math.sin(angle)*1.65;
   return out;
 }
 

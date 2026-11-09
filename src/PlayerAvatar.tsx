@@ -9,12 +9,13 @@ import {clone} from 'three/addons/utils/SkeletonUtils.js';
 import RealisticCharacter, {type CharacterProps} from './RealisticCharacter';
 import {useReducedMotion} from './useReducedMotion';
 import {ReadingBook,TeaCup} from './QuietActivityProps';
+import {NPC_CHIBI_SCALE,npcServiceLead} from './npcAppearance';
 
 const modelUrl = '/assets/characters/thay-chua-chibi.glb';
 
-type PlayerAvatarProps = CharacterProps & {running?: boolean; stairsDirection?: -1|0|1};
+type PlayerAvatarProps = CharacterProps & {npc?:boolean;running?: boolean; stairsDirection?: -1|0|1};
 
-function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
+function ChibiAvatar({moving, running, npc, serveFrame, apron, stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
   const {scene, animations} = useGLTF(modelUrl);
   const avatar = useMemo(() => {
     const instance = clone(scene);
@@ -53,6 +54,7 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
   }, [avatar, robe, skin]);
   const mixer = useMemo(() => new AnimationMixer(avatar), [avatar]);
   const rig = useMemo(() => createChibiPose(avatar), [avatar]);
+  const service=useRef({handX:0,handY:0,handZ:0,bend:0,hips:0,release:0});
   const reduced=useReducedMotion();
   const clipName = moving && !seated ? (running && !stairsDirection ? 'Run' : 'Walk') : 'Idle';
   useEffect(() => {
@@ -73,15 +75,19 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
     const dt = Math.min(delta, .05);
     if (bodyVisual.current) {
       const visualHeight = seated ? 0 : moving && stairsDirection === 1 ? -.085 : -.025;
-      bodyVisual.current.position.z = MathUtils.damp(bodyVisual.current.position.z,seated && !chair ? -.06 : 0,16,dt);
+      bodyVisual.current.position.z = MathUtils.damp(bodyVisual.current.position.z,npc&&pose==='serve'&&serveFrame?npcServiceLead(serveFrame.current)/NPC_CHIBI_SCALE:seated && !chair ? -.06 : 0,16,dt);
       bodyVisual.current.position.y = MathUtils.damp(bodyVisual.current.position.y,visualHeight,16,dt);
     }
     rig.restore();
     mixer.update(dt);
-    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced);
+    if(npc&&serveFrame){Object.assign(service.current,serveFrame.current);service.current.handZ-=(bodyVisual.current?.position.z??0)*NPC_CHIBI_SCALE;}
+    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced,npc&&serveFrame?service.current:undefined);
     const prop = heldProp.current;
     if (prop) prop.position.set(0,0,0);
-    if ((pose === 'tea' || pose === 'read') && prop?.parent) {
+    if(pose==='drum'&&prop?.parent){
+      avatar.localToWorld(upright.rest.set(0,1.54-.37*rig.drumStrike,.3+.65*rig.drumStrike));
+      prop.parent.worldToLocal(upright.rest);prop.quaternion.setFromUnitVectors(upright.axis,upright.rest.normalize());prop.scale.setScalar(1);
+    } else if ((pose === 'tea' || pose === 'read') && prop?.parent) {
       if(pose==='read'){
         avatar.localToWorld(upright.rest.set(0,.30+rig.quiet.breath,.34));
         prop.position.copy(prop.parent.worldToLocal(upright.rest));
@@ -116,9 +122,12 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
     } else if (prop) { prop.quaternion.identity(); prop.scale.setScalar(1); }
   });
   const hand = avatar.getObjectByName('Co_Tay_R');
+  const torso=avatar.getObjectByName('Than'),head=avatar.getObjectByName('Dau');
   return <group ref={bodyVisual} position={[0,seated ? 0 : -.025,seated && !chair ? -.06 : 0]}>
     <primitive object={avatar} scale={[1.08, 1, 1.10]} />
     {seated && <ChibiLapRobe robe={robe} chair={chair}/>}
+    {apron&&torso&&createPortal(<group position={[0,-.08,.165]}><mesh><planeGeometry args={[.28,.30]}/><meshStandardMaterial color="#ece2c8" side={2} roughness={1}/></mesh><mesh position={[0,.05,.005]}><boxGeometry args={[.12,.06,.008]}/><meshStandardMaterial color="#d1bea0"/></mesh></group>,torso)}
+    {apron&&head&&createPortal(<group position={[0,.36,0]}><mesh><cylinderGeometry args={[.21,.20,.085,16]}/><meshStandardMaterial color="#eee5cf"/></mesh><mesh position={[0,.06,0]} scale={[1,.5,1]}><sphereGeometry args={[.23,16,10]}/><meshStandardMaterial color="#eee5cf"/></mesh></group>,head)}
     {hand && createPortal(<group ref={heldProp}>{pose==='tea'?<TeaCup/>:pose==='read'?<ReadingBook motion={rig.quiet}/>:<ChibiHandProp pose={pose} dish={dish}/>}</group>,hand)}
     {pose === 'sweep' && <ChibiBroom localPlayer={localPlayer}/>}
     {(pose === 'carryWater' || pose === 'pourWater') && <ChibiYoke pouring={pose==='pourWater'} moving={!!moving}/>}
@@ -126,8 +135,8 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
 }
 
 export default function PlayerAvatar(props: PlayerAvatarProps) {
-  if (props.gender === 'female') return <RealisticCharacter {...props} />;
+  if (!props.npc&&props.gender === 'female') return <RealisticCharacter {...props} />;
   return <Suspense fallback={null}>
-    <ChibiAvatar {...props} />
+    <group scale={props.npc?NPC_CHIBI_SCALE:1}><ChibiAvatar {...props} /></group>
   </Suspense>;
 }

@@ -1,3 +1,4 @@
+import {useGame} from './gameStore';
 import {useLayoutEffect,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
@@ -11,20 +12,23 @@ const inner=new THREE.MeshBasicMaterial({color:'#fff2bd'});
 const halo=new THREE.MeshBasicMaterial({color:'#ffad40',transparent:true,opacity:.065,depthWrite:false,blending:THREE.AdditiveBlending});
 
 export interface FlamePoint {position:Vec3;scale?:number;seed?:number}
+const nightOuter=outer.clone(),nightHalo=halo.clone();nightOuter.opacity=.9;nightHalo.opacity=.16;
 const flameLayers=[{material:outer,y:.055,x:.035,h:.095},{material:inner,y:.025,x:.018,h:.05},{material:halo,y:.06,x:.16,h:.22}];
+const nightLayers=flameLayers.map(layer=>layer.material===halo?{...layer,material:nightHalo,x:layer.x*1.7,h:layer.h*1.3}:layer.material===outer?{...layer,material:nightOuter}:layer);
 /** The altar's three-layer flame and warm halo, batched for all twenty reading desks. */
 export function SacredFlames({points}:{points:FlamePoint[]}){
+  const night=useGame(s=>s.night),layers=night?nightLayers:flameLayers;
   const refs=useRef<(THREE.InstancedMesh|null)[]>([]),object=useRef(new THREE.Object3D()),parent=useRef(new THREE.Object3D()),matrix=useRef(new THREE.Matrix4()),reduced=useReducedMotion();
   function update(t:number){
     points.forEach(({position,scale=1,seed=0},i)=>{
       const f=flameFlicker(t,seed,reduced),root=parent.current,m=object.current;root.position.set(...position);root.scale.set(scale*(2-f),scale*f,scale*(2-f));root.rotation.z=reduced?0:Math.sin(t*5.3+seed)*.055;root.updateMatrix();
-      flameLayers.forEach((layer,j)=>{m.position.set(0,layer.y,0);m.scale.set(layer.x,layer.h,layer.x);m.updateMatrix();matrix.current.multiplyMatrices(root.matrix,m.matrix);refs.current[j]?.setMatrixAt(i,matrix.current);});
+      layers.forEach((layer,j)=>{m.position.set(0,layer.y,0);m.scale.set(layer.x,layer.h,layer.x);m.updateMatrix();matrix.current.multiplyMatrices(root.matrix,m.matrix);refs.current[j]?.setMatrixAt(i,matrix.current);});
     });
     refs.current.forEach(mesh=>{if(mesh)mesh.instanceMatrix.needsUpdate=true;});
   }
-  useLayoutEffect(()=>{update(0);refs.current.forEach(mesh=>mesh?.computeBoundingSphere());},[points,reduced]);
+  useLayoutEffect(()=>{update(0);refs.current.forEach(mesh=>mesh?.computeBoundingSphere());},[points,reduced,night]);
   useFrame(({clock})=>{if(!reduced)update(clock.elapsedTime)});
-  return <group dispose={null}>{flameLayers.map((layer,i)=><instancedMesh key={i} ref={mesh=>{refs.current[i]=mesh}} args={[flameGeometry,layer.material,points.length]} frustumCulled={false}/>)}</group>;
+  return <group dispose={null}>{layers.map((layer,i)=><instancedMesh key={i} ref={mesh=>{refs.current[i]=mesh}} args={[flameGeometry,layer.material,points.length]} frustumCulled={false}/>)}</group>;
 }
 /** No shadow maps or per-flame point lights on mobile. */
 export function SacredFlame({position=[0,0,0],scale=1,seed=0}:Partial<FlamePoint>){return <SacredFlames points={[{position,scale,seed}]}/>;}

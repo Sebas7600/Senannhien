@@ -68,7 +68,24 @@ Sửa trang trắng trên điện thoại qua LAN ngày 06/11: video cho thấy 
 
 Kiểm chứng bản sửa LAN: 131 kiểm thử client + 5 server = 136/136 đạt, production build đạt. Bốn kiểm thử mới bao phủ native UUID, HTTP không có randomUUID, API bị từ chối và WebView thiếu crypto; kiểm tra định dạng hợp lệ cùng tính duy nhất của ID. Đã tải lại bản production trên http://192.168.0.109:5174, hoàn tất tạo nhân vật, vào sân chùa và mở bảng phòng thấy kết nối hai người; không có lỗi JavaScript mới sau build. Kiểm tra hiển thị ở khung 430 × 820, ảnh trước/sau trong artifacts/phone-lan-before.jpg và phone-lan-after.jpg (không commit). Đây là kiểm tra HTTP LAN và khung điện thoại trên trình duyệt máy tính; cần người dùng tải lại Safari trên iPhone để xác nhận trên thiết bị thật.
 
+## Cập nhật điện thoại và LAN ngày 09/11
+
+- Dựa trên main `3556bb9` đã merge PR #8. Sửa nguyên nhân POST trên LAN bị từ chối do chỉ cho phép Origin localhost: chấp nhận đúng hostname và cổng của máy chủ, giữ chặn Origin bên ngoài. Gửi vị trí mới nhất trước khi dâng lễ/chăm vườn và dùng AbortController thay AbortSignal.timeout cho Safari/WebView cũ. Giữ thao tác retry có ID để tránh trừ vật phẩm hai lần.
+- Tách quyền điều khiển từng ngón tay giữa joystick và camera; xoay bằng một ngón, tắt pinch zoom, thêm thanh khoảng cách camera dọc bên phải. Joystick không cập nhật React theo từng khung hình. Camera vẫn kiểm tra vật cản.
+- Tắt popup khoảnh khắc chuông và trà. Thực đơn, bản đồ, chọn sách dùng khung cuộn trong viewport; HUD hoạt động, gọi món và gánh nước nhỏ, trong suốt và xếp chồng có khoảng cách. Ngồi nghỉ tại thư viện tự đọc; nút mở Tàng kinh các mới mở cửa sổ sách.
+- Thêm đánh trống ba nhịp với tay/cùi trống chạm mặt trống, âm màng trống tổng hợp lưu đệm, đồng bộ thời điểm đánh và dừng các nhịp chưa phát khi hủy. Có ghi tiến trình và đồng bộ tư thế sang người chơi khác.
+- Dâng hương tại Trúc Lâm dùng cùng giao dịch đồ cúng của phòng; khói dùng chung với chánh điện, bồ đề và Quan Âm. Thêm nến/mâm quả Quan Âm; đồng nhất lửa nến dâng lễ, tăng quầng sáng nến/đèn vào ban đêm, thêm sao và trăng tròn.
+- Chỉnh điểm neo đòn gánh riêng theo tỉ lệ chibi, giữ điểm neo của nhân vật nữ trong nhóm thân trên; thùng không còn chìm xuống sàn.
+
+Kiểm chứng: 160 kiểm thử client + 8 server = 168/168 đạt; TypeScript và production build đạt. Bộ kiểm thử có HTTP Origin/Host LAN thật cho các loại lễ vật, koi, vườn, chat; kiểm tra chống lặp, hương Trúc Lâm/Quan Âm, quyền sở hữu ngón tay, thời hạn fetch trên Safari thiếu API, luồng đọc sách và ba nhịp trống/âm thanh. Đã thao tác game qua HTTP LAN: cho cá ăn, dâng hương, đọc sách, gọi/dùng bữa, thanh zoom và đánh trống. Bản build cuối được xem ở 390 × 640 và 844 × 390: thực đơn/bản đồ không tràn ngang, dâng hương tăng công đức và không có lỗi JavaScript mới. Ảnh lưu trong artifacts/ (không commit). Đây là trình duyệt máy tính với viewport điện thoại; chưa xác nhận cảm ứng hai tay trên iPhone thật hay đo FPS thiết bị.
+
 ## Kiểm chứng
+
+Tích hợp đồ họa và NPC ngày 09/11: main tại `3556bb9` chưa có cập nhật cảnh mới; nhận hai commit trên Dante-Update đến `950c79b` bằng merge giữ lịch sử. Giữ bố cục Maya, hồ/cầu/đảo mới, mái/cột/trần, vật liệu sân vườn, rừng trúc, đèn đêm và bầu trời của team; không thay thế các asset đó bằng phiên bản cũ. Giữ tượng đã có trên main cùng các chức năng LAN/đồ cúng, POS, điều khiển điện thoại, sách/trà và chuỗi bếp. Điểm đánh chuông/trống, thả đèn, cho cá ăn và kiểm thử lấy tọa độ từ bố cục mới. Bỏ các hitbox bồn hoa/đèn/tre cũ không còn khớp hình ảnh; phần tre mới tiếp tục cách hiển thị nhẹ của team. Sửa dấu đóng hàm bị thiếu trong fragment shader CourtyardSky, được phát hiện khi đổi ngày/đêm trên trình duyệt; đưa tường sân về biên mới z=76 để khớp cổng và collider, giữ khoảng lùi camera tại cổng mới.
+
+Toàn bộ NPC dùng cùng GLB chibi của người chơi; giữ nguyên màu áo theo dữ liệu từng NPC và vai trò đầu bếp/lễ tân. Cô An giữ mũ, tạp dề và động tác khuấy; hai NPC bếp dùng IK tay/chân theo chính khay đang di chuyển, chuyển tư thế mềm và giữ nguyên một khay xuyên suốt quy trình. Tỉ lệ NPC 1,3 để phù hợp chiều cao quầy hiện có; không sửa GLB người chơi. Vị trí khay ở mép quầy được căn lại trong mặt bàn cho tầm với của model mới. 168 kiểm thử client + 8 server = 176/176 đạt; bao gồm giải mã model thật, tay giữ khay trong sai số 2 cm và giữ cổ chân trong sai số 1,2 cm khi cúi. Production build đạt; đã chạy gọi món đến khi món nằm trên bàn bằng giao diện game. Kiểm thử viewport không thay thế QA cảm ứng/FPS trên điện thoại thật.
+
+Cập nhật theo ảnh kiểm thử điện thoại ngày 09/11: danh mục sách bỏ chiều rộng bìa cố định gây lấn mô tả, giữ hai cột co được ở màn hình 320–390 px và dùng biểu tượng hoa SVG để tránh emoji xanh trên iOS. Hướng dâng hương Trúc Lâm nay nhắm đúng tâm lư của thiền đường thay vì lư chánh điện. Khói dùng hai luồng hạt uốn, tăng độ rõ và giữ hình khói tĩnh khi thiết bị yêu cầu giảm chuyển động; vẫn một draw call mỗi lư, không tải texture khói. Lan can cầu sang Quan Âm dừng ở mép đảo, chừa phần đáp cầu để rẽ; hình ảnh, collider Rapier và tìm đường dùng cùng điểm kết thúc. Hai ảnh POS do chủ dự án gửi được đặt thành texture riêng: ảnh quản lý phía Cô Tâm, ảnh check-in phía khách. 162 kiểm thử client + 8 server = 170/170 đạt; có kiểm tra capsule Rapier rẽ qua đầu lan can cũ và hướng nhìn vào đúng lư từ ba phía. Production build đạt. Đã xem danh mục sách ở 390 × 640 và 320 × 568, dâng hương thành công qua LAN và không ghi nhận lỗi JavaScript; chưa xác nhận lại trên Safari thiết bị thật.
 
 - TypeScript và production build đạt.
 - 81/81 kiểm thử tự động đạt sau tích hợp main 604ab35: đường đi mọi chỗ ngồi, va chạm Rapier thật ở sàn chuông, phục vụ đủ 20 chỗ, vật phẩm/tiến trình, giới hạn đèn, flicker, hủy âm thanh đang tải, không phát trùng, âm thanh không fetch URL media, phòng và đồng bộ đồ cúng/vườn rau, MIME media và tải từng đoạn (HTTP Range) trên máy chủ.
@@ -78,16 +95,26 @@ Kiểm chứng bản sửa LAN: 131 kiểm thử client + 5 server = 136/136 đ�
 
 ## Chạy dự án
 
+Trên Windows, nhấp đúp `Choi-Game.cmd` để mở bản build qua LAN. File tự chọn IPv4 của mạng Private (ưu tiên Wi-Fi), hiển thị link cho điện thoại/tablet và mở trình duyệt sau khi máy chủ sẵn sàng. Giữ cửa sổ CMD mở khi chơi; Ctrl+C để dừng. Các thiết bị cần cùng Wi-Fi/LAN. Nhấp lại khi cùng bản build đang chạy sẽ dùng lại máy chủ. Không tự đổi firewall hoặc mở cổng ra Internet. Có thể đặt biến `PORT` nếu muốn dùng cổng khác.
+
 ```sh
 npm run build
 npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 131 kiểm thử client và 5 kiểm thử server (tổng 136); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 169 kiểm thử client và 8 kiểm thử server (tổng 177); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 
 - Chuông và đồ cúng là mô hình tự dựng theo phong cách hiện có, chưa phải asset điêu khắc chi tiết do họa sĩ xuất GLB.
 - Bản ghi chuông là của Jnn tại chùa Chōmei-ji ở Nhật, CC BY 2.1 Japan; không phải bản thu tại chùa Việt. Nhạc thời kinh là hòa âm nhạc cụ, không có giọng tụng của tăng sĩ.
 - Cô An và Cô Tâm xử lý đơn trong phiên của mỗi người; chưa có hàng đợi NPC dùng chung toàn máy chủ. Lời nguyện và đèn vẫn riêng trên trình duyệt, chưa đồng bộ đèn/lời nguyện giữa người chơi.
+
+## Sửa mâm phục vụ của hai NPC (09/11/2026)
+
+Thu mâm theo tỉ lệ nhân vật chibi, đưa mâm ra trước thân, đặt tay dưới mép sau thay vì tâm mâm. Cô Tâm hướng đúng vào món trên quầy, nhấc mâm theo một quỹ đạo có khoảng trống, rồi hạ xuống bàn trước khi rút tay. Cô An giữ mâm thấp hơn để tránh đầu và không cúi xuyên qua món. Chỉ tiến thân khi với tới mặt bàn; bước mang món giữ thân thẳng và chân bám sàn.
+
+169 kiểm thử client + 8 server đạt, production build đạt. Kiểm thử dùng mesh GLB đã biến dạng, kiểm tra đầu/thân với thể tích mâm và món ở 611 thời điểm; hai tay tiếp xúc mục tiêu trong 2 cm và mắt cá chân giữ vị trí trong 1,2 cm. Giữ nguyên đồ họa Dante 950c79b và màu áo NPC.
+
+Đã thử trực tiếp hai lượt gọi mì qua HTTP LAN, xem nhận/đặt mâm từ góc trước và góc bên, hoàn tất dùng bữa nhận công đức; console không có lỗi mới. Ảnh artifacts/tray-placement-fixed.png không commit. Mô phỏng liên tục 916 frame ở 60 Hz không có giao cắt đầu/thân; đây không phải phép đo FPS trên điện thoại. IP kiểm tra hiện tại: http://192.168.0.24:5174/.

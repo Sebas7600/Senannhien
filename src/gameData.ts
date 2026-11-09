@@ -1,9 +1,10 @@
 import {templeVaseSolids} from './templeDetailCollision';
 import {courtyardSolids} from './courtyardCollisionData';
+import {MAYA_LEVEL} from './mayaLevel';
 import {quanAmObstacles} from './quanAmData';
 import {WATER_WELL,WATER_JARS} from './waterTaskData';
 import {templeSurfaceHeight} from './templeFixtures';
-import {POND_BRIDGES,pondSurface,pondBlocked} from './pondLayout';
+import {POND_BRIDGES,bridgeRailEnd,pondSurface,pondBlocked} from './pondLayout';
 import {removedTemplePost} from './templeLayout';
 import templeObjectShapes from './templeObjectColliders.json';
 import {stoneBenches,benchSeatWorld} from './stoneBenchData';
@@ -12,13 +13,15 @@ import {CUSHION} from './cushionData';
 import {courtyardTrees,COURTYARD_TREE} from './courtyardData';
 import {GATE,gateMasonry} from './courtyardPropsData';
 import {gateBlocked} from './gateState';
+import {zoneObstacles} from './courtyardZoneData';
+import {BAMBOO_PAVILION,BAMBOO_PAVILION_STEP,BAMBOO_BENCH_HEIGHT,bambooPavilionBenches} from './bambooPavilionLayout';
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 export const CHARACTER_RADIUS=.28;
 export const CHARACTER_HALF_SEGMENT=.54;
 export const CHARACTER_OFFSET=CHARACTER_RADIUS+CHARACTER_HALF_SEGMENT;
-export const WISH_STATION:Vec2=[16.7,37];
-export const WISH_APPROACH:Vec2=[16.4,38.5];
+export const WISH_STATION:Vec2=[16.7+MAYA_LEVEL.pondOffsetX,37+MAYA_LEVEL.pondOffsetZ];
+export const WISH_APPROACH:Vec2=[16.4+MAYA_LEVEL.pondOffsetX,38.5+MAYA_LEVEL.pondOffsetZ];
 export const incenseSpot:Vec2=[0,-8.7];
 export const incenseApproach:Vec2=[0,-7.1];
 export const INCENSE_CLEARANCE=1.1;
@@ -35,13 +38,13 @@ export const INCENSE_DURATION=3000;
 export const INCENSE_BURN_MS=170000;
 export const INCENSE_STUB_MS=480000,INCENSE_MAX_STICKS=72;
 
-export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 62 };
+export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 76 };
 export const places = [
   { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:GATE.x, z:GATE.z, icon:'gate' },
   { id:'courtyard', name:'Sân bồ đề', subtitle:'Quét lá · Chắp tay · Đi dạo', x:0, z:6, icon:'tree' },
   { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 40 bồ đoàn', x:0, z:-24, icon:'temple' },
   { id:'hall', name:'Thiền đường Trúc Lâm', subtitle:'Ngồi thiền · Tụng kinh · Gõ mõ', x:-33, z:-17, icon:'meditate' },
-  { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:-19, z:-9, icon:'bell' },
+  { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:MAYA_LEVEL.bellX, z:-9, icon:'bell' },
   { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:POND_BRIDGES[0].start+2, z:POND_BRIDGES[0].z, icon:'fish' },
   { id:'dining', name:'Nhà ăn Hương Thiền', subtitle:'Mì · Cơm · Hủ tiếu · Bánh mì chay', x:34, z:-26, icon:'meal' },
   { id:'library', name:'Tàng kinh các', subtitle:'Đọc kinh · Trò chuyện cùng thầy', x:-34, z:-43, icon:'book' },
@@ -49,7 +52,7 @@ export const places = [
   { id:'terrace', name:'Trà đình Vọng Sơn', subtitle:'Uống trà · Ngắm núi · Ngồi nghỉ', x:0, z:-56, icon:'tea' },
   { id:'lotus', name:'Hồ sen nguyện ước', subtitle:'Thả hoa đăng · Viết lời nguyện', x:WISH_APPROACH[0], z:WISH_APPROACH[1], icon:'lotus' },
   { id:'stupa', name:'Bảo tháp An Lạc', subtitle:'Khám phá · Chiêm ngưỡng', x:-35, z:42, icon:'stupa' },
-  { id:'bamboo', name:'Đường trúc tĩnh tâm', subtitle:'Thiền hành giữa rừng trúc', x:-38, z:12, icon:'bamboo' },
+  { id:'bamboo', name:'Đường trúc tĩnh tâm', subtitle:'Đi dạo · Ngồi nghỉ ở chòi tre', x:BAMBOO_PAVILION.x, z:12, icon:'bamboo' },
 ] as const;
 export type PlaceId = typeof places[number]['id'];
 export function place(id: PlaceId) { return places.find(p=>p.id===id)!; }
@@ -61,16 +64,17 @@ export const teaTables:Vec3[]=Array.from({length:10},(_,i)=>[(i%5-2)*3.6,.77,-59
 export const diningTables:Vec3[]=[[27.5,.64,-28.4],[39.5,.64,-28.4],[27.5,.64,-21.4],[39.5,.64,-21.4],[34,.64,-25]];
 export const KITCHEN_PICKUP:Vec2=[43.3,-33.55];
 export const KITCHEN_COUNTER_TOP=1.16;
-export const PICKUP_PLATE:Vec3=[42.15,KITCHEN_COUNTER_TOP,-33.55];
+export const PICKUP_PLATE:Vec3=[42.4,KITCHEN_COUNTER_TOP,-33.85];
 export const CHEF_HOME:Vec2=[34,-34.85];
 export const CHEF_PASS:Vec2=[42.15,-34.85];
 export const RECEPTION:Vec2=[43,-19];
 export const RECEPTION_HEADING=0;
 export function usesFloorSeat(seat:Seat|undefined){return !!seat&&(seat.floorSeat===true||seat.kind==='cushion'||seat.kind==='reading');}
-export const pavilionLayouts=[{x:-33,z:-17,w:20,d:16,height:.4},{x:-34,z:-43,w:17,d:14,height:.35},{x:34,z:-27,w:23,d:18,height:.16},{x:0,z:-56,w:20,d:13,height:.3}];
+export const pavilionLayouts=[{x:-33,z:-17,w:20,d:16,height:.4},{x:-34,z:-43,w:17,d:14,height:.35},{x:34,z:-27,w:23,d:18,height:.16},{x:0,z:-56,w:20,d:13,height:.3},BAMBOO_PAVILION];
 export const floorSurfaces=[
   ...pavilionLayouts,
-  {x:-19,z:-13,w:5,d:5,height:.4},{x:19,z:-13,w:5,d:5,height:.4},
+  BAMBOO_PAVILION_STEP,
+  {x:MAYA_LEVEL.bellX,z:-13,w:5,d:5,height:.4},{x:MAYA_LEVEL.drumX,z:-13,w:5,d:5,height:.4},
 ];
 export function surfaceHeight(x:number,z:number){const lakeFloor=pondSurface(x,z);if(lakeFloor!==null)return lakeFloor;const temple=templeSurfaceHeight(x,z+27);if(temple>0)return temple+.08;let height=.06;for(const s of floorSurfaces)if(Math.abs(x-s.x)<=s.w/2&&Math.abs(z-s.z)<=s.d/2)height=Math.max(height,s.height);return height;}
 // A capsule meets a step before its centre crosses the floor edge.
@@ -86,7 +90,11 @@ export const seats:Seat[] = [
   // Two mirrored blocks: clear space between cushions, altar access and an open central aisle.
   ...Array.from({length:40},(_,i)=>({id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.1,-8.2,-6.3,-4.4,4.4,6.3,8.2,10.1][i%8],2.28+CUSHION.seatLift,-27.9+Math.floor(i/8)*1.8] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
   ...Array.from({length:20},(_,i)=>({id:`hall-${i}`,label:`Bồ đoàn ${i+1} · Thiền đường`,zone:'hall' as const,position:[-33+(i%5-2)*2.4,.4+CUSHION.seatLift,-19+Math.floor(i/5)*2.4] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
-  ...Array.from({length:8},(_,i)=>({id:`bamboo-${i}`,label:`Tọa cụ ${i+1} · Rừng trúc`,zone:'bamboo' as const,position:[-38+Math.cos(i/8*Math.PI*2)*4,.06+CUSHION.seatLift,12+Math.sin(i/8*Math.PI*2)*4] as Vec3,rotation:-i/8*Math.PI*2-Math.PI/2,kind:'cushion' as const})),
+  ...bambooPavilionBenches.flatMap(({x,z},bench)=>[-1,1].map((side,index)=>({
+    id:`bamboo-chòi-${bench}-${index}`,label:`Chòi rừng trúc · Ghế ${bench*2+index+1}`,
+    zone:'bamboo' as const,position:[x+side*.43,BAMBOO_PAVILION.height+BAMBOO_BENCH_HEIGHT,z] as Vec3,
+    rotation:0,kind:'bench' as const,
+  }))),
   ...diningTables.flatMap((table,i)=>Array.from({length:4},(_,side)=>({id:`dining-${i*4+side}`,label:`Bàn ${i+1}${i===4?' trung tâm':''} · Bồ đoàn ${side+1}`,zone:'dining' as const,position:[table[0]+(side%2===0?-1.85:1.85),.16+CUSHION.seatLift,table[2]+(side<2?-.8:.8)] as Vec3,rotation:side%2===0?Math.PI/2:-Math.PI/2,kind:'dining' as const,floorSeat:true,table}))),
   ...readingTables.map((table,i)=>({id:`reading-${i}`,label:`Bàn đọc ${i+1}`,zone:'library' as const,position:[table[0],.35+CUSHION.seatLift,table[2]+1] as Vec3,rotation:Math.PI,kind:'reading' as const,table})),
   ...teaTables.flatMap((table,i)=>[-1,1].map((side,j)=>({id:`tea-${i*2+j}`,label:`Bàn trà ${i+1} · Bồ đoàn ${j+1}`,zone:'terrace' as const,position:[table[0],.3+CUSHION.seatLift,table[2]+side*1.35] as Vec3,rotation:side<0?0:Math.PI,kind:'tea' as const,floorSeat:true,table}))),
@@ -106,7 +114,7 @@ export const scriptures = [
   {id:'walking',title:'Từng bước an nhiên',source:'Thực tập thiền hành',paragraphs:['Đi chậm hơn một chút so với thường ngày. Cảm nhận bàn chân chạm đất.','Có thể bước một bước khi hít vào, một bước khi thở ra. Không bắt buộc nhịp thở phải giống ai.','Đích đến của bước chân này chính là nơi bàn chân đang đặt xuống.']},
 ];
 export const npcs = [
-  {id:'guide',name:'Chú tiểu Minh',role:'Người đón khách',x:-3,z:24,robe:'#859786',lines:['Chào bạn! Qua cổng tam quan là sân bồ đề. Đi thẳng sẽ tới chánh điện.','Bạn có thể bấm vào từng bồ đoàn để ngồi. Khi muốn đứng dậy, nhấn E hoặc phím di chuyển.','Nhà ăn Hương Thiền nằm phía đông bắc. Cô Tâm có bốn món chay đợi bạn đấy.']},
+  {id:'guide',name:'Chú tiểu Minh',role:'Người đón khách',x:-3,z:GATE.z-5,robe:'#859786',lines:['Chào bạn! Qua cổng tam quan là sân bồ đề. Đi thẳng sẽ tới chánh điện.','Bạn có thể bấm vào từng bồ đoàn để ngồi. Khi muốn đứng dậy, nhấn E hoặc phím di chuyển.','Nhà ăn Hương Thiền nằm phía đông bắc. Cô Tâm có bốn món chay đợi bạn đấy.']},
   {id:'master',name:'Thầy Thiện Tâm',role:'Trông tàng kinh các',x:-26.8,z:-46.6,robe:'#a2794d',lines:['Cứ thong thả. Tu tập trong game bắt đầu từ sự chú ý với những điều nhỏ quanh mình.','Mời bạn chọn một bàn đọc. Một trang tĩnh lặng gồm bốn bài thực tập ngắn.','Hành trình có nhiều dấu mốc: ghé các khu vực, chăm cây và ngồi thiền mỗi ngày.']},
   {id:'cook',name:'Cô Tâm',role:'Đón khách · Bếp chay Hương Thiền',x:43,z:-20.15,robe:'#9b8067',lines:['Mời bạn vào dùng một bữa chay. Hôm nay có mì, cơm, hủ tiếu và bánh mì chay.','Bạn có thể gọi món ngay tại quầy, rồi vào bàn mà không cần gọi lại. Nếu ngồi vào bàn trước, cứ mở thực đơn để chọn món nhé.','Bữa ăn ở đây được tặng miễn phí. Cứ ăn chậm, đủ no rồi cùng chăm lại sân chùa nhé.']},
   {id:'chef',name:'Cô An',role:'Phụ trách bếp · Nhà ăn Hương Thiền',x:CHEF_HOME[0],z:CHEF_HOME[1],robe:'#bdab87',lines:['Chào bạn, cô An phụ trách bếp Hương Thiền. Mỗi phần ăn được nấu mới khi bạn gọi món.','Cô nấu trong ba giây rồi mang khay sang bên phải quầy. Cô Tâm sẽ nhận món tại đó và mang đến bàn.','Mời bạn chọn một chỗ ngồi, dùng bữa chậm rãi và trân trọng từng hương vị.']},
@@ -122,10 +130,12 @@ export const obstacles:Obstacle[]=[
  ...templeVaseSolids.filter(v=>!v.id.includes('table')).map(v=>({x:v.x,z:v.z-27,w:v.radius*2,d:v.radius*2,height:v.height,base:v.y-v.height/2+.08,navigationOnly:true})),
  ...[-1,1].map(side=>({x:side*1.715,z:12.9-27,w:.3,d:6.806,navigationOnly:true})),
   ...courtyardSolids.map(s=>({x:s.x,z:s.z,w:s.w,d:s.d,height:s.height,navigationOnly:true})),
+  ...zoneObstacles,
+  {x:MAYA_LEVEL.extraBodhi.x,z:MAYA_LEVEL.extraBodhi.z,w:BODHI.radius*2,d:BODHI.radius*2,height:BODHI.wallHeight},
   ...quanAmObstacles,
   ...POND_BRIDGES.flatMap(bridge=>[-1,1].map(side=>({
-    x:(bridge.start+bridge.end)/2,z:bridge.z+side*bridge.halfWidth,
-    w:bridge.end-bridge.start,d:.12,navigationOnly:true,
+    x:(bridge.start+bridgeRailEnd(bridge))/2,z:bridge.z+side*bridge.halfWidth,
+    w:bridgeRailEnd(bridge)-bridge.start,d:.12,navigationOnly:true,
   }))),
   {x:WATER_WELL.x,z:WATER_WELL.z,w:2.4,d:2.4,height:WATER_WELL.height+.06},
   ...WATER_JARS.map(j=>({x:j.x,z:j.z,w:j.radius*2,d:j.radius*2,height:j.height+.06})),
@@ -144,13 +154,13 @@ export const obstacles:Obstacle[]=[
     {x:p.x,z:p.z-p.d/2+.15,w:p.w,d:.2,height:4.3,cameraWall:true},
     ...[-1,1].flatMap(side=>[-1,0,1].map(row=>({x:p.x+side*(p.w/2-.4),z:p.z+row*(p.d/2-.5),w:.3,d:.3,height:4.4}))),
   ]),
-  ...[-19,19].flatMap(x=>[-1,1].flatMap(side=>[-1,1].map(row=>({x:x+side*1.8,z:-13+row*1.8,w:.25,d:.25,height:4.2})))),
-  {x:-19,z:-13,w:1.85,d:1.85,base:.55,height:2.6},
-  {x:19,z:-13,w:2.05,d:2.02,base:.4,height:2.75},
+  ...[MAYA_LEVEL.bellX,MAYA_LEVEL.drumX].flatMap(x=>[-1,1].flatMap(side=>[-1,1].map(row=>({x:x+side*1.8,z:-13+row*1.8,w:.25,d:.25,height:4.2})))),
+  {x:MAYA_LEVEL.bellX,z:-13,w:1.85,d:1.85,base:.55,height:2.6},
+  {x:MAYA_LEVEL.drumX,z:-13,w:2.05,d:2.02,base:.4,height:2.75},
 
   {x:BODHI.x,z:BODHI.z,w:BODHI.radius*2,d:BODHI.radius*2,navigationOnly:true},{x:-35,z:42,w:6,d:6},
   ...courtyardTrees.map(t=>({x:t.x,z:t.z,w:COURTYARD_TREE.radius*2,d:COURTYARD_TREE.radius*2,navigationOnly:true})),
-  ...[-1,1].map(side=>({x:-19+side*1.08,z:-13,w:.32,d:.65,height:3.42,base:.4})),
+  ...[-1,1].map(side=>({x:MAYA_LEVEL.bellX+side*1.08,z:-13,w:.32,d:.65,height:3.42,base:.4})),
   ...diningTables.map(t=>({x:t[0],z:t[2],w:2.5,d:2.8,height:.64})),
   {x:34,z:-33.1,w:17.3,d:1.8,height:KITCHEN_COUNTER_TOP},
   {x:RECEPTION[0],z:RECEPTION[1],w:1.4,d:.85,height:1.36},

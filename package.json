@@ -14,7 +14,7 @@
     "prepare:quan-am": "node scripts/prepare-quan-am.mjs",
     "prepare:broom": "node scripts/prepare-broom.mjs",
     "prepare:water": "node scripts/prepare-water-assets.mjs",
-    "test:client": "tsx --test tests/client-ids.test.ts tests/game-v2.test.ts tests/game-v3.test.ts tests/stone-benches.test.ts tests/bodhi-optimization.test.ts tests/cushions.test.ts tests/bow.test.ts tests/bow-audio.test.ts tests/rituals.test.ts tests/physical-update.test.ts tests/presentation-update.test.ts tests/tree-shadows.test.ts tests/audio.test.ts tests/courtyard-imports.test.ts tests/leaves.test.ts tests/sweep-broom.test.ts tests/water-task.test.ts tests/quan-am.test.ts tests/kitchen.test.ts tests/service-rig.test.ts tests/chibi-seated.test.ts tests/dining-order.test.ts tests/quiet-activities.test.ts",
+    "test:client": "tsx --test tests/client-ids.test.ts tests/game-v2.test.ts tests/game-v3.test.ts tests/stone-benches.test.ts tests/bodhi-optimization.test.ts tests/cushions.test.ts tests/bow.test.ts tests/bow-audio.test.ts tests/rituals.test.ts tests/physical-update.test.ts tests/presentation-update.test.ts tests/tree-shadows.test.ts tests/audio.test.ts tests/courtyard-imports.test.ts tests/leaves.test.ts tests/sweep-broom.test.ts tests/water-task.test.ts tests/quan-am.test.ts tests/kitchen.test.ts tests/service-rig.test.ts tests/chibi-seated.test.ts tests/dining-order.test.ts tests/quiet-activities.test.ts tests/mobile-actions.test.ts tests/maya-level.test.ts tests/npc-chibi.test.ts",
     "test:server": "node --test tests/server.test.mjs",
     "predev": "node scripts/embed-ritual-audio.mjs",
     "prebuild": "node scripts/embed-ritual-audio.mjs",

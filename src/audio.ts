@@ -1,5 +1,7 @@
 import {renderBowlSamples,BOWL_SAMPLE_RATE} from './bowlSynthesis';
 import {bowStrikeOffset,type BowSession} from './bowTimeline';
+import {DRUM_STRIKES} from './drumMotion';
+import {renderDrumSamples,DRUM_SAMPLE_RATE} from './drumSynthesis';
 let ctx:AudioContext|null=null,master:GainNode|null=null;
 let ambient:AudioBufferSourceNode|null=null;
 let chant:HTMLAudioElement|null=null,bell:HTMLAudioElement|null=null;
@@ -32,7 +34,7 @@ function prepareMedia(kind:'bell'|'chant'){
 function stopMedia(audio:HTMLAudioElement|null){if(audio){audio.pause();try{audio.currentTime=0}catch{/* Metadata has not loaded yet. */}}}
 /** Prime both media elements inside the tap, so later arrival callbacks also work on iOS. */
 export function unlockAudio(){
-  const c=context();if(c)void c.resume().catch(()=>{});
+  const c=context();if(c){void c.resume().catch(()=>{});preloadDrum();}
   for(const kind of ['bell','chant'] as const){const audio=media(kind);if(!audio||!audio.paused)continue;audio.muted=true;const playing=audio.play();audio.pause();audio.muted=false;void playing.catch(()=>{});void prepareMedia(kind).catch(()=>{});}
 }
 export function bindSound(check:()=>boolean){useSound=check;}
@@ -67,6 +69,27 @@ function synthBell(c:AudioContext){
 export function playWood(){
   if(!useSound()||!enabled)return;const c=context();if(!c)return;
   for(const f of [520,870,1280]){const o=track(c.createOscillator()),g=c.createGain();o.frequency.value=f;g.gain.setValueAtTime(.055,c.currentTime);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.23);outputs.set(o,g);o.connect(g).connect(master!);o.start();o.stop(c.currentTime+.25);}
+}
+
+let drumBuffer:AudioBuffer|null=null;
+export function preloadDrum(){
+  const c=context();if(!c||drumBuffer)return;
+  const fill=()=>{if(drumBuffer)return;const samples=renderDrumSamples();drumBuffer=c.createBuffer(1,samples.length,DRUM_SAMPLE_RATE);drumBuffer.getChannelData(0).set(samples);};
+  if(typeof requestIdleCallback==='function')requestIdleCallback(fill,{timeout:1000});else setTimeout(fill,100);
+}
+
+export function scheduleDrum(at:number){
+  const c=context();if(!c||!useSound()||!enabled)return()=>{};
+  void c.resume();
+  if(!drumBuffer){const samples=renderDrumSamples();drumBuffer=c.createBuffer(1,samples.length,DRUM_SAMPLE_RATE);drumBuffer.getChannelData(0).set(samples);}
+  const scheduled:{source:AudioBufferSourceNode;start:number}[]=[];
+  DRUM_STRIKES.forEach((delay,i)=>{
+    const remaining=(at+delay-Date.now())/1000;if(remaining<-.12)return;
+    const source=track(c.createBufferSource()),gain=c.createGain();source.buffer=drumBuffer;gain.gain.value=.7-i*.045;outputs.set(source,gain);source.connect(gain).connect(master!);
+    const start=c.currentTime+Math.max(0,remaining);source.start(start);scheduled.push({source,start});
+  });
+  // Stop future hits on movement/cancel; a hit already heard may decay naturally.
+  return()=>{for(const voice of scheduled)if(c.currentTime<voice.start)stop(voice.source);};
 }
 
 let bowlBuffer:Promise<AudioBuffer|null>|null=null;

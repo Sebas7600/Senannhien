@@ -37,7 +37,7 @@ const GardenBatches=memo(function GardenBatches({plots,tick}:{plots:Record<strin
 export default function TempleGarden(){const plots=useGame(s=>s.plots),tick=useGame(s=>s.sessionSeconds),position=useGame(s=>s.position),pending=useGame(s=>s.gardenPending);
  const closest=gardenPlots.reduce((a,b)=>distance(position,[a.x,a.z])<distance(position,[b.x,b.z])?a:b),near=distance(position,[closest.x,closest.z])<=3;
  const state=plots[closest.id],status=gardenStatus(state),index=Number(closest.id.slice(5));
- return <group><mesh position={[36,.075,-50]} rotation={[-Math.PI/2,0,0]}><planeGeometry args={[19,15]}/><meshStandardMaterial color="#b09c7a" map={gardenSoilTexture()} bumpMap={gardenSoilTexture()} bumpScale={.025} roughness={1}/></mesh><GardenBatches plots={plots} tick={tick}/>
+ return <group><GardenBatches plots={plots} tick={tick}/>
  {gardenPlots.map(p=><mesh key={p.id} position={[p.x,.27,p.z]} onClick={e=>{e.stopPropagation();useGame.getState().garden(p.id)}}><boxGeometry args={[2.5,.5,2.2]}/><meshBasicMaterial visible={false}/></mesh>)}
  {near&&<Html position={[closest.x,.85,closest.z]} center distanceFactor={10} zIndexRange={[3,0]}><button className={'garden-plot temple-plot '+(status.action==='harvest'?'ready':'')} disabled={pending!==null} aria-label={'Luống '+(index+1)+' · '+status.label} onClick={()=>useGame.getState().garden(closest.id)}><strong>Rau cải · Luống {index+1}</strong><span>{pending===closest.id?'Đang chăm cây…':status.label}</span>{state?.by&&<small>{state.harvested?'Thu hoạch':'Chăm gần nhất'}: {state.by}</small>}</button></Html>}
  </group>
