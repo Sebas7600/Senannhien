@@ -1,6 +1,9 @@
 import {test,beforeEach,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {WATER_WELL,WATER_JARS,WATER_TASK,emptyWaterJars,jarUnits,jarWaterRadius,nearWaterJar} from '../src/waterTaskData';
+import fs from 'node:fs';
+import * as T from 'three';
+import {GLTFLoader,MeshoptDecoder} from 'three-stdlib';
+import {WATER_WELL,WATER_JARS,WATER_TASK,emptyWaterJars,jarUnits,jarWaterHeight,jarWaterRadius,nearWaterJar} from '../src/waterTaskData';
 import {walkable,seats} from '../src/gameData';
 import {findPath,clearLine} from '../src/navigation';
 import * as geometry from '../src/waterTaskGeometry';
@@ -61,11 +64,39 @@ test('only jar contents persist; unfinished trips and held buckets reset on relo
   pickUp();pour();now+=WATER_TASK.pourMs;useGame.getState().tickWaterTask();pickUp();const saved=useGame.persist.getOptions().partialize!(useGame.getState());
   assert.ok('waterJars' in saved);assert.ok(!('waterQuest' in saved));assert.ok(!('action' in saved));assert.ok(!('destination' in saved));assert.equal((saved as any).waterJars[0].units,1);
 });
-test('water assets share low-poly geometry, finite normals and no image textures',()=>{
+test('carried buckets and ropes stay small and use shared geometry without texture downloads',()=>{
   const triangles=(g:any)=>(g.index?.count??g.attributes.position.count)/3;
-  let fixed=0;for(const name of ['wellStoneGeometry','wellFrameGeometry','wellRopeGeometry','wellRopeLineGeometry','wellBucketGeometry'] as const)fixed+=triangles(geometry[name]);fixed+=triangles(geometry.waterJarGeometry)*4+triangles(geometry.waterDiscGeometry)*5;
-  const carry=triangles(geometry.yokeWoodGeometry)+triangles(geometry.yokeBucketGeometry)+triangles(geometry.yokeWaterGeometry);assert.ok(fixed<6000,`${fixed} static triangles`);assert.ok(carry<1200,`${carry} carried triangles`);
+  const carry=triangles(geometry.yokeWoodGeometry)+triangles(geometry.yokeBucketGeometry)+triangles(geometry.yokeWaterGeometry);assert.ok(carry<1200,`${carry} carried triangles`);
   for(const value of Object.values(geometry))if('isBufferGeometry' in value){for(const attr of Object.values((value as any).attributes) as any[])assert.ok(Array.from(attr.array).every(Number.isFinite));}
-  for(const mat of [geometry.jarMaterial,geometry.waterMaterial,geometry.bucketMaterial,geometry.wellStoneMaterial,geometry.wellWoodMaterial])assert.equal(mat.map,null);
-  for(let fill=.25;fill<=1;fill+=.25)assert.ok(jarWaterRadius(fill)>.3&&jarWaterRadius(fill)<.51);
+  for(const mat of [geometry.waterMaterial,geometry.bucketMaterial,geometry.wellWoodMaterial])assert.equal(mat.map,null);
+});
+
+test('supplied stone well and glazed jars decode in both LODs and water fits inside every fill level',async()=>{
+  const report=JSON.parse(fs.readFileSync('public/assets/water-task/asset-budget.json','utf8'));
+  assert.ok(report.highDownloadBytes<500000);assert.ok(report.lowDownloadBytes<report.highDownloadBytes);
+  assert.equal(report.textures.length,9);assert.ok(report.textureGpuBytesWithMipmaps<=6*1024*1024+1);
+  for(const texture of report.textures){assert.equal(fs.statSync('public/assets/water-task/'+texture.file).size,texture.bytes);assert.ok(texture.width<=512);}
+  const boxes:T.Box3[][]=[];
+  for(const [lod,asset] of report.assets.entries()){
+    const bytes=fs.readFileSync('public/assets/water-task/'+asset.file),loader=new GLTFLoader();
+    loader.setMeshoptDecoder(typeof MeshoptDecoder==='function'?MeshoptDecoder():MeshoptDecoder);
+    const {scene}=await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+    scene.updateMatrixWorld(true);let triangles=0,draws=0;
+    scene.traverse(object=>{if(!(object instanceof T.Mesh))return;draws++;triangles+=object.geometry.index!.count/3;for(const key of ['position','normal','uv'])assert.ok(Array.from(object.geometry.attributes[key].array).every(Number.isFinite));});
+    assert.equal(draws,3);assert.equal(triangles,asset.triangles);
+    const meshes=['Well_Stone','Well_Arch','Jar_Body'].map(name=>scene.getObjectByName(name) as T.Mesh);
+    assert.ok(meshes.every(Boolean));boxes.push(meshes.map(mesh=>new T.Box3().setFromObject(mesh)));
+    const jar=meshes[2],bounds=boxes[lod][2];
+    assert.ok(Math.abs(bounds.max.y-1.12)<.005);assert.ok(bounds.max.x<WATER_JARS[0].radius&&-bounds.min.x<WATER_JARS[0].radius);
+    jar.material=new T.MeshBasicMaterial({side:T.DoubleSide});
+    for(const fill of [.25,.5,.75,1])for(let i=0;i<48;i++){
+      const angle=i/48*Math.PI*2,height=jarWaterHeight(fill);
+      const hit=new T.Raycaster(new T.Vector3(0,height,0),new T.Vector3(Math.sin(angle),0,Math.cos(angle)),0,1).intersectObject(jar)[0];
+      assert.ok(hit&&jarWaterRadius(fill)<hit.distance-.001,`${asset.file}: water crosses jar at fill=${fill}, angle=${angle}`);
+      assert.ok(height<bounds.max.y-.1);
+    }
+    const placed=meshes[0].geometry.index!.count/3+meshes[1].geometry.index!.count/3+jar.geometry.index!.count/3*4;
+    assert.ok(placed<(lod===0?14500:9500),`${placed} placed triangles`);
+  }
+  for(let i=0;i<3;i++){assert.ok(boxes[0][i].min.distanceTo(boxes[1][i].min)<.025);assert.ok(boxes[0][i].max.distanceTo(boxes[1][i].max)<.025);}
 });

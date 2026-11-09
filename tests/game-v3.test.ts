@@ -2,6 +2,9 @@ import {test,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {webcrypto} from 'node:crypto';
+import * as THREE from 'three';
+import {POND,ISLAND,POND_BRIDGES,feedStations,bridgeHeight,pondContains,pondBlocked,pondSurface} from '../src/pondLayout';
+import {pondTerrain,pavementGeometry} from '../src/pondGeometry';
 // Node 18 ESM does not expose the browser Web Crypto global by default.
 if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});
 const values=new Map<string,string>();let writes=0;
@@ -143,19 +146,41 @@ test('online offering waits for acknowledgement, consumes once and never creates
 test('fish feeding requires shore proximity, supplies and cooldown',()=>{
  useGame.setState({connection:'offline',position:[0,22]});const before=useGame.getState().inventory.feed;
  useGame.getState().perform('feed');assert.ok(useGame.getState().destination);assert.equal(useGame.getState().inventory.feed,before);
- useGame.setState({position:[23.6,9]});useGame.getState().perform('feed');assert.equal(useGame.getState().inventory.feed,before-1);assert.equal(useGame.getState().progress.feed,1);
+ useGame.setState({position:feedStations[6].spot});useGame.getState().perform('feed');assert.equal(useGame.getState().inventory.feed,before-1);assert.equal(useGame.getState().progress.feed,1);
  useGame.getState().perform('feed');assert.equal(useGame.getState().inventory.feed,before-1);
  useGame.setState({fishFeedAt:0,lastFishFedAt:0,inventory:{...defaults.inventory,feed:0}});useGame.getState().perform('feed');assert.equal(useGame.getState().panel,'bag');assert.equal(useGame.getState().progress.feed,1);
 });
 test('feeding koi targets stay inside the pond near the food',async()=>{
- const {koiTarget}=await import('../src/fishFeeding.ts');for(let i=0;i<15;i++)for(let t=0;t<12;t++){const [x,z]=koiTarget(i,t,true);assert.ok(Math.hypot(x-22,z-6)<2);assert.ok(((x-28)/8.5)**2+((z-4)/11)**2<1)}
+ const {koiTarget}=await import('../src/fishFeeding.ts');
+ for(const station of feedStations){
+  const [foodX,foodZ]=station.target;
+  for(let i=0;i<15;i++)for(let t=0;t<12;t++){
+   const [x,z]=koiTarget(i,t,{x:foodX,z:foodZ});
+   assert.ok(Math.hypot(x-foodX,z-foodZ)<2);
+   assert.ok(pondContains(x,z),station.id);
+  }
+ }
 });
 
-test('elliptical koi bank blocks water but leaves bridge and bank corners open',async()=>{
- const {pondBlocked,bridgeHeight,feedStations}=await import('../src/pondLayout.ts');
- assert.equal(pondBlocked(33,15),true);assert.equal(pondBlocked(33,9),false);assert.equal(pondBlocked(25,-1),false);
- assert.ok(Math.abs(bridgeHeight(22)-.06)<.001);assert.ok(Math.abs(bridgeHeight(24)-.44)<.001);assert.equal(bridgeHeight(17),bridgeHeight(44));
- assert.equal(feedStations.length,18);for(const f of feedStations){assert.equal(pondBlocked(...f.spot),false);assert.ok(((f.target[0]-33)/8.5)**2+((f.target[1]-9)/11)**2<1)}
+test('joined lake cuts the terrain below the bank and preserves access by both bridges',()=>{
+ assert.ok(POND.waterY<POND.bankY);
+ assert.equal(pondBlocked(POND.x,17),true);
+ assert.equal(pondBlocked(POND.x,9),false);
+ assert.equal(pondBlocked(24,ISLAND.z),false);
+ assert.equal(pondSurface(ISLAND.x,ISLAND.z),ISLAND.top);
+ assert.equal(pondBlocked(24,ISLAND.z+3),true);
+ for(const bridge of POND_BRIDGES){
+  assert.equal(bridgeHeight(bridge.start,bridge),.06);
+  assert.ok(Math.abs(bridgeHeight(bridge.start+bridge.rampStart,bridge)-ISLAND.top)<1e-6);
+ }
+ for(const f of feedStations){assert.equal(pondBlocked(...f.spot),false);assert.ok(pondContains(...f.target));}
+ const ray=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0));
+ for(const mesh of [new THREE.Mesh(pondTerrain),new THREE.Mesh(pavementGeometry)]){
+  ray.ray.origin.set(POND.x,2,17);
+  assert.equal(ray.intersectObject(mesh).length,0);
+  ray.ray.origin.set(15,2,18);
+  assert.ok(ray.intersectObject(mesh).length>0);
+ }
 });
 
 test('online garden does not consume supplies before acknowledgement or award rejected harvests',async()=>{
