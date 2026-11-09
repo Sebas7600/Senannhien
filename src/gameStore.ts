@@ -1,3 +1,4 @@
+import {createClientId} from './clientIds';
 import {QUAN_AM,nearQuanAm} from './quanAmData';
 import {createWaterQuestActions} from './waterQuestActions';
 import {emptyWaterJars,WATER_TASK,type WaterQuest,type WaterJarState} from './waterTaskData';
@@ -220,7 +221,7 @@ export function visitDonationChest(){const s=useGame.getState();s.stand();if(!ne
 
 async function completeSharedOffering(kind:SharedOfferingKind,station?:string){
  const room=useGame.getState().room;if(kind==='feed'){const s=useGame.getState();s.stand();s.set({action:'feed',event:{type:'feed',at:Date.now(),x:feedStations.find(f=>f.id===station)?.target[0]??s.position[0],z:feedStations.find(f=>f.id===station)?.target[1]??s.position[1]}});}
- try{await submitOffering({kind,station,operation:crypto.randomUUID()});const s=useGame.getState();s.set({...(kind==='feed'?{lastFishFedAt:Date.now()}:{}),inventory:{...s.inventory,[kind]:Math.max(0,s.inventory[kind]-1)}});s.record(kind);if(s.room===room)s.notify(kind==='feed'?'Đàn koi đang bơi đến ăn. Mọi người trong phòng đều nhìn thấy.':'Đã dâng lễ vật. Mọi người trong phòng đều nhìn thấy. +2 công đức');}
+ try{await submitOffering({kind,station,operation:createClientId()});const s=useGame.getState();s.set({...(kind==='feed'?{lastFishFedAt:Date.now()}:{}),inventory:{...s.inventory,[kind]:Math.max(0,s.inventory[kind]-1)}});s.record(kind);if(s.room===room)s.notify(kind==='feed'?'Đàn koi đang bơi đến ăn. Mọi người trong phòng đều nhìn thấy.':'Đã dâng lễ vật. Mọi người trong phòng đều nhìn thấy. +2 công đức');}
  catch{useGame.getState().notify('Chưa gửi được lễ vật. Vật phẩm vẫn còn trong túi, bạn thử lại nhé.');}
 }
 
@@ -228,7 +229,7 @@ let gardenBusy=false;
 async function completeGarden(plot:string,action:GardenAction,revision:number){
  gardenBusy=true;const before=useGame.getState(),bed=gardenPlots.find(p=>p.id===plot)!;before.stand();useGame.setState({gardenPending:plot,action,event:{type:action,at:Date.now(),x:bed.x,z:bed.z}});
  const room=before.room,startedAt=useGame.getState().event!.at;
- try{await new Promise(resolve=>setTimeout(resolve,2000));const current=useGame.getState();if(current.room!==room||current.action!==action||current.event?.at!==startedAt||current.connection!=='online'||distance(current.position,[bed.x,bed.z])>3)throw new Error('Đã dừng chăm cây. Vật phẩm vẫn còn trong túi.');await submitGarden({plot,action,revision,operation:crypto.randomUUID()});const s=useGame.getState();s.set({inventory:{...s.inventory,...(action==='plant'?{seed:Math.max(0,s.inventory.seed-1)}:action==='harvest'?{vegetable:s.inventory.vegetable+3}:{})}});s.record(action);s.notify(action==='plant'?'Đã gieo hạt. Mời bạn tưới nước cho cây.':action==='water'?'Đã tưới nước. Cây sẽ lớn sau 60 giây.':'Đã thu hoạch 3 bó rau. +2 công đức');}
+ try{await new Promise(resolve=>setTimeout(resolve,2000));const current=useGame.getState();if(current.room!==room||current.action!==action||current.event?.at!==startedAt||current.connection!=='online'||distance(current.position,[bed.x,bed.z])>3)throw new Error('Đã dừng chăm cây. Vật phẩm vẫn còn trong túi.');await submitGarden({plot,action,revision,operation:createClientId()});const s=useGame.getState();s.set({inventory:{...s.inventory,...(action==='plant'?{seed:Math.max(0,s.inventory.seed-1)}:action==='harvest'?{vegetable:s.inventory.vegetable+3}:{})}});s.record(action);s.notify(action==='plant'?'Đã gieo hạt. Mời bạn tưới nước cho cây.':action==='water'?'Đã tưới nước. Cây sẽ lớn sau 60 giây.':'Đã thu hoạch 3 bó rau. +2 công đức');}
  catch(error){useGame.getState().notify(error instanceof Error?error.message:'Chưa chăm được cây, bạn thử lại nhé.');}
  finally{gardenBusy=false;const current=useGame.getState();useGame.setState({gardenPending:null,...(current.event?.at===startedAt&&current.action===action?{action:'walk' as Action}:{})})}
 }

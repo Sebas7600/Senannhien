@@ -1,5 +1,13 @@
 import * as THREE from 'three';
 import {mergeGeometries,mergeVertices} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+/** setMatrixAt does not invalidate cached bounds; refresh once after a static layout. */
+export function finishInstanceLayout(mesh:THREE.InstancedMesh|null){
+  if(!mesh)return;
+  mesh.instanceMatrix.needsUpdate=true;
+  if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
+  mesh.computeBoundingBox();
+  mesh.computeBoundingSphere();
+}
 export function coloredGeometry(source:THREE.BufferGeometry,color:string,position:[number,number,number]=[0,0,0],scale:[number,number,number]=[1,1,1],rotation:[number,number,number]=[0,0,0]){let g=source.clone();if(g.index)g=g.toNonIndexed();g.scale(...scale);g.rotateX(rotation[0]);g.rotateY(rotation[1]);g.rotateZ(rotation[2]);g.translate(...position);for(const key of Object.keys(g.attributes))if(key!=='position'&&key!=='normal')g.deleteAttribute(key);if(!g.attributes.normal)g.computeVertexNormals();const c=new THREE.Color(color),colors=new Float32Array(g.attributes.position.count*3);for(let i=0;i<g.attributes.position.count;i++){colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b}g.setAttribute('color',new THREE.BufferAttribute(colors,3));return g;}
 export function batchGeometry(items:THREE.BufferGeometry[]){const merged=mergeGeometries(items,false)!,g=mergeVertices(merged,.00001);merged.dispose();items.forEach(i=>i.dispose());g.computeBoundingBox();g.computeBoundingSphere();return g;}
 export function taperTube(points:[number,number,number][],radii:number[],sides=7){const p:number[]=[],indices:number[]=[],u=new THREE.Vector3(),v=new THREE.Vector3(),tangent=new THREE.Vector3();

@@ -49,6 +49,10 @@ Tích hợp main ngày 05/11: nhận main `58f45e6`, gồm cổng/chuông/trốn
 
 Theo lựa chọn của bạn, nhập tiếp Wayne-Update `c2acbbe` ngày 05/11: chổi GLB, lá bồ đề dùng atlas, quét theo vùng tiếp xúc đầu chổi, bộ đếm lá và chuỗi hạt có thao tác lần từng hạt cùng camera cận cảnh. Ghép các động tác tay và đạo cụ với rig phục vụ món hiện tại; giữ serveFrame, áo liền eo, tạp dề/khăn đầu cô An và động tác nấu. Bộ kiểm thử mới được chia thành client/server, đồng thời giữ các kiểm thử bếp, rig và cầu sen, cùng bước sinh audio tránh IDM khi dev/build/test. Kết quả cuối: 127 kiểm thử client + 5 server = 132/132 đạt; build, audit:assets và audit:water đạt. Đã mở bản build cuối qua trình duyệt, xem chổi mới, bấm lần một hạt tăng bộ đếm, gọi mì và xác nhận món đặt lên bàn cùng hai NPC trở về vị trí nghỉ; không có lỗi JavaScript trong lần kiểm tra. Ảnh tràng hạt ở artifacts/merged-wayne-prayer-beads.jpg (không commit). Chưa đo FPS trên điện thoại thật hoặc chạy lại toàn bộ UI của 17 hoạt động.
 
+Sửa trang trắng trên điện thoại qua LAN ngày 06/11: video cho thấy Safari chỉ còn nền trắng khi mở địa chỉ IP nội bộ. Đã tái hiện trên đúng HTTP LAN và ghi nhận `TypeError: crypto.randomUUID is not a function` ngay khi khởi tạo phiên trong network.ts. Localhost trước đây không lộ lỗi này. Thay các lời gọi trực tiếp ở phiên người chơi, giao dịch dâng lễ và chăm vườn bằng createClientId: ưu tiên UUID có sẵn, dùng getRandomValues để tạo UUID v4 khi thiếu API đó, có ID cục bộ dự phòng cho WebView bị hạn chế. Các ID này chỉ nhận diện phiên/thao tác, không dùng làm thông tin xác thực; không sửa thiết lập bảo mật trình duyệt hoặc đổi giao thức máy chủ.
+
+Kiểm chứng bản sửa LAN: 131 kiểm thử client + 5 server = 136/136 đạt, production build đạt. Bốn kiểm thử mới bao phủ native UUID, HTTP không có randomUUID, API bị từ chối và WebView thiếu crypto; kiểm tra định dạng hợp lệ cùng tính duy nhất của ID. Đã tải lại bản production trên http://192.168.0.109:5174, hoàn tất tạo nhân vật, vào sân chùa và mở bảng phòng thấy kết nối hai người; không có lỗi JavaScript mới sau build. Kiểm tra hiển thị ở khung 430 × 820, ảnh trước/sau trong artifacts/phone-lan-before.jpg và phone-lan-after.jpg (không commit). Đây là kiểm tra HTTP LAN và khung điện thoại trên trình duyệt máy tính; cần người dùng tải lại Safari trên iPhone để xác nhận trên thiết bị thật.
+
 ## Kiểm chứng
 
 - TypeScript và production build đạt.
@@ -65,7 +69,7 @@ npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 127 kiểm thử client và 5 kiểm thử server (tổng 132); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 131 kiểm thử client và 5 kiểm thử server (tổng 136); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 

@@ -3,8 +3,7 @@ import {courtyardSolids} from './courtyardCollisionData';
 import {quanAmObstacles} from './quanAmData';
 import {WATER_WELL,WATER_JARS} from './waterTaskData';
 import {templeSurfaceHeight} from './templeFixtures';
-import {bridgeHeight,pondBlocked} from './pondLayout';
-import {onLotusBridge,lotusBridgeHeight} from './lotusLayout';
+import {POND_BRIDGES,pondSurface,pondBlocked} from './pondLayout';
 import {removedTemplePost} from './templeLayout';
 import templeObjectShapes from './templeObjectColliders.json';
 import {stoneBenches,benchSeatWorld} from './stoneBenchData';
@@ -18,8 +17,8 @@ export type Vec3 = [number, number, number];
 export const CHARACTER_RADIUS=.28;
 export const CHARACTER_HALF_SEGMENT=.54;
 export const CHARACTER_OFFSET=CHARACTER_RADIUS+CHARACTER_HALF_SEGMENT;
-export const WISH_STATION:Vec2=[13,37];
-export const WISH_APPROACH:Vec2=[13,39];
+export const WISH_STATION:Vec2=[16.7,37];
+export const WISH_APPROACH:Vec2=[16.4,38.5];
 export const incenseSpot:Vec2=[0,-8.7];
 export const incenseApproach:Vec2=[0,-7.1];
 export const INCENSE_CLEARANCE=1.1;
@@ -38,17 +37,17 @@ export const INCENSE_STUB_MS=480000,INCENSE_MAX_STICKS=72;
 
 export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 62 };
 export const places = [
-  { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:0, z:29, icon:'gate' },
+  { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:GATE.x, z:GATE.z, icon:'gate' },
   { id:'courtyard', name:'Sân bồ đề', subtitle:'Quét lá · Chắp tay · Đi dạo', x:0, z:6, icon:'tree' },
   { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 40 bồ đoàn', x:0, z:-24, icon:'temple' },
   { id:'hall', name:'Thiền đường Trúc Lâm', subtitle:'Ngồi thiền · Tụng kinh · Gõ mõ', x:-33, z:-17, icon:'meditate' },
   { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:-19, z:-9, icon:'bell' },
-  { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:32, z:9, icon:'fish' },
+  { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:POND_BRIDGES[0].start+2, z:POND_BRIDGES[0].z, icon:'fish' },
   { id:'dining', name:'Nhà ăn Hương Thiền', subtitle:'Mì · Cơm · Hủ tiếu · Bánh mì chay', x:34, z:-26, icon:'meal' },
   { id:'library', name:'Tàng kinh các', subtitle:'Đọc kinh · Trò chuyện cùng thầy', x:-34, z:-43, icon:'book' },
   { id:'garden', name:'Vườn rau từ tâm', subtitle:'Gieo hạt · Tưới cây · Thu hoạch', x:36, z:-50, icon:'plant' },
   { id:'terrace', name:'Trà đình Vọng Sơn', subtitle:'Uống trà · Ngắm núi · Ngồi nghỉ', x:0, z:-56, icon:'tea' },
-  { id:'lotus', name:'Hồ sen nguyện ước', subtitle:'Thả hoa đăng · Viết lời nguyện', x:27, z:39, icon:'lotus' },
+  { id:'lotus', name:'Hồ sen nguyện ước', subtitle:'Thả hoa đăng · Viết lời nguyện', x:WISH_APPROACH[0], z:WISH_APPROACH[1], icon:'lotus' },
   { id:'stupa', name:'Bảo tháp An Lạc', subtitle:'Khám phá · Chiêm ngưỡng', x:-35, z:42, icon:'stupa' },
   { id:'bamboo', name:'Đường trúc tĩnh tâm', subtitle:'Thiền hành giữa rừng trúc', x:-38, z:12, icon:'bamboo' },
 ] as const;
@@ -73,7 +72,7 @@ export const floorSurfaces=[
   ...pavilionLayouts,
   {x:-19,z:-13,w:5,d:5,height:.4},{x:19,z:-13,w:5,d:5,height:.4},
 ];
-export function surfaceHeight(x:number,z:number){if(onLotusBridge(x,z))return lotusBridgeHeight(x);if(x>22&&x<44&&Math.abs(z-9)<1.5)return bridgeHeight(x);const temple=templeSurfaceHeight(x,z+27);if(temple>0)return temple+.08;let height=.06;for(const s of floorSurfaces)if(Math.abs(x-s.x)<=s.w/2&&Math.abs(z-s.z)<=s.d/2)height=Math.max(height,s.height);return height;}
+export function surfaceHeight(x:number,z:number){const lakeFloor=pondSurface(x,z);if(lakeFloor!==null)return lakeFloor;const temple=templeSurfaceHeight(x,z+27);if(temple>0)return temple+.08;let height=.06;for(const s of floorSurfaces)if(Math.abs(x-s.x)<=s.w/2&&Math.abs(z-s.z)<=s.d/2)height=Math.max(height,s.height);return height;}
 // A capsule meets a step before its centre crosses the floor edge.
 export function stepAssistHeight(x:number,z:number,dx:number,dz:number,bodyY:number){
   const length=Math.hypot(dx,dz),lead=length>.0001?.34/length:0;
@@ -124,6 +123,10 @@ export const obstacles:Obstacle[]=[
  ...[-1,1].map(side=>({x:side*1.715,z:12.9-27,w:.3,d:6.806,navigationOnly:true})),
   ...courtyardSolids.map(s=>({x:s.x,z:s.z,w:s.w,d:s.d,height:s.height,navigationOnly:true})),
   ...quanAmObstacles,
+  ...POND_BRIDGES.flatMap(bridge=>[-1,1].map(side=>({
+    x:(bridge.start+bridge.end)/2,z:bridge.z+side*bridge.halfWidth,
+    w:bridge.end-bridge.start,d:.12,navigationOnly:true,
+  }))),
   {x:WATER_WELL.x,z:WATER_WELL.z,w:2.4,d:2.4,height:WATER_WELL.height+.06},
   ...WATER_JARS.map(j=>({x:j.x,z:j.z,w:j.radius*2,d:j.radius*2,height:j.height+.06})),
   ...gateMasonry.filter(p=>p.y-p.h/2<1.7).map(p=>({x:GATE.x+p.x*GATE.scale,z:GATE.z+p.z*GATE.scale,w:p.w*GATE.scale,d:p.d*GATE.scale,navigationOnly:true})),
