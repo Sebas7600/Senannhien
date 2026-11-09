@@ -6,7 +6,8 @@ import {createPortal, useFrame} from '@react-three/fiber';
 import {useGLTF} from '@react-three/drei';
 import {AnimationMixer, Color, MathUtils, Group, Mesh, Quaternion, SkinnedMesh, Vector3} from 'three';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
-import RealisticCharacter, {type CharacterProps} from './RealisticCharacter';
+import {type CharacterProps} from './RealisticCharacter';
+import FemaleChibiHair from './FemaleChibiHair';
 import {useReducedMotion} from './useReducedMotion';
 import {ReadingBook,TeaCup} from './QuietActivityProps';
 import {NPC_CHIBI_SCALE,npcServiceLead} from './npcAppearance';
@@ -15,7 +16,7 @@ const modelUrl = '/assets/characters/thay-chua-chibi.glb';
 
 type PlayerAvatarProps = CharacterProps & {npc?:boolean;running?: boolean; stairsDirection?: -1|0|1};
 
-function ChibiAvatar({moving, running, npc, serveFrame, apron, stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
+function ChibiAvatar({moving, running, npc, serveFrame, apron, gender = 'male', stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
   const {scene, animations} = useGLTF(modelUrl);
   const avatar = useMemo(() => {
     const instance = clone(scene);
@@ -125,6 +126,7 @@ function ChibiAvatar({moving, running, npc, serveFrame, apron, stairsDirection =
   const torso=avatar.getObjectByName('Than'),head=avatar.getObjectByName('Dau');
   return <group ref={bodyVisual} position={[0,seated ? 0 : -.025,seated && !chair ? -.06 : 0]}>
     <primitive object={avatar} scale={[1.08, 1, 1.10]} />
+    {gender==='female'&&head&&createPortal(<FemaleChibiHair/>,head)}
     {seated && <ChibiLapRobe robe={robe} chair={chair}/>}
     {apron&&torso&&createPortal(<group position={[0,-.08,.165]}><mesh><planeGeometry args={[.28,.30]}/><meshStandardMaterial color="#ece2c8" side={2} roughness={1}/></mesh><mesh position={[0,.05,.005]}><boxGeometry args={[.12,.06,.008]}/><meshStandardMaterial color="#d1bea0"/></mesh></group>,torso)}
     {apron&&head&&createPortal(<group position={[0,.36,0]}><mesh><cylinderGeometry args={[.21,.20,.085,16]}/><meshStandardMaterial color="#eee5cf"/></mesh><mesh position={[0,.06,0]} scale={[1,.5,1]}><sphereGeometry args={[.23,16,10]}/><meshStandardMaterial color="#eee5cf"/></mesh></group>,head)}
@@ -135,7 +137,6 @@ function ChibiAvatar({moving, running, npc, serveFrame, apron, stairsDirection =
 }
 
 export default function PlayerAvatar(props: PlayerAvatarProps) {
-  if (!props.npc&&props.gender === 'female') return <RealisticCharacter {...props} />;
   return <Suspense fallback={null}>
     <group scale={props.npc?NPC_CHIBI_SCALE:1}><ChibiAvatar {...props} /></group>
   </Suspense>;

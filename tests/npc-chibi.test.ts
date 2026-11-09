@@ -1,9 +1,15 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';import {AnimationMixer,Group,Vector3,SkinnedMesh} from 'three';
 import {npcs,KITCHEN_PICKUP} from '../src/gameData';import {npcAppearance,NPC_CHIBI_SCALE,npcServiceLead} from '../src/npcAppearance';import {createChibiPose} from '../src/chibiPose';import {serviceTimes,chefSchedule,createMealPresentation,sampleKitchenMeal,sampleMealPresentation,mealPlan,HANDOFF_MS,PICKUP_MS,PICKUP_HEADING,servicePhase,sampleRoute,MEAL_SCALE,PLATE_LIFT} from '../src/mealService';
 test('every NPC uses the player chibi appearance while retaining its original robe and role',()=>{
- for(const npc of npcs){const look=npcAppearance(npc);assert.equal(look.npc,true);assert.equal(look.robe,npc.robe);assert.equal(look.apron,npc.id==='chef');}
- assert.equal(npcAppearance(npcs.find(n=>n.id==='cook')!).gender,'female');
+ for(const npc of npcs){const look=npcAppearance(npc);assert.equal(look.npc,true);assert.equal(look.gender,npc.gender);assert.equal(look.robe,npc.robe);assert.equal(look.apron,npc.id==='chef');}
+ for(const id of ['cook','chef'])assert.equal(npcAppearance(npcs.find(n=>n.id===id)!).gender,'female');
 });
+test('female NPC appearance follows character data independently of kitchen role',()=>{
+ const look=npcAppearance({id:'female-visitor',robe:'#859786',gender:'female'});
+ assert.equal(look.gender,'female');assert.equal(look.npc,true);assert.equal(look.apron,false);
+ assert.equal(npcAppearance({id:'chef',robe:'#bdab87',gender:'male'}).gender,'male');
+});
+
 test('chibi kitchen hands follow the held tray and knees keep both ankles anchored while lowering',async()=>{
  const bytes=fs.readFileSync('public/assets/characters/thay-chua-chibi.glb');const {scene,animations}=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
  const root=new Group(),visual=new Group();root.scale.setScalar(NPC_CHIBI_SCALE);visual.position.set(0,-.025,0);root.add(visual);visual.add(scene);scene.scale.set(1.08,1,1.1);
