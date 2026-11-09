@@ -24,7 +24,7 @@ const outdoorSurfaces={
   bark:{repeat:1,roughness:.96},
 };
 type OutdoorSurface=keyof typeof outdoorSurfaces;
-const outdoorMaterialCache=new WeakMap<THREE.Texture,THREE.MeshStandardMaterial>();
+const outdoorMaterialCache=new WeakMap<THREE.Texture,Map<string,THREE.MeshStandardMaterial>>();
 const shadePatches=[
   new THREE.Vector4(BODHI.x+.8,BODHI.z-.9,6.3,8.2),
   ...courtyardTrees.map(tree=>new THREE.Vector4(tree.x+.6,tree.z-.9,4.8,5.9)),
@@ -75,26 +75,24 @@ const pavingMoss=`
     return max(shade*smoothstep(.27,.63,mossPattern),.12*smoothstep(.72,.88,mossPattern));
   }`;
 
-function varyGroundTiles(material:THREE.MeshStandardMaterial,kind:'bamboo-soil'|'flagstone'|'herringbone'){
-  const rotating=kind!=='herringbone',moss=kind!=='bamboo-soil';
+export function varyGroundTiles(material:THREE.MeshStandardMaterial,kind:'bamboo-soil'|'flagstone'|'herringbone'){
+  const rotating=kind!=='herringbone';
   material.customProgramCacheKey=()=>kind;
   material.onBeforeCompile=shader=>{
-    if(moss){
-      shader.uniforms.uShadePatches={value:shadePatches};
-      shader.uniforms.uLotusEdge={value:lotusEdge};
-      shader.vertexShader='varying vec2 pavingWorld;\n'+shader.vertexShader;
-      shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`
+    shader.uniforms.uShadePatches={value:shadePatches};
+    shader.uniforms.uLotusEdge={value:lotusEdge};
+    shader.vertexShader='varying vec2 pavingWorld;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`
         vec4 pavingPosition=vec4(transformed,1.0);
         #ifdef USE_INSTANCING
           pavingPosition=instanceMatrix*pavingPosition;
         #endif
         pavingWorld=(modelMatrix*pavingPosition).xz;
         #include <project_vertex>`);
-    }
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_pars_fragment>',`
       #include <map_pars_fragment>
       ${rotating?rotatedGround:''}
-      ${moss?pavingMoss:''}`);
+      ${pavingMoss}`);
     const shadeStone=`
       float luminance=dot(surface,vec3(.2126,.7152,.0722));
       float joint=1.0-smoothstep(.17,.32,luminance);
@@ -109,40 +107,37 @@ function varyGroundTiles(material:THREE.MeshStandardMaterial,kind:'bamboo-soil'|
       vec3 liveMoss=vec3(.111,.218,.041)*(.65+pavingNoise(pavingWorld*26.0)*.57);
       surface=mix(mix(darkStone,dryJoint,joint*.93),liveMoss,green);
     `;
-    const shadeClay=`
-      float seam=1.0-smoothstep(.026,.085,surface.r-surface.g);
-      float green=pavingMossMask(pavingWorld)*seam;
-      float clayLightness=dot(surface,vec3(.2126,.7152,.0722));
-      vec3 fadedClay=mix(surface,clayLightness*vec3(1.13,1.0,.9),.35);
-      float wear=pavingNoise(pavingWorld*.62)*.56+pavingNoise(pavingWorld*2.7)*.29+pavingNoise(pavingWorld*19.0)*.15;
-      float dustDeposit=mix(.13,.46,smoothstep(.27,.72,wear));
-      float soot=smoothstep(.52,.84,pavingNoise(pavingWorld*.84+vec2(8.7,3.4)));
-      vec3 soilDust=mix(vec3(.13,.109,.083),vec3(.247,.217,.167),pavingNoise(pavingWorld*8.0));
-      surface=mix(fadedClay*(1.0-.13*soot),soilDust,dustDeposit);
-      surface=mix(surface,vec3(.105,.145,.047)*(0.8+pavingNoise(pavingWorld*38.0)*.42),green*.35);
+    const shadeSoil=`
+      // Broad bare gaps separate the patches, while finer noise breaks up their edges.
+      float patchSignal=pavingNoise(pavingWorld*.43)*.76+pavingNoise(pavingWorld*2.9)*.24;
+      float coverage=smoothstep(.62,.79,patchSignal);
+      float grain=pavingNoise(pavingWorld*15.0);
+      vec3 mossColor=mix(vec3(.065,.106,.028),vec3(.155,.221,.060),grain);
+      surface=mix(surface,mossColor,coverage*mix(.60,.90,grain));
     `;
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`
       vec3 surface=${rotating?`rotatedSurface(vMapUv,${kind==='bamboo-soil'?'0.16':'0.38'})`:'texture2D(map,pavingWorld/1.85).rgb'};
-      ${kind==='flagstone'?shadeStone:kind==='herringbone'?shadeClay:''}
+      ${kind==='herringbone'?shadeStone:shadeSoil}
       diffuseColor.rgb*=surface;`);
   };
 }
 
 export function useOutdoorSurface(kind:OutdoorSurface){
-  const texture=kind==='brick-edge'?'terracotta':kind;
-  const map=useTexture(`/assets/textures/outdoor/${texture}.webp`);
+  const texture=kind==='herringbone'||kind==='brick-edge'?'flagstone':kind==='flagstone'?'bamboo-soil':kind;
+  const source=useTexture(`/assets/textures/outdoor/${texture}.webp`);
   return useMemo(()=>{
-    const cached=outdoorMaterialCache.get(map);
+    const cached=outdoorMaterialCache.get(source)?.get(kind);
     if(cached)return cached;
+    const map=source.clone();
     const {repeat,roughness}=outdoorSurfaces[kind];
     map.wrapS=map.wrapT=kind==='bamboo-soil'||kind==='flagstone'?THREE.MirroredRepeatWrapping:THREE.RepeatWrapping;
     map.colorSpace=THREE.SRGBColorSpace;
     map.repeat.setScalar(repeat);
     map.anisotropy=4;
     map.needsUpdate=true;
-    const material=new THREE.MeshStandardMaterial({map,roughness,color:kind==='brick-edge'?'#aa8b82':'#ffffff'});
+    const material=new THREE.MeshStandardMaterial({map,roughness,color:'#ffffff'});
     if(kind!=='bark'&&kind!=='brick-edge')varyGroundTiles(material,kind);
-    outdoorMaterialCache.set(map,material);
+    let variants=outdoorMaterialCache.get(source);if(!variants){variants=new Map();outdoorMaterialCache.set(source,variants);}variants.set(kind,material);
     return material;
-  },[kind,map]);
+  },[kind,source]);
 }

@@ -1,5 +1,12 @@
-import {POND} from './pondLayout';
-import {outerGroundGeometry,courtyardGroundGeometry,bambooGrove,bambooGroundGeometry} from './outdoorGroundGeometry';
+import BambooGrove from './BambooGrove';
+import GravelPaths from './GravelPaths';
+import {bambooEntrances} from './mayaPaths';
+import {BAMBOO_PAVILION,BAMBOO_PAVILION_STEP,BAMBOO_BENCH_HEIGHT,bambooPavilionBenches} from './bambooPavilionLayout';
+import {bambooZoneBounds} from './courtyardZoneData';
+import ChanhDienRoof from './ChanhDienRoof';
+import {MAYA_LEVEL} from './mayaLevel';
+import {BRIDGE_ROAD,pondContains} from './pondLayout';
+import {outerGroundGeometry,courtyardGroundGeometry,bambooGroundGeometry} from './outdoorGroundGeometry';
 import TempleGarden from './TempleGarden';
 import MainTempleReference from './MainTempleReference';
 import IncenseBurner from './IncenseBurner';
@@ -26,7 +33,6 @@ import {GATE,gateAvenueTrees} from './courtyardPropsData';
 import PathLamps from './PathLamps';
 import {woodlandBarkGeometries} from './treeBranches';
 import {useOutdoorSurface,useSurface} from './materials';
-import {useEffect} from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
@@ -49,12 +55,12 @@ export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string
 const pavedCells=new Map<string,[number,number]>();
 function paveStrip(minX:number,maxX:number,minZ:number,maxZ:number){
   for(let x=minX;x<=maxX;x++)for(let z=minZ;z<=maxZ;z++){
-    const pondX=(x-POND.x)/(POND.rx+.65),pondZ=(z-POND.z)/(POND.rz+.65);
-    if(pondX**2+pondZ**2>=1)pavedCells.set(`${x},${z}`,[x,z]);
+    if(!pondContains(x,z,.65))pavedCells.set(`${x},${z}`,[x,z]);
   }
 }
 paveStrip(-3,3,-17,GATE.z+10);
-paveStrip(-47,47,-7,-4);
+paveStrip(-47,BRIDGE_ROAD.x+1,-7,-4);
+paveStrip(BRIDGE_ROAD.x-1,BRIDGE_ROAD.x+1,BRIDGE_ROAD.northZ,BRIDGE_ROAD.southZ);
 paveStrip(-18,18,26,27);
 paveStrip(-47,-15,-33,-32);
 paveStrip(15,47,-33,-32);
@@ -66,15 +72,27 @@ const borderUV=borderGeometry.getAttribute('uv');
 for(let i=0;i<borderUV.count;i++)borderUV.setXY(i,borderUV.getX(i)*.5,borderUV.getY(i)*.25);
 const trimWidth=.17;
 const borderSegments:{x:number;z:number;length:number;angle:number}[]=[];
+function addPaverBorder(x:number,z:number,length:number,angle:number){
+  const vertical=angle!==0;
+  const fixed=vertical?x:z,center=vertical?z:x;
+  const start=center-length/2,end=center+length/2;
+  const opening=bambooEntrances.find(entry=>entry.axis===(vertical?'x':'z')&&Math.abs(fixed-entry.edge)<=trimWidth);
+  const ranges=opening?[[start,Math.min(end,opening.from)],[Math.max(start,opening.to),end]]:[[start,end]];
+  for(const [from,to] of ranges){
+    if(to<=from)continue;
+    const mid=(from+to)/2;
+    borderSegments.push({x:vertical?x:mid,z:vertical?mid:z,length:to-from,angle});
+  }
+}
 const isPaved=(x:number,z:number)=>pavedCells.has(`${x},${z}`);
 for(const [x,z] of pavedCells.values()){
   const left=!isPaved(x-1,z),right=!isPaved(x+1,z);
-  if(left)borderSegments.push({x:x-.5+trimWidth/2,z,length:1,angle:Math.PI/2});
-  if(right)borderSegments.push({x:x+.5-trimWidth/2,z,length:1,angle:Math.PI/2});
+  if(left)addPaverBorder(x-.5+trimWidth/2,z,1,Math.PI/2);
+  if(right)addPaverBorder(x+.5-trimWidth/2,z,1,Math.PI/2);
   const length=1-(Number(left)+Number(right))*trimWidth;
   const center=x+(Number(left)-Number(right))*trimWidth/2;
-  if(!isPaved(x,z-1))borderSegments.push({x:center,z:z-.5+trimWidth/2,length,angle:0});
-  if(!isPaved(x,z+1))borderSegments.push({x:center,z:z+.5-trimWidth/2,length,angle:0});
+  if(!isPaved(x,z-1))addPaverBorder(center,z-.5+trimWidth/2,length,0);
+  if(!isPaved(x,z+1))addPaverBorder(center,z+.5-trimWidth/2,length,0);
 }
 
 function Pavers(){
@@ -107,12 +125,12 @@ export function Ground(){const night=useGame(s=>s.night),soil=useOutdoorSurface(
   <mesh position={[0,.01,0]} geometry={courtyardGroundGeometry} material={stone} receiveShadow dispose={null}/>
   <mesh position={[0,.01,0]} geometry={bambooGroundGeometry} material={soil} receiveShadow dispose={null}/>
   <CourtyardZoneGround/>
-  <Pavers/><CourtyardDapple/><WalkSurface/>
+  <Pavers/><GravelPaths/><CourtyardDapple/><WalkSurface/>
   {[-1,1].map(s=><group key={s}><Box position={[s*60,.8,-2]} scale={[.35,1.6,128]} color="#b7b89c"/>{Array.from({length:33},(_,i)=><Box key={i} position={[s*60,1.35,-64+i*4]} scale={[.65,2.7,.65]} color="#acb095"/>)}</group>)}
   {[-66,62].map(z=><Box key={z} position={[0,.8,z]} scale={[120,1.6,.35]} color="#b7b89c"/>)}
   <RigidBody type="fixed" colliders={false}>
-    <CuboidCollider position={[0,-.24,-2]} args={[62,.3,66]}/>
-    <CuboidCollider position={[-60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[0,1,-66]} args={[60,3,.3]}/><CuboidCollider position={[0,1,62]} args={[60,3,.3]}/>
+    <CuboidCollider position={[0,-.24,5]} args={[62,.3,73]}/>
+    <CuboidCollider position={[-60,1,5]} args={[.3,3,72]}/><CuboidCollider position={[60,1,5]} args={[.3,3,72]}/><CuboidCollider position={[0,1,-66]} args={[60,3,.3]}/><CuboidCollider position={[0,1,76]} args={[60,3,.3]}/>
     {obstacles.filter(o=>!o.navigationOnly).map((o,i)=>{const h=o.height??1.4;return <CuboidCollider key={i} position={[o.x,(o.base??0)+h/2,o.z]} args={[o.w/2,h/2,o.d/2]}/>})}
     {floorSurfaces.map((f,i)=><CuboidCollider key={`floor-${i}`} position={[f.x,f.height/2,f.z]} args={[f.w/2,f.height/2,f.d/2]}/>)}
 
@@ -124,7 +142,7 @@ function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;
   <Box position={[0,floor/2,0]} scale={[w,floor,d]} color="#b3aa8b"/>
   <Box position={[0,2.3,-d/2+.15]} scale={[w,4,.2]} color="#ceba94"/>
   {[-1,1].flatMap(s=>[-1,0,1].map(i=><Box key={`${s}-${i}`} position={[s*(w/2-.4),2.3,i*(d/2-.5)]} scale={[.3,4.2,.3]} color="#81583b"/>))}
-  <RoofSection x={x} z={z} w={w} d={d}><Roof y={4.7} width={w+3} depth={d+3} height={1.8}/><Box position={[0,4.3,d/2-.2]} scale={[w,.32,.3]} color="#7a5238"/></RoofSection>
+  <RoofSection x={x} z={z} w={w} d={d}><ChanhDienRoof y={4.45} width={w+3} depth={d+3}/><Box position={[0,4.3,d/2-.2]} scale={[w,.32,.3]} color="#7a5238"/></RoofSection>
   {[-1,1].map(s=><Lantern key={s} position={[s*(w/2-1.7),3.7,d/2]}/>)}
   <WorldLabel position={[0,4.1,d/2+.3]} title={title} subtitle={subtitle}/>
   {children}
@@ -142,6 +160,26 @@ function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} 
   </group>)}
   <WorldLabel position={[-5,2,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
 </Pavilion>}
+function BambooPavilion(){
+  const {x,z,w,d,height}=BAMBOO_PAVILION;
+  const step=BAMBOO_PAVILION_STEP;
+  return <>
+    <Box position={[step.x,step.height/2,step.z]} scale={[step.w,step.height,step.d]} color="#b3aa8b"/>
+    <Pavilion x={x} z={z} w={w} d={d} floor={height} title="CHÒI RỪNG TRÚC" subtitle="Bấm vào ghế để ngồi nghỉ">
+      {bambooPavilionBenches.map((bench,i)=><group key={i} position={[bench.x-x,height,bench.z-z]} onClick={event=>{
+        if(event.delta>5)return;
+        event.stopPropagation();
+        const state=useGame.getState(),side=event.point.x<bench.x?0:1;
+        const preferred=`bamboo-chòi-${i}-${side}`;
+        state.sit(state.peers.some(peer=>peer.seat===preferred)?`bamboo-chòi-${i}-${1-side}`:preferred);
+      }}>
+        <Box position={[0,BAMBOO_BENCH_HEIGHT-.06,0]} scale={[1.82,.12,.59]} color="#986e47"/>
+        <Box position={[0,.69,-.25]} scale={[1.82,.28,.10]} color="#815635"/>
+        {[-.70,.70].map(dx=><Box key={dx} position={[dx,.26,-.055]} scale={[.12,.52,.44]} color="#714c32"/>)}
+      </group>)}
+    </Pavilion>
+  </>;
+}
 function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
   <TemplePlaque kind="library" position={[0,3.82,-6.7]}/>
   {[-6,-2,2,6].map((x,i)=><group key={x} position={[x,0,-5.3]} onClick={e=>{e.stopPropagation();useGame.getState().perform('read')}}>
@@ -163,7 +201,7 @@ function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
   return <group position={[x,0,-13]} onClick={e=>{if(!drum){e.stopPropagation();useGame.getState().perform('bell')}}}>
     <Box position={[0,.2,0]} scale={[5,.4,5]} color="#b4b598"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*1.8,2.2,t*1.8]} scale={[.25,4,.25]} color="#815538"/>))}
-    <RoofSection x={x} z={-13} w={5} d={5}><Roof y={4.3} width={6.7} depth={6.5} height={1.6}/></RoofSection>
+    <RoofSection x={x} z={-13} w={5} d={5}><ChanhDienRoof y={4.15} width={6.7} depth={6.5}/></RoofSection>
     {drum?<ImportedDrum/>:<ImportedBell/>}
     <WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'Nhịp chậm ngày an':'E · Thỉnh một tiếng chuông'}/>
   </group>
@@ -193,7 +231,9 @@ function Forest(){
       positions.push([Math.sin(angle)*radius,0,Math.cos(angle)*radius-5]);
     }
     for(let i=0;i<30;i++)positions.push([-47+Math.sin(i*2.4)*8,0,-5+i*1.6]);
-    return positions;
+    const [west,east,north,south]=bambooZoneBounds;
+    return positions.filter(([x,,z])=>Math.hypot(x-GATE.x,z-GATE.z)>12&&
+      (x<west-2.7||x>east+2.7||z<north-2.7||z>south+2.7));
   },[]);
   useLayoutEffect(()=>{
     const trunkBatches=[broad.current!,upright.current!],crown=leaves.current!,pose=new THREE.Object3D();
@@ -231,12 +271,12 @@ function Forest(){
     </instancedMesh>
   </group>;
 }
-function Bamboo(){const ref=useRef<THREE.InstancedMesh>(null);useEffect(()=>{if(!ref.current)return;const m=new THREE.Object3D();for(let i=0;i<80;i++){const a=i*2.399,r=6+(i%9)*.9;m.position.set(bambooGrove.x+Math.sin(a)*r,2.4+(i%3)*.3,bambooGrove.z+Math.cos(a)*r);m.scale.set(.06,4.8+(i%3)*.6,.06);m.rotation.set(Math.sin(i)*.04,0,Math.cos(i)*.05);m.updateMatrix();ref.current.setMatrixAt(i,m.matrix);}ref.current.instanceMatrix.needsUpdate=true},[]);return <group><instancedMesh ref={ref} args={[undefined,undefined,80]}><cylinderGeometry args={[1,1,1,6]}/><meshStandardMaterial color="#72885b"/></instancedMesh>{Array.from({length:15},(_,i)=>{const a=i*2.4;return <mesh key={i} position={[bambooGrove.x+Math.sin(a)*8,5.5,bambooGrove.z+Math.cos(a)*8]} scale={[2,.3,2]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#71945f"/></mesh>})}</group>}
-function Decorations(){return <><Forest/><Bamboo/><PathLamps/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
+function Decorations(){return <><Forest/><BambooGrove/><PathLamps/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
+  <group position={[MAYA_LEVEL.extraBodhi.x,BODHI.ground,MAYA_LEVEL.extraBodhi.z]}><BodhiTree interactive={false}/></group>
   <CourtyardTrees/>
   {gateAvenueTrees.map(({x,z,scale})=><Tree key={`${x}-${z}`} position={[x,.06,z]} scale={scale}/>)}
   {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/><CourtyardZoneDecor/></>}
+function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={MAYA_LEVEL.bellX}/><BellPavilion x={MAYA_LEVEL.drumX} drum/><TeaTerrace/><Stupa/><BambooPavilion/><Decorations/><CourtyardZoneDecor/></>}
 export default memo(Architecture);

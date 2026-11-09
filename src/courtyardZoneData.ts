@@ -32,7 +32,7 @@ export const fenceDepth=.28;
 export const fenceHeight=.82;
 const sides:Side[]=['north','south','west','east'];
 // The shared lake replaces the old pond/lotus zones; keep its shores and bridge approaches clear.
-export const zoneFences=courtyardZones.filter(zone=>!['pond','lotus','quan-am'].includes(zone.id)).flatMap(zone=>sides.filter(side=>!(zone.id==='courtyard'&&side==='east')).flatMap(side=>{
+export const zoneFences=courtyardZones.filter(zone=>!['courtyard','pond','lotus','quan-am'].includes(zone.id)).flatMap(zone=>sides.filter(side=>!(zone.id==='courtyard'&&side==='east')).flatMap(side=>{
   const [west,east,north,south]=zone.bounds;
   const horizontal=side==='north'||side==='south';
   const fixed=side==='north'?north:side==='south'?south:side==='west'?west:east;
@@ -62,11 +62,12 @@ const buildings=[
   {x:34,z:-27,side:12.2,back:-2.1,front:9.8,door:5.8},
   {x:0,z:-56,side:10.8,back:-4.7,front:7.55,door:5.65},
 ];
-export const buildingPlanters=buildings.flatMap((p,building)=>[-1,1].flatMap(sign=>[
+const retiredPlanters=buildings.flatMap((p,building)=>[-1,1].flatMap(sign=>[
   {x:p.x+sign*p.door,z:p.z+p.front,variant:building%3},
   {x:p.x+sign*p.side,z:p.z+p.back,variant:(building+1)%3},
 ])).map((p,i)=>({...p,radius:.44+(i%3)*.05,angle:i*2.399}));
 
+export const buildingPlanters:typeof retiredPlanters=[];
 export const zoneObstacles=[
   ...zoneFences.map(({x,z,w,d})=>({x,z,w,d,height:fenceHeight})),
   ...buildingPlanters.map(({x,z,radius})=>({x,z,w:radius*2,d:radius*2,height:.8})),

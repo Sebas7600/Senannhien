@@ -1,13 +1,18 @@
 type Point=[number,number];
-export type PondBridge={start:number;end:number;z:number;halfWidth:number;rampStart:number;rampEnd:number};
+export type PondBridge={start:number;end:number;z:number;halfWidth:number;rampStart:number;rampEnd:number;archRise?:number};
 export const POND:{x:number;z:number;rx:number;rz:number;waterY:number;bankY:number;bottomY:number;segments:number};
 export const ISLAND:{x:number;z:number;radius:number;top:number};
 export const POND_BRIDGES:readonly PondBridge[];
+export const BRIDGE_ROAD:{x:number;northZ:number;southZ:number};
 export const QUAN_AM_SPOT:Point;
 export function bridgeHeight(x:number,bridge?:PondBridge):number;
+export function bridgeSegments(bridge:PondBridge):(PondBridge&{x:number;y:number;angle:number;length:number})[];
 export function pondContains(x:number,z:number,margin?:number):boolean;
 export function islandContains(x:number,z:number,margin?:number):boolean;
 export function pondBlocked(x:number,z:number,margin?:number):boolean;
 export function pondSurface(x:number,z:number):number|null;
 export const feedStations:{id:string;spot:Point;target:Point}[];
 export function nearestFeedStation(position:readonly number[]):(typeof feedStations)[number];
+
+export const POND_OUTLINE:number[][];
+export function pondBoundary(angle:number,margin?:number):Point;

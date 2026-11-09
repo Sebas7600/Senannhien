@@ -1,3 +1,4 @@
+import {MAYA_LEVEL} from './mayaLevel';
 import {quanAmObstacles} from './quanAmData';
 import {WATER_WELL,WATER_JARS} from './waterTaskData';
 import {templeSurfaceHeight} from './templeFixtures';
@@ -11,13 +12,14 @@ import {courtyardTrees,COURTYARD_TREE} from './courtyardData';
 import {GATE,gateMasonry} from './courtyardPropsData';
 import {gateBlocked} from './gateState';
 import {zoneObstacles} from './courtyardZoneData';
+import {BAMBOO_PAVILION,BAMBOO_PAVILION_STEP,BAMBOO_BENCH_HEIGHT,bambooPavilionBenches} from './bambooPavilionLayout';
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 export const CHARACTER_RADIUS=.28;
 export const CHARACTER_HALF_SEGMENT=.54;
 export const CHARACTER_OFFSET=CHARACTER_RADIUS+CHARACTER_HALF_SEGMENT;
-export const WISH_STATION:Vec2=[16.7,37];
-export const WISH_APPROACH:Vec2=[16.4,38.5];
+export const WISH_STATION:Vec2=[16.7+MAYA_LEVEL.pondOffsetX,37+MAYA_LEVEL.pondOffsetZ];
+export const WISH_APPROACH:Vec2=[16.4+MAYA_LEVEL.pondOffsetX,38.5+MAYA_LEVEL.pondOffsetZ];
 export const incenseSpot:Vec2=[0,-8.7];
 export const incenseApproach:Vec2=[0,-7.1];
 export const INCENSE_CLEARANCE=1.1;
@@ -34,13 +36,13 @@ export const INCENSE_DURATION=3000;
 export const INCENSE_BURN_MS=170000;
 export const INCENSE_STUB_MS=480000,INCENSE_MAX_STICKS=72;
 
-export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 62 };
+export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 76 };
 export const places = [
   { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:GATE.x, z:GATE.z, icon:'gate' },
   { id:'courtyard', name:'Sân bồ đề', subtitle:'Quét lá · Chắp tay · Đi dạo', x:0, z:6, icon:'tree' },
   { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 40 bồ đoàn', x:0, z:-24, icon:'temple' },
   { id:'hall', name:'Thiền đường Trúc Lâm', subtitle:'Ngồi thiền · Tụng kinh · Gõ mõ', x:-33, z:-17, icon:'meditate' },
-  { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:-19, z:-9, icon:'bell' },
+  { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:MAYA_LEVEL.bellX, z:-9, icon:'bell' },
   { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:POND_BRIDGES[0].start+2, z:POND_BRIDGES[0].z, icon:'fish' },
   { id:'dining', name:'Nhà ăn Hương Thiền', subtitle:'Mì · Cơm · Hủ tiếu · Bánh mì chay', x:34, z:-26, icon:'meal' },
   { id:'library', name:'Tàng kinh các', subtitle:'Đọc kinh · Trò chuyện cùng thầy', x:-34, z:-43, icon:'book' },
@@ -48,7 +50,7 @@ export const places = [
   { id:'terrace', name:'Trà đình Vọng Sơn', subtitle:'Uống trà · Ngắm núi · Ngồi nghỉ', x:0, z:-56, icon:'tea' },
   { id:'lotus', name:'Hồ sen nguyện ước', subtitle:'Thả hoa đăng · Viết lời nguyện', x:WISH_APPROACH[0], z:WISH_APPROACH[1], icon:'lotus' },
   { id:'stupa', name:'Bảo tháp An Lạc', subtitle:'Khám phá · Chiêm ngưỡng', x:-35, z:42, icon:'stupa' },
-  { id:'bamboo', name:'Đường trúc tĩnh tâm', subtitle:'Thiền hành giữa rừng trúc', x:-38, z:12, icon:'bamboo' },
+  { id:'bamboo', name:'Đường trúc tĩnh tâm', subtitle:'Đi dạo · Ngồi nghỉ ở chòi tre', x:BAMBOO_PAVILION.x, z:12, icon:'bamboo' },
 ] as const;
 export type PlaceId = typeof places[number]['id'];
 export function place(id: PlaceId) { return places.find(p=>p.id===id)!; }
@@ -66,10 +68,11 @@ export const CHEF_PASS:Vec2=[42.15,-34.85];
 export const RECEPTION:Vec2=[43,-19];
 export const RECEPTION_HEADING=0;
 export function usesFloorSeat(seat:Seat|undefined){return !!seat&&(seat.floorSeat===true||seat.kind==='cushion'||seat.kind==='reading');}
-export const pavilionLayouts=[{x:-33,z:-17,w:20,d:16,height:.4},{x:-34,z:-43,w:17,d:14,height:.35},{x:34,z:-27,w:23,d:18,height:.16},{x:0,z:-56,w:20,d:13,height:.3}];
+export const pavilionLayouts=[{x:-33,z:-17,w:20,d:16,height:.4},{x:-34,z:-43,w:17,d:14,height:.35},{x:34,z:-27,w:23,d:18,height:.16},{x:0,z:-56,w:20,d:13,height:.3},BAMBOO_PAVILION];
 export const floorSurfaces=[
   ...pavilionLayouts,
-  {x:-19,z:-13,w:5,d:5,height:.4},{x:19,z:-13,w:5,d:5,height:.4},
+  BAMBOO_PAVILION_STEP,
+  {x:MAYA_LEVEL.bellX,z:-13,w:5,d:5,height:.4},{x:MAYA_LEVEL.drumX,z:-13,w:5,d:5,height:.4},
 ];
 export function surfaceHeight(x:number,z:number){const lakeFloor=pondSurface(x,z);if(lakeFloor!==null)return lakeFloor;const temple=templeSurfaceHeight(x,z+27);if(temple>0)return temple+.08;let height=.06;for(const s of floorSurfaces)if(Math.abs(x-s.x)<=s.w/2&&Math.abs(z-s.z)<=s.d/2)height=Math.max(height,s.height);return height;}
 // A capsule meets a step before its centre crosses the floor edge.
@@ -85,7 +88,11 @@ export const seats:Seat[] = [
   // Two mirrored blocks: clear space between cushions, altar access and an open central aisle.
   ...Array.from({length:40},(_,i)=>({id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.1,-8.2,-6.3,-4.4,4.4,6.3,8.2,10.1][i%8],2.28+CUSHION.seatLift,-27.9+Math.floor(i/8)*1.8] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
   ...Array.from({length:20},(_,i)=>({id:`hall-${i}`,label:`Bồ đoàn ${i+1} · Thiền đường`,zone:'hall' as const,position:[-33+(i%5-2)*2.4,.4+CUSHION.seatLift,-19+Math.floor(i/5)*2.4] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
-  ...Array.from({length:8},(_,i)=>({id:`bamboo-${i}`,label:`Tọa cụ ${i+1} · Rừng trúc`,zone:'bamboo' as const,position:[-38+Math.cos(i/8*Math.PI*2)*4,.06+CUSHION.seatLift,12+Math.sin(i/8*Math.PI*2)*4] as Vec3,rotation:-i/8*Math.PI*2-Math.PI/2,kind:'cushion' as const})),
+  ...bambooPavilionBenches.flatMap(({x,z},bench)=>[-1,1].map((side,index)=>({
+    id:`bamboo-chòi-${bench}-${index}`,label:`Chòi rừng trúc · Ghế ${bench*2+index+1}`,
+    zone:'bamboo' as const,position:[x+side*.43,BAMBOO_PAVILION.height+BAMBOO_BENCH_HEIGHT,z] as Vec3,
+    rotation:0,kind:'bench' as const,
+  }))),
   ...diningTables.flatMap((table,i)=>Array.from({length:4},(_,side)=>({id:`dining-${i*4+side}`,label:`Bàn ${i+1}${i===4?' trung tâm':''} · Bồ đoàn ${side+1}`,zone:'dining' as const,position:[table[0]+(side%2===0?-1.85:1.85),.16+CUSHION.seatLift,table[2]+(side<2?-.8:.8)] as Vec3,rotation:side%2===0?Math.PI/2:-Math.PI/2,kind:'dining' as const,floorSeat:true,table}))),
   ...readingTables.map((table,i)=>({id:`reading-${i}`,label:`Bàn đọc ${i+1}`,zone:'library' as const,position:[table[0],.35+CUSHION.seatLift,table[2]+1] as Vec3,rotation:Math.PI,kind:'reading' as const,table})),
   ...teaTables.flatMap((table,i)=>[-1,1].map((side,j)=>({id:`tea-${i*2+j}`,label:`Bàn trà ${i+1} · Bồ đoàn ${j+1}`,zone:'terrace' as const,position:[table[0],.3+CUSHION.seatLift,table[2]+side*1.35] as Vec3,rotation:side<0?0:Math.PI,kind:'tea' as const,floorSeat:true,table}))),
@@ -119,6 +126,7 @@ export const gardenPlots=Array.from({length:12},(_,i)=>({id:`plot-${i}`,x:31+(i%
 export interface Obstacle { x:number; z:number; w:number; d:number; height?:number; base?:number; navigationOnly?:boolean }
 export const obstacles:Obstacle[]=[
   ...zoneObstacles,
+  {x:MAYA_LEVEL.extraBodhi.x,z:MAYA_LEVEL.extraBodhi.z,w:BODHI.radius*2,d:BODHI.radius*2,height:BODHI.wallHeight},
   ...quanAmObstacles,
   ...POND_BRIDGES.flatMap(bridge=>[-1,1].map(side=>({
     x:(bridge.start+bridge.end)/2,z:bridge.z+side*bridge.halfWidth,
@@ -141,13 +149,13 @@ export const obstacles:Obstacle[]=[
     {x:p.x,z:p.z-p.d/2+.15,w:p.w,d:.2,height:4.3},
     ...[-1,1].flatMap(side=>[-1,0,1].map(row=>({x:p.x+side*(p.w/2-.4),z:p.z+row*(p.d/2-.5),w:.3,d:.3,height:4.4}))),
   ]),
-  ...[-19,19].flatMap(x=>[-1,1].flatMap(side=>[-1,1].map(row=>({x:x+side*1.8,z:-13+row*1.8,w:.25,d:.25,height:4.2})))),
-  {x:-19,z:-13,w:1.85,d:1.85,base:.55,height:2.6},
-  {x:19,z:-13,w:2.05,d:2.02,base:.4,height:2.75},
+  ...[MAYA_LEVEL.bellX,MAYA_LEVEL.drumX].flatMap(x=>[-1,1].flatMap(side=>[-1,1].map(row=>({x:x+side*1.8,z:-13+row*1.8,w:.25,d:.25,height:4.2})))),
+  {x:MAYA_LEVEL.bellX,z:-13,w:1.85,d:1.85,base:.55,height:2.6},
+  {x:MAYA_LEVEL.drumX,z:-13,w:2.05,d:2.02,base:.4,height:2.75},
 
   {x:BODHI.x,z:BODHI.z,w:BODHI.radius*2,d:BODHI.radius*2,navigationOnly:true},{x:-35,z:42,w:6,d:6},
   ...courtyardTrees.map(t=>({x:t.x,z:t.z,w:COURTYARD_TREE.radius*2,d:COURTYARD_TREE.radius*2,navigationOnly:true})),
-  ...[-1,1].map(side=>({x:-19+side*1.08,z:-13,w:.32,d:.65,height:3.42,base:.4})),
+  ...[-1,1].map(side=>({x:MAYA_LEVEL.bellX+side*1.08,z:-13,w:.32,d:.65,height:3.42,base:.4})),
   ...diningTables.map(t=>({x:t[0],z:t[2],w:2.5,d:2.8,height:.64})),
   {x:34,z:-33.1,w:17.3,d:1.8,height:KITCHEN_COUNTER_TOP},
   {x:RECEPTION[0],z:RECEPTION[1],w:1.4,d:.85,height:1.36},

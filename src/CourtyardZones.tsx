@@ -54,7 +54,7 @@ leaf.setIndex([0,1,4,1,2,4,2,3,4,3,0,4]);
 leaf.computeVertexNormals();
 const potColors=['#a36850','#638478','#b6a18a'];
 const leafColors=['#416443','#6b8853','#8b9f67'];
-const planterGeometry=batchGeometry(buildingPlanters.flatMap(p=>{
+const planterGeometry=buildingPlanters.length?batchGeometry(buildingPlanters.flatMap(p=>{
   const y=.064,scale=p.radius;
   const potHeight=scale*1.4;
   const pieces=[
@@ -71,9 +71,9 @@ const planterGeometry=batchGeometry(buildingPlanters.flatMap(p=>{
       [size,size,size],[.16+level*.14,angle,0]));
   }
   return pieces;
-}));
+})):new THREE.BufferGeometry();
 
-const groundPatches=courtyardZones.filter(zone=>zone.surface&&zone.id!=='pond'&&zone.id!=='lotus').map(zone=>{
+const groundPatches=courtyardZones.filter(zone=>zone.surface&&zone.id!=='pond'&&zone.id!=='lotus'&&zone.id!=='quan-am').map(zone=>{
   const [west,east,north,south]=zone.bounds;
   const shape=new THREE.Shape([
     new THREE.Vector2(west,-south),new THREE.Vector2(east,-south),
@@ -119,8 +119,8 @@ export function CourtyardZoneDecor(){
     <mesh geometry={fenceGeometry} castShadow receiveShadow>
       <meshStandardMaterial vertexColors roughness={.94}/>
     </mesh>
-    <mesh geometry={planterGeometry} castShadow receiveShadow>
+    {buildingPlanters.length>0&&<mesh geometry={planterGeometry} castShadow receiveShadow>
       <meshStandardMaterial vertexColors roughness={.8} side={THREE.DoubleSide}/>
-    </mesh>
+    </mesh>}
   </group>;
 }

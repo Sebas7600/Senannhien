@@ -22,6 +22,7 @@ function TempleExterior(){
    if(!(o instanceof THREE.Mesh)||!o.geometry.index)return;
    const geometry=o.geometry.clone(),position=geometry.getAttribute('position');
    const material=o.material as THREE.MeshStandardMaterial,name=material.name;
+   if(name==='plaza')return;
    const buckets:[number[],THREE.Group][]=[[[],body],[[],top]];
    for(const part of templeParts(geometry)){
     const size=part.box.getSize(new THREE.Vector3()).multiplyScalar(.5);
