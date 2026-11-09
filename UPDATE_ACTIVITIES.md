@@ -89,6 +89,8 @@ Kiểm chứng: 160 kiểm thử client + 8 server = 168/168 đạt; TypeScript 
 
 ## Chạy dự án
 
+Trên Windows, nhấp đúp `Choi-Game.cmd` để mở bản build qua LAN. File tự chọn IPv4 của mạng Private (ưu tiên Wi-Fi), hiển thị link cho điện thoại/tablet và mở trình duyệt sau khi máy chủ sẵn sàng. Giữ cửa sổ CMD mở khi chơi; Ctrl+C để dừng. Các thiết bị cần cùng Wi-Fi/LAN. Nhấp lại khi cùng bản build đang chạy sẽ dùng lại máy chủ. Không tự đổi firewall hoặc mở cổng ra Internet. Có thể đặt biến `PORT` nếu muốn dùng cổng khác.
+
 ```sh
 npm run build
 npm test
