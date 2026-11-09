@@ -1,6 +1,7 @@
 import ScannedBuddha from './ScannedBuddha';
 import {canopyGeometry,foliageMaterial} from './foliage';
-import {useSurface,classifySurface} from './materials';
+import {useOutdoorSurface,useSurface,classifySurface} from './materials';
+import {woodlandBarkGeometries} from './treeBranches';
 import { useMemo,useRef } from 'react';
 import {useCameraOccluder} from './cameraObstruction';
 
@@ -31,10 +32,10 @@ export function Roof({ y, width, depth, height }: {y:number;width:number;depth:n
 export function Buddha(){return <ScannedBuddha/>}
 export function Lantern({position}:{position:[number,number,number]}) { const night=false; return <group position={position}><mesh><sphereGeometry args={[.25,12,12]}/><meshStandardMaterial color="#f2cf86" emissive="#f7b245" emissiveIntensity={night?1.2:.65}/></mesh><Box position={[0,.28,0]} scale={[.18,.08,.18]} color="#645133"/><Box position={[0,-.3,0]} scale={[.04,.18,.04]} color="#b78949"/></group>; }
 export function Tree({position,scale=1,banyan=false}:{position:[number,number,number];scale?:number;banyan?:boolean}) {
-  const bark=useSurface('wood','#8a8a76'),crown=useRef<THREE.Mesh>(null);useCameraOccluder(crown);
-  return <group position={position} scale={scale}>
-    <mesh position={[0,1.45,0]} castShadow material={bark}><cylinderGeometry args={[banyan?.32:.18,.42,2.9,14]}/></mesh>
-    {[[-.8,2.2,0,.6],[.65,2.5,.2,-.5],[-.3,2.8,-.5,.35]].map(([x,y,z,r],i)=><mesh key={i} position={[x,y,z]} rotation={[0,0,r]} castShadow material={bark}><cylinderGeometry args={[.055,.19,1.8,10]}/></mesh>)}
+  const bark=useOutdoorSurface('bark'),crown=useRef<THREE.Mesh>(null);useCameraOccluder(crown);
+  const variant=Math.abs(Math.round(position[0]+position[2]))%woodlandBarkGeometries.length;
+  return <group position={position} scale={scale} rotation={[0,position[0]*.29,0]}>
+    <mesh geometry={woodlandBarkGeometries[variant]} scale={banyan?[1.2,1,1.2]:[1,1,1]} castShadow receiveShadow material={bark} dispose={null}/>
     <mesh ref={crown} geometry={canopyGeometry} material={foliageMaterial} castShadow receiveShadow/>
     {banyan&&Array.from({length:8},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*1.3,1.6,Math.cos(i*2.4)*1.1]}><cylinderGeometry args={[.025,.035,2.6,4]}/><meshStandardMaterial color="#87765a"/></mesh>)}
     {banyan&&<mesh position={[0,.13,0]}><cylinderGeometry args={[1.7,1.8,.25,32]}/><meshStandardMaterial color="#a3a589"/></mesh>}

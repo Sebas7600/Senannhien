@@ -164,19 +164,24 @@ test('feeding koi targets stay inside the pond near the food',async()=>{
 
 test('joined lake cuts the terrain below the bank and preserves access by both bridges',()=>{
  assert.ok(POND.waterY<POND.bankY);
- assert.equal(pondBlocked(POND.x,17),true);
- assert.equal(pondBlocked(POND.x,9),false);
- assert.equal(pondBlocked(24,ISLAND.z),false);
+ assert.equal(pondBlocked(POND.x,POND.z-6),true);
+ assert.equal(pondBlocked(POND.x,POND_BRIDGES[0].z),false);
+ assert.equal(pondBlocked(POND_BRIDGES[1].start+4,ISLAND.z),false);
  assert.equal(pondSurface(ISLAND.x,ISLAND.z),ISLAND.top);
- assert.equal(pondBlocked(24,ISLAND.z+3),true);
+ assert.equal(pondBlocked(POND.x-5.5,ISLAND.z+6),true);
  for(const bridge of POND_BRIDGES){
   assert.equal(bridgeHeight(bridge.start,bridge),.06);
-  assert.ok(Math.abs(bridgeHeight(bridge.start+bridge.rampStart,bridge)-ISLAND.top)<1e-6);
+  if(bridge.archRise){
+   const middle=(bridge.start+bridge.end)/2;
+   assert.ok(Math.abs(bridgeHeight(middle,bridge)-(.06+bridge.archRise))<1e-6);
+   let previous=.06,previousSlope=Infinity;
+   for(let i=1;i<=100;i++){const height=bridgeHeight(bridge.start+(bridge.end-bridge.start)*i/100,bridge),slope=height-previous;assert.ok(slope<previousSlope+1e-8);previousSlope=slope;previous=height;}
+  }else assert.ok(Math.abs(bridgeHeight(bridge.start+bridge.rampStart,bridge)-ISLAND.top)<1e-6);
  }
  for(const f of feedStations){assert.equal(pondBlocked(...f.spot),false);assert.ok(pondContains(...f.target));}
  const ray=new THREE.Raycaster(new THREE.Vector3(),new THREE.Vector3(0,-1,0));
  for(const mesh of [new THREE.Mesh(pondTerrain),new THREE.Mesh(pavementGeometry)]){
-  ray.ray.origin.set(POND.x,2,17);
+  ray.ray.origin.set(POND.x,2,POND.z-6);
   assert.equal(ray.intersectObject(mesh).length,0);
   ray.ray.origin.set(15,2,18);
   assert.ok(ray.intersectObject(mesh).length>0);

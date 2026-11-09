@@ -1,3 +1,4 @@
+import {MAYA_LEVEL} from '../src/mayaLevel';
 import {POND} from '../src/pondLayout';
 import {test,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,7 +56,7 @@ test('lantern pool is bounded, arbitrary text stays text, and no runtime flight 
 
 test('another ceremony cannot overwrite a lantern in flight and stopping navigation cancels its pending action',()=>{
   useGame.setState({position:WISH_STATION});useGame.getState().releaseWish('Bình an');const ceremony=useGame.getState().ceremony;
-  useGame.setState({position:[-19,-9]});useGame.getState().perform('bell');assert.equal(useGame.getState().ceremony,ceremony);assert.equal(useGame.getState().progress.bell,0);
+  useGame.setState({position:[MAYA_LEVEL.bellX,-9]});useGame.getState().perform('bell');assert.equal(useGame.getState().ceremony,ceremony);assert.equal(useGame.getState().progress.bell,0);
   useGame.setState({ceremony:null,event:null,position:[0,22]});useGame.getState().perform('lantern');assert.equal(useGame.getState().pendingActivity,'lantern');useGame.getState().stand();assert.equal(useGame.getState().pendingActivity,null);
 });
 

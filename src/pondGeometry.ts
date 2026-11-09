@@ -1,12 +1,9 @@
 import * as T from 'three';
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {POND} from './pondLayout';
+import {POND,POND_OUTLINE} from './pondLayout';
 import {GATE_ENTRY} from './courtyardPropsData';
 
-export const pondEdge=Array.from({length:POND.segments},(_,i)=>{
-  const angle=i/POND.segments*Math.PI*2;
-  return new T.Vector2(POND.x+Math.cos(angle)*POND.rx,-POND.z-Math.sin(angle)*POND.rz);
-});
+export const pondEdge=POND_OUTLINE.map(([x,z])=>new T.Vector2(POND.x+x*POND.rx,-POND.z-z*POND.rz));
 
 function rectangle(minX:number,maxX:number,minZ:number,maxZ:number,cutPond=false){
   const outline=new T.Shape([

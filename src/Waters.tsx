@@ -3,13 +3,14 @@ import {useFrame} from '@react-three/fiber';
 import {RigidBody,CuboidCollider,CylinderCollider} from '@react-three/rapier';
 import * as T from 'three';
 import {ConvexGeometry} from 'three/examples/jsm/geometries/ConvexGeometry.js';
-import {POND,ISLAND,POND_BRIDGES,bridgeHeight,bridgeRailEnd,islandContains} from './pondLayout';
+import {POND,ISLAND,POND_BRIDGES,bridgeHeight,bridgeRailEnd,bridgeSegments,islandContains,pondBoundary,POND_OUTLINE} from './pondLayout';
 import {batchGeometry,coloredGeometry} from './geometryBatch';
 import {useGame} from './gameStore';
 import {useReducedMotion} from './useReducedMotion';
 import {WorldLabel} from './Environment';
 import {FlyingLanterns,FloatingLotuses,WishStation} from './Lanterns';
 import {FISH_FEED_LIFETIME,koiTarget} from './fishFeeding';
+import {fullMoonOffset} from './CourtyardSky';
 
 const waterVertex=`
   #include <fog_pars_vertex>
@@ -27,6 +28,7 @@ const waterFragment=`
   varying vec3 vPoint;
   uniform float uTime;
   uniform float uNight;
+  uniform vec3 uMoonDirection;
   void main(){
     vec2 p=vPoint.xz;
     float a=sin(dot(p,vec2(1.6,1.1))+uTime*.85);
@@ -40,6 +42,9 @@ const waterFragment=`
     float flecks=pow(max(0.0,a*b),7.0);
     color+=vec3(.13,.20,.13)*flecks*(.42+glancing*.45);
     color=mix(color,color*vec3(.30,.43,.56),uNight);
+    vec3 halfVector=normalize(uMoonDirection+eye);
+    float glint=pow(max(0.,dot(normal,halfVector)),94.);
+    color+=vec3(.35,.48,.68)*glint*.43*uNight;
     gl_FragColor=vec4(color,.75+.22*glancing);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -47,11 +52,11 @@ const waterFragment=`
   }
 `;
 // Keep the same sampled contour as the opening in the terrain.
-const waterGeometry=new T.CircleGeometry(1,POND.segments).scale(POND.rx,POND.rz,1).rotateX(-Math.PI/2);
+const waterGeometry=new T.ShapeGeometry(new T.Shape(POND_OUTLINE.map(([x,z])=>new T.Vector2(x*POND.rx,-z*POND.rz)))).rotateX(-Math.PI/2);
 
 function LakeWater(){
   const reduced=useReducedMotion();
-  const uniforms=useMemo(()=>T.UniformsUtils.merge([T.UniformsLib.fog,{uTime:{value:0},uNight:{value:0}}]),[]);
+  const uniforms=useMemo(()=>T.UniformsUtils.merge([T.UniformsLib.fog,{uTime:{value:0},uNight:{value:0},uMoonDirection:{value:fullMoonOffset.clone().normalize()}}]),[]);
   useFrame(({clock})=>{
     uniforms.uTime.value=reduced?0:clock.elapsedTime;
     uniforms.uNight.value=useGame.getState().night?1:0;
@@ -68,9 +73,9 @@ function LakeWater(){
 
 function bankGeometry(){
   const vertices:number[]=[],indices:number[]=[];
-  for(let i=0;i<=POND.segments;i++){
-    const angle=i/POND.segments*Math.PI*2;
-    const x=POND.x+Math.cos(angle)*POND.rx,z=POND.z+Math.sin(angle)*POND.rz;
+  for(let i=0;i<=POND_OUTLINE.length;i++){
+    const point=POND_OUTLINE[i%POND_OUTLINE.length];
+    const x=POND.x+point[0]*POND.rx,z=POND.z+point[1]*POND.rz;
     vertices.push(x,POND.bankY-.01,z,x,POND.bottomY,z);
     if(i){const j=i*2;indices.push(j-2,j-1,j,j,j-1,j+1);}
   }
@@ -92,7 +97,7 @@ for(let i=0;i<stonePoints.count;i++){
 stoneGeometry.setAttribute('color',new T.Float32BufferAttribute(stoneColors,3));
 stoneGeometry.computeVertexNormals();
 const rim=Array.from({length:115},(_,i)=>i/115*Math.PI*2).filter(angle=>{
-  const x=POND.x+Math.cos(angle)*POND.rx,z=POND.z+Math.sin(angle)*POND.rz;
+  const [x,z]=pondBoundary(angle);
   return !POND_BRIDGES.some(bridge=>x>=bridge.start&&x<=bridge.end&&Math.abs(z-bridge.z)<bridge.halfWidth+.66);
 });
 function RockShore(){
@@ -101,8 +106,8 @@ function RockShore(){
     const mesh=ref.current!,rock=new T.Object3D(),tints=['#918777','#9b8f7a','#77796e','#a59882'].map(c=>new T.Color(c));
     rim.forEach((angle,i)=>{
       const offset=.12*Math.sin(i*5.1);
-      rock.position.set(POND.x+Math.cos(angle)*(POND.rx+offset),.035+Math.sin(i*7)*.07,POND.z+Math.sin(angle)*(POND.rz+offset));
-      const tangentX=-Math.sin(angle)*POND.rx,tangentZ=Math.cos(angle)*POND.rz;
+      const [x,z]=pondBoundary(angle,offset);rock.position.set(x,.035+Math.sin(i*7)*.07,z);
+      const [nextX,nextZ]=pondBoundary(angle+.001),tangentX=nextX-x,tangentZ=nextZ-z;
       rock.rotation.set(Math.sin(i*4)*.20,-Math.atan2(tangentZ,tangentX),Math.cos(i*5)*.25);
       rock.scale.set(.54+(i*7%11)*.043,.30+(i*5%9)*.032,.36+(i*3%7)*.055);
       rock.updateMatrix();
@@ -125,7 +130,7 @@ const grassClumps:T.BufferGeometry[]=[];
 const grassBlade=new T.ConeGeometry(1,1,3);
 for(let i=0;i<rim.length;i+=3){
   const angle=rim[i];
-  const x=POND.x+Math.cos(angle)*(POND.rx+.52),z=POND.z+Math.sin(angle)*(POND.rz+.52);
+  const [x,z]=pondBoundary(angle,.52);
   for(let j=0;j<5;j++){
     const a=j*2.4+i,h=.13+(j*7+i)%6*.027;
     grassClumps.push(coloredGeometry(grassBlade,['#607a44','#789052','#88934e'][j%3],
@@ -135,16 +140,7 @@ for(let i=0;i<rim.length;i+=3){
 const shoreGrass=batchGeometry(grassClumps);
 grassBlade.dispose();
 
-const bridgeSpans=POND_BRIDGES.flatMap(bridge=>{
-  const edges=[bridge.start,bridge.start+bridge.rampStart,bridge.end-bridge.rampEnd,bridge.end];
-  return edges.slice(1).flatMap((end,i)=>{
-    const start=edges[i];
-    if(end===start)return [];
-    const dy=bridgeHeight(end,bridge)-bridgeHeight(start,bridge);
-    return [{...bridge,x:(start+end)/2,y:(bridgeHeight(start,bridge)+bridgeHeight(end,bridge))/2,
-      angle:Math.atan2(dy,end-start),length:Math.hypot(end-start,dy)}];
-  });
-});
+const bridgeSpans=POND_BRIDGES.flatMap(bridgeSegments);
 const bridgeBox=new T.BoxGeometry(1,1,1);
 const railSpans=bridgeSpans.flatMap(span=>{
   const start=span.x-Math.cos(span.angle)*span.length/2,end=Math.min(span.x+Math.cos(span.angle)*span.length/2,bridgeRailEnd(span));
@@ -170,6 +166,11 @@ for(const bridge of POND_BRIDGES){
       bridgeParts.push(coloredGeometry(bridgeBox,'#694633',[x,y+.34,z],[.145,.79,.15]));
       bridgeParts.push(coloredGeometry(bridgeBox,'#a38266',[x,y+.75,z],[.19,.062,.19]));
     }
+    for(let i=0;i<posts;i++){
+      const left=T.MathUtils.lerp(bridge.start+.12,railEnd-.12,i/posts),right=T.MathUtils.lerp(bridge.start+.12,railEnd-.12,(i+1)/posts);
+      for(const flip of [false,true]){const y1=bridgeHeight(left,bridge)+(flip?.64:.15),y2=bridgeHeight(right,bridge)+(flip?.15:.64),dx=right-left,dy=y2-y1;bridgeParts.push(coloredGeometry(bridgeBox,'#825d43',[(left+right)/2,(y1+y2)/2,z],[Math.hypot(dx,dy),.065,.075],[0,0,Math.atan2(dy,dx)]));}
+    }
+    if(bridge.archRise)for(const t of [.12,.37,.63,.88]){const x=T.MathUtils.lerp(bridge.start,bridge.end,t),top=bridgeHeight(x,bridge)-.1,bottom=POND.bottomY-.18;bridgeParts.push(coloredGeometry(bridgeBox,'#654735',[x,(top+bottom)/2,z],[.20,top-bottom,.20]));}
     for(const span of railSpans.filter(span=>span.z===bridge.z)){
       for(const height of [.33,.70]){
         bridgeParts.push(coloredGeometry(bridgeBox,'#72503b',[span.x,span.y+height,z],
@@ -179,12 +180,31 @@ for(const bridge of POND_BRIDGES){
   }
 }
 const bridgeGeometry=batchGeometry(bridgeParts);
+const railRadius=ISLAND.radius-.29,railOpening=.45,railBays=14;
+const islandRailPosts=Array.from({length:railBays+1},(_,i)=>{
+  // Start and end at the west-facing bridge entrance.
+  const angle=-Math.PI+railOpening+i*(2*Math.PI-2*railOpening)/railBays;
+  return {x:ISLAND.x+Math.cos(angle)*railRadius,z:ISLAND.z+Math.sin(angle)*railRadius};
+});
+const islandRailSpans=islandRailPosts.slice(1).map((post,i)=>{
+  const previous=islandRailPosts[i],dx=post.x-previous.x,dz=post.z-previous.z;
+  return {x:(post.x+previous.x)/2,z:(post.z+previous.z)/2,length:Math.hypot(dx,dz),yaw:-Math.atan2(dz,dx)};
+});
+const islandRailGeometry=batchGeometry([
+  ...islandRailPosts.flatMap(({x,z})=>[
+    coloredGeometry(bridgeBox,'#78513a',[x,ISLAND.top+.42,z],[.16,.84,.16]),
+    coloredGeometry(bridgeBox,'#ab8768',[x,ISLAND.top+.84,z],[.22,.07,.22]),
+  ]),
+  ...islandRailSpans.flatMap(({x,z,length,yaw})=>[.27,.66].map(height=>
+    coloredGeometry(bridgeBox,'#80593e',[x,ISLAND.top+height,z],[length,.10,.12],[0,yaw,0]))),
+]);
 bridgeBox.dispose();
 const islandDepth=ISLAND.top-POND.bottomY;
 const islandCenter=ISLAND.top-islandDepth/2;
 function LakeCrossings(){
   return <>
     <mesh geometry={bridgeGeometry} castShadow receiveShadow><meshStandardMaterial vertexColors roughness={.82}/></mesh>
+    <mesh geometry={islandRailGeometry} castShadow receiveShadow><meshStandardMaterial vertexColors roughness={.82}/></mesh>
     <mesh position={[ISLAND.x,islandCenter-.095,ISLAND.z]} castShadow receiveShadow>
       <cylinderGeometry args={[ISLAND.radius,ISLAND.radius+.10,islandDepth-.19,40]}/>
       <meshStandardMaterial color="#a79e89" roughness={.93}/>
@@ -195,6 +215,8 @@ function LakeCrossings(){
     </mesh>
     <RigidBody type="fixed" colliders={false}>
       <CylinderCollider args={[islandDepth/2,ISLAND.radius]} position={[ISLAND.x,islandCenter,ISLAND.z]}/>
+      {islandRailSpans.map(({x,z,length,yaw},i)=>
+        <CuboidCollider key={`island-rail-${i}`} args={[length/2,.38,.07]} position={[x,ISLAND.top+.38,z]} rotation={[0,yaw,0]}/>)}
       {bridgeSpans.map(span=><group key={span.x+'-'+span.z}>
         <CuboidCollider args={[span.length/2,.05,span.halfWidth]} position={[span.x,span.y-.05,span.z]} rotation={[0,0,span.angle]}/>
       </group>)}
@@ -291,6 +313,6 @@ export default function Waters(){
     <mesh geometry={lotusPads} receiveShadow><meshStandardMaterial vertexColors roughness={.88}/></mesh>
     <mesh geometry={lotusFlowers}><meshStandardMaterial vertexColors roughness={.68}/></mesh>
     <FlyingLanterns/><FloatingLotuses/><WishStation/>
-    <WorldLabel position={[17.4,1.8,7]} title="HỒ CÁ KOI" subtitle="E · Cho cá ăn"/>
+    <WorldLabel position={[POND_BRIDGES[0].start,1.8,POND_BRIDGES[0].z-2.5]} title="HỒ CÁ KOI" subtitle="E · Cho cá ăn"/>
   </>;
 }

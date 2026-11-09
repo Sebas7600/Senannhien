@@ -1,6 +1,7 @@
+import {DRUM_PROP} from './courtyardPropsData';
 export const DRUM_STRIKES=[650,1850,3050] as const;
 export const DRUM_DURATION=4200;
-export const DRUM_APPROACH:[number,number]=[19,-10.9];
+export const DRUM_APPROACH:[number,number]=[DRUM_PROP.x,DRUM_PROP.z+2.1];
 const ease=(v:number)=>{const t=Math.max(0,Math.min(1,v));return t*t*(3-2*t);};
 export function drumStroke(ms:number){
   let amount=0;

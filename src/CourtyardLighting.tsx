@@ -1,7 +1,7 @@
-import NightMoon from './NightMoon';
 import {useLayoutEffect,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {Stars} from '@react-three/drei';
+import CourtyardSky from './CourtyardSky';
 import * as T from 'three';
 
 
@@ -11,7 +11,7 @@ import {COURTYARD_SUN,TREE_SHADOW_STRENGTH,createTreeShadowAtlas,createTreeShado
 
 const sun=COURTYARD_SUN;
 const horizon='#e5ece8';
-const nightSky='#122437';
+const nightSky='#253f47';
 const skyGeometry=new T.SphereGeometry(1,24,12);
 let skyMap:T.DataTexture|undefined;
 
@@ -75,7 +75,7 @@ export default function CourtyardLighting(){
       shadow-mapSize={[2048,2048]} shadow-camera-left={-25} shadow-camera-right={25}
       shadow-camera-top={25} shadow-camera-bottom={-25} shadow-camera-far={112}
       shadow-bias={-.00025} shadow-normalBias={.035}/>
-    {night?<><Stars radius={120} depth={30} count={1400} factor={3.5} fade/><NightMoon/></>:<MorningSky/>}
+    {night?<Stars radius={130} depth={25} count={1000} factor={3} fade/>:<CourtyardSky night={false}/>}
   </>;
 }
 

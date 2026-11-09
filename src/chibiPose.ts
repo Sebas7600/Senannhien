@@ -3,6 +3,7 @@ import {Euler, Quaternion, Vector3, type Object3D} from 'three';
 import {sampleBow, type BowFrame, type BowMode} from './bowTimeline';
 import {createQuietActivityFrame,sampleQuietActivity} from './quietActivityMotion';
 import {drumStroke} from './drumMotion';
+import type {ServeFrame} from './mealService';
 
 const joints = ['Hong','Than','Dau','Vai_L','Vai_R','Khuyu_L','Khuyu_R','Dui_L','Dui_R','Goi_L','Goi_R','Co_Chan_L','Co_Chan_R'] as const;
 type Joint = typeof joints[number];
@@ -19,7 +20,7 @@ export function createChibiPose(model: Object3D) {
   const quiet=createQuietActivityFrame();
   let mealLift = 0, seatedElapsed = 0, wasSeated = false;
   const rendered = new Map(joints.map(name => [name, bones.get(name)!.quaternion.clone()]));
-  let action = 'walk', elapsed = 0, weight = 0, hipBeforePose = hipY;
+  let action = 'walk', elapsed = 0, weight = 0, hipBeforePose = hipY,hipBeforeZ=hip.position.z;
   const previous = new Map(joints.map(name => [name, new Quaternion()]));
 
   function turn(name: Joint, x: number, y = 0, z = 0) {
@@ -43,10 +44,12 @@ export function createChibiPose(model: Object3D) {
     joint.quaternion.slerp(target,weight);
   }
 
-  function reachHand(side: 'L'|'R', destination: Vector3) {
-    const upper = bones.get(side === 'L' ? 'Vai_L' : 'Vai_R')!;
-    const forearm = bones.get(side === 'L' ? 'Khuyu_L' : 'Khuyu_R')!;
-    const wrist = model.getObjectByName('Co_Tay_' + side)!;
+  function reachHand(side: 'L'|'R', destination: Vector3,leg=false) {
+    const upperName:Joint=leg?(side==='L'?'Dui_L':'Dui_R'):(side==='L'?'Vai_L':'Vai_R');
+    const lowerName:Joint=leg?(side==='L'?'Goi_L':'Goi_R'):(side==='L'?'Khuyu_L':'Khuyu_R');
+    const upper = bones.get(upperName)!;
+    const forearm = bones.get(lowerName)!;
+    const wrist = model.getObjectByName((leg?'Co_Chan_':'Co_Tay_') + side)!;
     upper.getWorldPosition(shoulder);
     model.worldToLocal(shoulder);
     delta.copy(destination).sub(shoulder);
@@ -54,12 +57,14 @@ export function createChibiPose(model: Object3D) {
     const distance = Math.max(.07,Math.min(delta.length(),upperLength+lowerLength-.004));
     delta.normalize();
     const along = (upperLength**2-lowerLength**2+distance**2)/(2*distance);
-    pole.set(side==='L'?1:-1,-.65,-.15).addScaledVector(delta,-pole.dot(delta)).normalize();
+    if(leg)pole.set(0,0,1);else pole.set(side==='L'?1:-1,-.65,-.15);
+    pole.addScaledVector(delta,-pole.dot(delta)).normalize();
     elbow.copy(shoulder).addScaledVector(delta,along).addScaledVector(pole,Math.sqrt(Math.max(0,upperLength**2-along**2)));
     hand.copy(shoulder).addScaledVector(delta,distance);
-    aim(side === 'L' ? 'Vai_L' : 'Vai_R',forearm,elbow);
-    aim(side === 'L' ? 'Khuyu_L' : 'Khuyu_R',wrist,hand);
+    aim(upperName,forearm,elbow);
+    aim(lowerName,wrist,hand);
   }
+  const serviceFeet={L:new Vector3(),R:new Vector3()};
 
 
   let stairBlend = 0;
@@ -86,8 +91,9 @@ export function createChibiPose(model: Object3D) {
       if (!weight) return;
       for (const name of joints) bones.get(name)!.quaternion.copy(previous.get(name)!);
       hip.position.y = hipBeforePose;
+      hip.position.z = hipBeforeZ;
     },
-    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false, reduced = false) {
+    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false, reduced = false,service?:ServeFrame) {
       if (action !== pose) { action = pose; elapsed = 0; }
       elapsed += dt;
       mealLift = 0;
@@ -106,9 +112,24 @@ export function createChibiPose(model: Object3D) {
 
       for (const name of joints) previous.get(name)!.copy(bones.get(name)!.quaternion);
       hipBeforePose = hip.position.y;
+      hipBeforeZ=hip.position.z;
       try {
       const cycle = Math.sin(elapsed * 6);
       if (walking) { applyStairGait(); return; }
+      if(pose==='serve'&&service){
+        for(const side of ['L','R'] as const){bones.get(side==='L'?'Co_Chan_L':'Co_Chan_R')!.getWorldPosition(serviceFeet[side]);model.worldToLocal(serviceFeet[side]);}
+        hip.position.y=hipY-.018-service.bend*.28;
+        hip.position.z=hipBeforeZ+(.10+service.bend*.15)*weight;
+        turn('Than',.16+service.bend*1.1);turn('Dau',-.06+service.bend*.15);
+        for(const side of ['L','R'] as const){const sign=side==='L'?1:-1;
+          reachHand(side,point.set((service.handX+sign*.18)/(1.3*1.08),service.handY/1.3+.025,service.handZ/(1.3*1.10)));
+          reachHand(side,serviceFeet[side],true);
+        }return;
+      }
+      if(pose==='cook'){
+        const stir=reduced?0:elapsed*4;turn('Than',.12);turn('Dau',.16);
+        reachHand('L',point.set(.14,.72,.25));reachHand('R',point.set(-.08+Math.sin(stir)*.035,.78,.29+Math.cos(stir)*.035));return;
+      }
       if (pose === 'bow') sampleBow(bowElapsed ?? elapsed,bowMode ?? (seated?'cushion':'standing'),bow);
       const kneel = seated ? 1 : pose === 'bow' ? bow.kneel : 0;
       if (kneel) {

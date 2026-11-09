@@ -15,3 +15,39 @@ export function taperTube(points:[number,number,number][],radii:number[],sides=7
   for(let i=0;i<points.length-1;i++)for(let j=0;j<sides;j++){const a=i*sides+j,b=i*sides+(j+1)%sides,c=a+sides,d=b+sides;indices.push(a,b,c,b,d,c)}
   for(let j=1;j<sides-1;j++){indices.push(0,j+1,j);const n=(points.length-1)*sides;indices.push(n,n+j,n+j+1)}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setIndex(indices);g.computeVertexNormals();return g;
 }
+
+export function barkTube(points:[number,number,number][],radii:number[],sides:number){
+  const source=taperTube(points,radii,sides),indices=source.index!;
+  const positions=source.getAttribute('position');
+  points.forEach(([x,y,z],ring)=>{
+    for(let side=0;side<sides;side++){
+      const vertex=ring*sides+side,angle=side/sides*Math.PI*2;
+      const flare=1+.13*Math.cos(angle*3+ring*.21)+.07*Math.sin(angle*2+.6);
+      positions.setXYZ(vertex,x+(positions.getX(vertex)-x)*flare,y+(positions.getY(vertex)-y)*flare,z+(positions.getZ(vertex)-z)*flare);
+    }
+  });
+  source.computeVertexNormals();
+  const geometry=source.toNonIndexed(),uv=new Float32Array(indices.count*2);
+  const tileLength=1.45,repeats=Math.max(1,Math.round(2*Math.PI*Math.max(...radii)/tileLength));
+  const along=[0],a=new THREE.Vector3(),b=new THREE.Vector3();
+  for(let ring=1;ring<points.length;ring++){
+    along.push(along[ring-1]+a.set(...points[ring-1]).distanceTo(b.set(...points[ring]))/tileLength);
+  }
+  const sideIndexCount=(points.length-1)*sides*6;
+  for(let i=0;i<indices.count;i++){
+    const vertex=indices.getX(i),column=vertex%sides;
+    if(i<sideIndexCount){
+      // The last face wraps back to column zero. Give its seam the next whole U repeat.
+      const seam=column===0&&Math.floor(i/6)%sides===sides-1;
+      uv[i*2]=(seam?sides:column)/sides*repeats;
+      uv[i*2+1]=along[Math.floor(vertex/sides)];
+    }else{
+      const angle=column/sides*Math.PI*2;
+      uv[i*2]=.5+.5*Math.cos(angle);
+      uv[i*2+1]=.5+.5*Math.sin(angle);
+    }
+  }
+  geometry.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  source.dispose();
+  return geometry;
+}

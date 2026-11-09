@@ -8,9 +8,11 @@ import {bodhiBarkGeometry,bodhiStoneGeometry,bodhiMetalGeometry,bodhiOfferingsGe
 import {BODHI,nearBodhiAltar} from './bodhiData';
 import {useGame} from './gameStore';
 import {useCameraOccluder} from './cameraObstruction';
-const barkMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96}),stoneMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.87}),metalMaterial=new THREE.MeshStandardMaterial({vertexColors:true,metalness:.55,roughness:.51}),fruitMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.8}),stickMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.9});
+import {useOutdoorSurface} from './materials';
+const stoneMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.87}),metalMaterial=new THREE.MeshStandardMaterial({vertexColors:true,metalness:.55,roughness:.51}),fruitMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.8}),stickMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.9});
 function IncenseSmoke({lit}:{lit:boolean}){return <AltarSmoke position={[0,1.4,BODHI.altarZ]} lit={lit}/>;}
 function BodhiTree({interactive=true}:{interactive?:boolean}){const crown=useRef<THREE.Mesh>(null);useCameraOccluder(crown);const offerings=useGame(s=>s.bodhiIncense),sticks=useRef<THREE.InstancedMesh>(null),lit=interactive?offerings>0:true;
+  const barkMaterial=useOutdoorSurface('bark');
   useLayoutEffect(()=>{if(!sticks.current)return;const object=new THREE.Object3D(),count=3+Math.min(offerings,9);sticks.current.count=count;for(let i=0;i<count;i++){const angle=i*2.399,r=.02+(i%3)*.025;object.position.set(Math.sin(angle)*r,1.08,BODHI.altarZ+Math.cos(angle)*r);object.rotation.set(Math.sin(i)*.07,0,Math.cos(i)*.07);object.updateMatrix();sticks.current.setMatrixAt(i,object.matrix)}sticks.current.instanceMatrix.needsUpdate=true;sticks.current.computeBoundingSphere()},[offerings]);
   const offer=()=>{const s=useGame.getState();if(!nearBodhiAltar(s.position)){s.stand();s.set({destination:[...BODHI.offeringPoint]});s.notify('Đến trước bàn thờ bồ đề để dâng hương.')}else s.perform('incense')};
   return <group name="Bo-de-tan-khoi" dispose={null}>

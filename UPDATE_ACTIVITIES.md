@@ -81,6 +81,10 @@ Kiểm chứng: 160 kiểm thử client + 8 server = 168/168 đạt; TypeScript 
 
 ## Kiểm chứng
 
+Tích hợp đồ họa và NPC ngày 09/11: main tại `3556bb9` chưa có cập nhật cảnh mới; nhận hai commit trên Dante-Update đến `950c79b` bằng merge giữ lịch sử. Giữ bố cục Maya, hồ/cầu/đảo mới, mái/cột/trần, vật liệu sân vườn, rừng trúc, đèn đêm và bầu trời của team; không thay thế các asset đó bằng phiên bản cũ. Giữ tượng đã có trên main cùng các chức năng LAN/đồ cúng, POS, điều khiển điện thoại, sách/trà và chuỗi bếp. Điểm đánh chuông/trống, thả đèn, cho cá ăn và kiểm thử lấy tọa độ từ bố cục mới. Bỏ các hitbox bồn hoa/đèn/tre cũ không còn khớp hình ảnh; phần tre mới tiếp tục cách hiển thị nhẹ của team. Sửa dấu đóng hàm bị thiếu trong fragment shader CourtyardSky, được phát hiện khi đổi ngày/đêm trên trình duyệt; đưa tường sân về biên mới z=76 để khớp cổng và collider, giữ khoảng lùi camera tại cổng mới.
+
+Toàn bộ NPC dùng cùng GLB chibi của người chơi; giữ nguyên màu áo theo dữ liệu từng NPC và vai trò đầu bếp/lễ tân. Cô An giữ mũ, tạp dề và động tác khuấy; hai NPC bếp dùng IK tay/chân theo chính khay đang di chuyển, chuyển tư thế mềm và giữ nguyên một khay xuyên suốt quy trình. Tỉ lệ NPC 1,3 để phù hợp chiều cao quầy hiện có; không sửa GLB người chơi. Vị trí khay ở mép quầy được căn lại trong mặt bàn cho tầm với của model mới. 168 kiểm thử client + 8 server = 176/176 đạt; bao gồm giải mã model thật, tay giữ khay trong sai số 2 cm và giữ cổ chân trong sai số 1,2 cm khi cúi. Production build đạt; đã chạy gọi món đến khi món nằm trên bàn bằng giao diện game. Kiểm thử viewport không thay thế QA cảm ứng/FPS trên điện thoại thật.
+
 Cập nhật theo ảnh kiểm thử điện thoại ngày 09/11: danh mục sách bỏ chiều rộng bìa cố định gây lấn mô tả, giữ hai cột co được ở màn hình 320–390 px và dùng biểu tượng hoa SVG để tránh emoji xanh trên iOS. Hướng dâng hương Trúc Lâm nay nhắm đúng tâm lư của thiền đường thay vì lư chánh điện. Khói dùng hai luồng hạt uốn, tăng độ rõ và giữ hình khói tĩnh khi thiết bị yêu cầu giảm chuyển động; vẫn một draw call mỗi lư, không tải texture khói. Lan can cầu sang Quan Âm dừng ở mép đảo, chừa phần đáp cầu để rẽ; hình ảnh, collider Rapier và tìm đường dùng cùng điểm kết thúc. Hai ảnh POS do chủ dự án gửi được đặt thành texture riêng: ảnh quản lý phía Cô Tâm, ảnh check-in phía khách. 162 kiểm thử client + 8 server = 170/170 đạt; có kiểm tra capsule Rapier rẽ qua đầu lan can cũ và hướng nhìn vào đúng lư từ ba phía. Production build đạt. Đã xem danh mục sách ở 390 × 640 và 320 × 568, dâng hương thành công qua LAN và không ghi nhận lỗi JavaScript; chưa xác nhận lại trên Safari thiết bị thật.
 
 - TypeScript và production build đạt.
@@ -99,7 +103,7 @@ npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 162 kiểm thử client và 8 kiểm thử server (tổng 170); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 168 kiểm thử client và 8 kiểm thử server (tổng 176); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 

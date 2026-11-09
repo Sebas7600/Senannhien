@@ -45,6 +45,7 @@ function WateringCan({flow}: {flow:boolean}) {
 }
 
 export function ChibiHandProp({pose,dish}: {pose:string;dish?:DishId}) {
+  if(pose==='cook')return <group><mesh position={[0,.2,0]}><cylinderGeometry args={[.009,.012,.4,8]}/><meshStandardMaterial color="#876746"/></mesh><mesh position={[0,.42,0]} scale={[.055,.014,.07]}><sphereGeometry args={[1,10,6]}/><meshStandardMaterial color="#b8b5a0" metalness={.4}/></mesh></group>;
   if(pose==='drum')return <group><mesh position={[0,.38,0]}><cylinderGeometry args={[.017,.021,.76,8]}/><meshStandardMaterial color="#795133"/></mesh><mesh position={[0,.83,0]}><sphereGeometry args={[.075,12,8]}/><meshStandardMaterial color="#b45939" roughness={.95}/></mesh></group>;
   if (pose === 'incense') return <mesh position={[0,.104,.082]}>
     <cylinderGeometry args={[.005,.006,.22,6]}/><meshStandardMaterial color="#93613d"/>
