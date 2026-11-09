@@ -5,11 +5,44 @@ import {mkdir,writeFile,unlink} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {createGameServer} from '../server-runtime.mjs';
 import {feedStations,QUAN_AM_SPOT,ISLAND} from '../src/pondScene.mjs';
+import {HALL_INCENSE} from '../src/ritualStations.mjs';
+import {allowedBrowserOrigin} from '../server-origin.mjs';
 function stream(base,id,room='an-nhien'){
   let state={peers:[],messages:[]},request,buffer='',listeners=[];
   const opened=new Promise((resolve,reject)=>{request=http.get(`${base}/api/events?id=${id}&room=${room}`,res=>{assert.equal(res.statusCode,200);res.setEncoding('utf8');res.on('data',chunk=>{buffer+=chunk;let i;while((i=buffer.indexOf('\n\n'))>=0){const frame=buffer.slice(0,i);buffer=buffer.slice(i+2);const data=frame.split('\n').find(l=>l.startsWith('data: '));if(data){state=JSON.parse(data.slice(6));resolve();listeners.forEach(fn=>fn());}}});res.on('error',()=>{})});request.on('error',reject)});
   return {opened,get state(){return state},close(){request.destroy()},wait(predicate){if(predicate(state))return Promise.resolve();return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('snapshot timeout')),3000);const fn=()=>{if(predicate(state)){clearTimeout(timer);listeners=listeners.filter(f=>f!==fn);resolve();}};listeners.push(fn);})}};
 }
+
+test('same-origin LAN Safari requests work without accepting unrelated sites or malformed origins',()=>{
+  assert.equal(allowedBrowserOrigin('http://192.168.1.20:5174','192.168.1.20:5174'),true);
+  assert.equal(allowedBrowserOrigin('http://localhost:5175','127.0.0.1:5174'),true);
+  for(const origin of ['null','https://evil.example','http://192.168.1.20:9999','http://user@192.168.1.20:5174','http://192.168.1.20:5174/path'])assert.equal(allowedBrowserOrigin(origin,'192.168.1.20:5174'),false,origin);
+});
+
+test('LAN Origin covers player state, all offerings, hall/Quan Am incense, koi, chat and the complete garden cycle',async()=>{
+  let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+  const base='http://127.0.0.1:'+server.address().port,authority='192.168.1.20:'+server.address().port,id='lan_player_test',client=stream(base,id);
+  const post=(route,data,origin='http://'+authority)=>new Promise((resolve,reject)=>{
+    const req=http.request(base+route,{method:'POST',headers:{Host:authority,Origin:origin,'Content-Type':'application/json'}},res=>{let text='';res.on('data',chunk=>text+=chunk);res.on('end',()=>resolve({status:res.statusCode,data:JSON.parse(text)}));});req.on('error',reject);req.end(JSON.stringify({id,room:'an-nhien',...data}));
+  });
+  try{
+    await client.opened;
+    for(const route of ['/api/state','/api/chat','/api/offerings','/api/garden'])assert.equal((await post(route,{},'https://evil.example')).status,403);
+    const feed=feedStations[0],offers=[['incense',undefined,[0,-7.1]],['flower','flower-table-1',[-3.7,-28]],['candle','candle-table-2',[4.7,-28]],['incense',HALL_INCENSE.id,HALL_INCENSE.spot],['incense','quan-am',QUAN_AM_SPOT],['feed',feed.id,feed.spot]];
+    for(const [i,[kind,station,position]]of offers.entries()){
+      assert.equal((await post('/api/state',{x:position[0],z:position[1],action:kind})).status,200);
+      clock+=3000;const operation='lan_offering_'+i;
+      assert.equal((await post('/api/offerings',{kind,station,operation})).status,200,kind+' / '+station);
+      assert.equal((await post('/api/offerings',{kind,station,operation})).status,200,'A lost response must not duplicate an offering.');
+    }
+    await client.wait(s=>s.offerings.length===6);assert.equal(client.state.offerings.length,6);assert.equal(client.state.offerings.filter(o=>o.station===HALL_INCENSE.id).length,1);
+    assert.equal((await post('/api/chat',{text:'Kiểm tra sân chùa qua LAN'})).status,200);
+    await post('/api/state',{x:31,z:-53});
+    for(const [revision,action]of ['plant','water','harvest'].entries()){if(action==='harvest')clock+=60001;assert.equal((await post('/api/garden',{plot:'plot-0',revision,action,operation:'lan_garden_'+revision})).status,200);}
+    await client.wait(s=>s.plots?.['plot-0']?.harvested===true);assert.equal(client.state.plots['plot-0'].harvested,true);
+    assert.equal((await post('/api/state',{x:19,z:-10.9,action:'drum'})).status,200);await client.wait(s=>s.peers.some(p=>p.id===id&&p.action==='drum'));
+  }finally{client.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
 test('shared courtyard: live positions, room separation, exclusive seats and chat delivery',async()=>{
   const server=createGameServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;const all=[];
   const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return {status:res.status,data:await res.json()}};

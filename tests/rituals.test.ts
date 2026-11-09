@@ -19,7 +19,7 @@ test('20 individual reading desks and 10 tables with two opposing tea cushions h
 });
 
 test('tea, reading and chanting complete the selected action on arrival without a second start button',()=>{
-  for(const [activity,kind,panel] of [['tea','tea','teaMoment'],['read','reading','library'],['chant','cushion','chantMoment']] as const){
+  for(const [activity,kind,panel] of [['tea','tea',null],['read','reading','library'],['chant','cushion','chantMoment']] as const){
     useGame.setState({...defaults,position:[0,22]},true);useGame.getState().perform(activity);const pending=useGame.getState().pendingSeat!;assert.ok(pending);assert.equal(seats.find(c=>c.id===pending)?.kind,kind);useGame.getState().arriveSeat(pending);assert.equal(useGame.getState().panel,panel);assert.equal(useGame.getState().action,activity);useGame.getState().closePanel();assert.equal(useGame.getState().seated,pending);assert.equal(useGame.getState().action,activity==='read'?'read':'sit');
   }
 });
@@ -36,7 +36,7 @@ test('meal service walks around furniture to every table, using distance-based d
 
 test('bell waits for the full decaying swing and does not interrupt another open panel',()=>{
   let now=Date.now();const original=Date.now;Date.now=()=>now;
-  try{useGame.setState({position:[-19,-9]});useGame.getState().perform('bell');assert.equal(useGame.getState().panel,null);const at=now;assert.equal(bellAngle(0),0);assert.ok(Math.abs(bellAngle(250))>.01);assert.equal(bellAngle(BELL_DURATION),0);now=at+BELL_DURATION-1;useGame.getState().tick();assert.equal(useGame.getState().panel,null);useGame.setState({panel:'bag'});now++;useGame.getState().tick();assert.equal(useGame.getState().panel,'bag');useGame.getState().closePanel();useGame.getState().tick();assert.equal(useGame.getState().panel,'bellMoment');useGame.getState().closePanel();useGame.getState().tick();assert.equal(useGame.getState().panel,null);}finally{Date.now=original}
+  try{useGame.setState({position:[-19,-9]});useGame.getState().perform('bell');assert.equal(useGame.getState().panel,null);const at=now;assert.equal(bellAngle(0),0);assert.ok(Math.abs(bellAngle(250))>.01);assert.equal(bellAngle(BELL_DURATION),0);now=at+BELL_DURATION-1;useGame.getState().tick();assert.equal(useGame.getState().panel,null);useGame.setState({panel:'bag'});now++;useGame.getState().tick();assert.equal(useGame.getState().panel,'bag');useGame.getState().closePanel();useGame.getState().tick();assert.equal(useGame.getState().panel,null);useGame.getState().closePanel();useGame.getState().tick();assert.equal(useGame.getState().panel,null);}finally{Date.now=original}
 });
 
 test('wishes require the station, consume once, rise from the pond and reveal only at flight height',()=>{

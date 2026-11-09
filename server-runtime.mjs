@@ -1,3 +1,5 @@
+import {HALL_INCENSE} from './src/ritualStations.mjs';
+import {allowedBrowserOrigin} from './server-origin.mjs';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -29,13 +31,13 @@ export function createGameServer({now=Date.now}={}){
         req.on('close',()=>{if(room.streams.get(id)===res){room.streams.delete(id);room.peers.delete(id);room.lastChat.delete(id);emit(room)}});return;
       }
       if(pathname.startsWith('/api/')&&req.method==='POST'){
-        const origin=req.headers.origin;if(origin){const parsed=new URL(origin);if(!['127.0.0.1','localhost'].includes(parsed.hostname)){json(res,403,{error:'local origin required'});return;}}
+        if(!allowedBrowserOrigin(req.headers.origin,req.headers.host)){json(res,403,{error:'same origin required'});return;}
         const b=await body(req);if(!allowedRooms.has(b.room)||!validId(b.id)){json(res,400,{error:'invalid player'});return;}
         const room=roomFor(b.room),peer=room.peers.get(b.id);if(!peer){json(res,409,{error:'connect to room first'});return;}
         if(pathname==='/api/state'){
           const finite=(n,min,max,fallback)=>typeof n==='number'&&Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
           const seat=typeof b.seat==='string'&&b.seat.length<40&&!([...room.peers.values()].some(p=>p.id!==b.id&&p.seat===b.seat))?b.seat:null;
-          const actions=['drawWater','carryWater','pourWater','plant','water','harvest','feed','flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok','read','tea'];
+          const actions=['drum','drawWater','carryWater','pourWater','plant','water','harvest','feed','flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok','read','tea'];
           // Relative elapsed time avoids trusting clocks on different players' devices.
           const bow=b.action==='bow'&&b.bow&&Number.isFinite(b.bow.at)&&Number.isFinite(b.bow.elapsed)
             ? {at:peer.action==='bow'&&peer.bowToken===b.bow.at&&peer.bow?peer.bow.at:now()-finite(b.bow.elapsed,0,6000,0),mode:seat?'cushion':'standing'}:null;
@@ -62,7 +64,7 @@ export function createGameServer({now=Date.now}={}){
           if(!validId(b.operation)||!['incense','flower','candle','feed'].includes(b.kind)){json(res,400,{error:'invalid offering'});return;}
           const key=b.id+':'+b.operation;
           if(room.operations.has(key)){json(res,200,{ok:true});return;}
-          let spot=[0,-8.7],target;if(b.kind==='incense'&&b.station){if(b.station!=='quan-am'){json(res,400,{error:'invalid station'});return;}spot=QUAN_AM_SPOT;}
+          let spot=[0,-8.7],target;if(b.kind==='incense'&&b.station){if(!['quan-am',HALL_INCENSE.id].includes(b.station)){json(res,400,{error:'invalid station'});return;}spot=b.station===HALL_INCENSE.id?HALL_INCENSE.spot:QUAN_AM_SPOT;}
           if(b.kind==='feed'){
             const station=feedStations.find(s=>s.id===b.station);if(!station){json(res,400,{error:'invalid station'});return;}if(!canFeedFrom([peer.x,peer.z],station)){json(res,409,{error:'approach an unobstructed pond edge'});return;}spot=station.spot;target=station.target;
           }

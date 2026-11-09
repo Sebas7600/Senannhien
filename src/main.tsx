@@ -17,3 +17,5 @@ import './rituals.css';
 import './mobile.css';
 
 import './water-task.css';
+
+import './mobile-actions.css';

@@ -1,3 +1,4 @@
+import {useGame} from './gameStore';
 import {useEffect,useMemo,useRef,type ComponentType} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
@@ -31,9 +32,9 @@ const ink=new THREE.MeshStandardMaterial({color:'#59624a',roughness:1});
 /** Hội An silhouette: ribbed silk shade, narrow collars and a hanging tassel. */
 export function HoiAnLantern({variant=0}:{variant?:number}){
   const material=useMemo(()=>new THREE.MeshStandardMaterial({color:colors[Math.abs(variant)%colors.length],emissive:'#ffd68b',emissiveIntensity:.4,roughness:.78,side:THREE.FrontSide,transparent:true,opacity:.72,depthWrite:false,forceSinglePass:true}),[variant]);
-  const reduced=useReducedMotion();
+  const reduced=useReducedMotion(),night=useGame(s=>s.night);
   useEffect(()=>()=>material.dispose(),[material]);
-  useFrame(({clock})=>{material.emissiveIntensity=.40*flameFlicker(clock.elapsedTime,variant+2,reduced)});
+  useFrame(({clock})=>{material.emissiveIntensity=(night?1.1:.40)*flameFlicker(clock.elapsedTime,variant+2,reduced)});
   return <group dispose={null}>
   <mesh geometry={silkGeometry} material={material}/>
   <mesh geometry={ribsGeometry} material={bamboo}/><mesh geometry={fixtureGeometry} material={bamboo}/>

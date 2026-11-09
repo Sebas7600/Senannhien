@@ -1,3 +1,4 @@
+import HallIncense from './HallIncense';
 import CourtyardCollision from './CourtyardCollision';
 import TempleGarden from './TempleGarden';
 import MainTempleReference from './MainTempleReference';
@@ -39,7 +40,8 @@ export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string
 }export function NearbyOverlay({position,children,distanceFactor=12,maxDistance=24}:{position:Vec3;children:React.ReactNode;distanceFactor?:number;maxDistance?:number}){
   const ref=useRef<THREE.Group>(null),point=useRef(new THREE.Vector3()),previous=useRef(false);const[shown,show]=useState(false);
   useFrame(()=>{if(!ref.current)return;ref.current.getWorldPosition(point.current);const p=useGame.getState().position,visible=Math.hypot(p[0]-point.current.x,p[1]-point.current.z)<maxDistance;if(visible!==previous.current){previous.current=visible;show(visible)}});
-  return <group ref={ref} position={position}>{shown&&<Html center distanceFactor={distanceFactor} zIndexRange={[3,0]}>{children}</Html>}</group>;
+  const screenLabel=typeof window!=='undefined'&&(window.matchMedia?.('(pointer:coarse)')?.matches||window.innerWidth<=760);
+  return <group ref={ref} position={position}>{shown&&<Html center distanceFactor={screenLabel?undefined:distanceFactor} zIndexRange={[3,0]}>{children}</Html>}</group>;
 }function RoofSection({x,z,w,d,children}:{x:number;z:number;w:number;d:number;children:React.ReactNode}){const ref=useRef<THREE.Group>(null);useFrame(()=>{if(!ref.current)return;const s=useGame.getState();ref.current.visible=!(Math.abs(s.position[0]-x)<w/2+1&&Math.abs(s.position[1]-z)<d/2+2)});return <group ref={ref}>{children}</group>}
 function WalkSurface(){const click=(e:ThreeEvent<MouseEvent>)=>{if(e.delta>5)return;e.stopPropagation();const s=useGame.getState();s.stand();s.set({destination:[e.point.x,e.point.z],pendingSeat:null});};return <mesh position={[0,.065,0]} rotation={[-Math.PI/2,0,0]} onClick={click}><planeGeometry args={[124,132]}/><meshBasicMaterial transparent opacity={0} depthWrite={false}/></mesh>}
 export function Ground(){return <group><IncenseBurner/>
@@ -100,12 +102,12 @@ function MeditationHall(){return <Pavilion x={-33} z={-17} w={20} d={16} title="
 </Pavilion>}
 function Gate(){return <ImportedGate/>}
 function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
-  return <group position={[x,0,-13]} onClick={e=>{if(!drum){e.stopPropagation();useGame.getState().perform('bell')}}}>
+  return <group position={[x,0,-13]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().perform(drum?'drum':'bell')}}>
     <Box position={[0,.2,0]} scale={[5,.4,5]} color="#b4b598"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*1.8,2.2,t*1.8]} scale={[.25,4,.25]} color="#815538"/>))}
     <RoofSection x={x} z={-13} w={5} d={5}><Roof y={4.3} width={6.7} depth={6.5} height={1.6}/></RoofSection>
     {drum?<ImportedDrum/>:<ImportedBell/>}
-    <WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'Nhịp chậm ngày an':'E · Thỉnh một tiếng chuông'}/>
+    <WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'E · Đánh ba tiếng trống':'E · Thỉnh một tiếng chuông'}/>
   </group>
 }
 function Stupa(){return <group position={[-35,0,42]}><Box position={[0,.3,0]} scale={[9,.6,9]} color="#b8b297"/>{Array.from({length:7},(_,i)=><group key={i} position={[0,i*1.85+.6,0]}><Box position={[0,.65,0]} scale={[5.7-i*.5,1.4,5.7-i*.5]} color="#c1ac82"/>{[-1,1].map(s=><Box key={s} position={[0,.73,s*(2.9-i*.25)]} scale={[.55,.85,.05]} color="#726348"/>)}<Roof y={1.3} width={7.4-i*.65} depth={7.4-i*.65} height={.75}/></group>)}<mesh position={[0,14.2,0]}><coneGeometry args={[.35,2,8]}/><meshStandardMaterial color="#c2a268"/></mesh><WorldLabel position={[0,2,5]} title="BẢO THÁP AN LẠC" subtitle="Bảy tầng tĩnh lặng"/></group>}
@@ -199,5 +201,5 @@ function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/
   {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><HallIncense/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);

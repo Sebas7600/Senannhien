@@ -2,6 +2,7 @@ import {OFFERING_DURATION} from './gameData';
 import {Euler, Quaternion, Vector3, type Object3D} from 'three';
 import {sampleBow, type BowFrame, type BowMode} from './bowTimeline';
 import {createQuietActivityFrame,sampleQuietActivity} from './quietActivityMotion';
+import {drumStroke} from './drumMotion';
 
 const joints = ['Hong','Than','Dau','Vai_L','Vai_R','Khuyu_L','Khuyu_R','Dui_L','Dui_R','Goi_L','Goi_R','Co_Chan_L','Co_Chan_R'] as const;
 type Joint = typeof joints[number];
@@ -79,6 +80,7 @@ export function createChibiPose(model: Object3D) {
 
   return {
     quiet,
+    get drumStrike(){return drumStroke(elapsed*1000);},
     get mealLift() { return mealLift; },
     restore() {
       if (!weight) return;
@@ -133,6 +135,16 @@ export function createChibiPose(model: Object3D) {
         }
       }
 
+      if(pose==='carryWater'||pose==='pourWater'){
+        turn('Than',pose==='pourWater'?.17:.025);
+        reachHand('R',point.set(-.145,pose==='pourWater'?.91:.84,.22));
+        reachHand('L',point.set(.16,.52,.15));return;
+      }
+      if(pose==='drum'){
+        const strike=drumStroke(elapsed*1000);turn('Than',.035+strike*.08);turn('Dau',.06);
+        reachHand('R',point.set(-.10+strike*.07,.75,.25+strike*.02));
+        reachHand('L',point.set(.055,.67,.29+strike*.10));return;
+      }
       if (pose === 'tea') {
         turn('Than',.035);
         turn('Dau',.10-.08*quiet.sip);

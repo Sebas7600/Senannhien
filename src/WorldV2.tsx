@@ -1,3 +1,7 @@
+import AltarSmoke from './AltarSmoke';
+import {HALL_INCENSE} from './ritualStations.mjs';
+import {DRUM_APPROACH} from './drumMotion';
+import {TouchLookGesture,touchLookDelta} from './touchLook';
 import {followAfterObstruction,DEFAULT_FOLLOW_DISTANCE} from './cameraFollow';
 import {cameraSafeDistance} from './cameraCollision';
 import PlayerAvatar from './PlayerAvatar';
@@ -12,7 +16,7 @@ import {INCENSE_ASH_Y} from './IncenseBurner';
 import IncenseSticks from './IncenseSticks';
 import { Suspense, memo, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls, PerspectiveCamera, Environment, Lightformer } from '@react-three/drei';
 import { Physics, RigidBody, CapsuleCollider, CuboidCollider, useRapier, type RapierRigidBody } from '@react-three/rapier';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
@@ -34,14 +38,26 @@ import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS,MEAL_SCALE,cr
 import {ServingMeal} from './Food';
 
 
-function interact(){const s=useGame.getState();if(['incense','flower','candle'].includes(s.action))return;if(nearQuanAm(s.position)){s.perform('incense',QUAN_AM.incenseId);return;}if(nearDonationChest(s.position)){visitDonationChest();return;}const offeringTargets=(['flower','candle'] as const).map(kind=>nearestOfferingStation(kind,s.position,s.offeringFocus)).sort((a,b)=>a.id===s.offeringFocus?-1:b.id===s.offeringFocus?1:distance(s.position,a.spot)-distance(s.position,b.spot));for(const station of offeringTargets)if(distance(s.position,station.spot)<=OFFERING_RANGE){s.perform(station.kind,station.id);return;}if(distance(s.position,incenseSpot)<=INCENSE_RANGE){s.perform('incense');return;}if(nearBodhiAltar(s.position)){s.perform('incense');return;}if(s.seated){s.stand();return;}const waterJar=nearestWaterJar(s.position,s.waterJars);if(s.waterQuest?.phase==='drawing'||s.waterQuest?.phase==='pouring')return;if(s.waterQuest?.phase==='carrying'&&waterJar&&nearWaterJar(s.position,waterJar.id)){s.waterTask(waterJar.id);return;}if(!s.waterQuest&&nearWaterWell(s.position)){s.waterTask();return;}if(nearGate(s.position)){toggleTempleGate();return;}const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot){s.garden(plot.id);return;}const npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&(n.id!=='chef'||!s.meal||chefPhase(s.meal,Date.now())==='idle')&&Math.hypot(n.x-s.position[0],n.z-s.position[1])<3);if(npc){s.set({npc:npc.id,panel:'dialogue'});return;}const seat=nearestSeat(s.position);if(seat&&distance(s.position,[seat.position[0],seat.position[2]])<2.5){s.sit(seat.id);return;}const p=s.position;if(distance(p,nearestFeedStation(p).spot)<2.5){s.perform('feed');return;}if(distance(p,[-19,-9])<7){s.perform('bell');return;}if(distance(p,WISH_STATION)<10){s.perform('lantern');return;}if(distance(p,[0,-24])<14){s.perform('incense');return;}s.sit();}
+function interact(){const s=useGame.getState();if(['incense','flower','candle'].includes(s.action))return;if(distance(s.position,HALL_INCENSE.spot)<=HALL_INCENSE.range){s.perform('incense',HALL_INCENSE.id);return;}if(distance(s.position,DRUM_APPROACH)<3){s.perform('drum');return;}if(nearQuanAm(s.position)){s.perform('incense',QUAN_AM.incenseId);return;}if(nearDonationChest(s.position)){visitDonationChest();return;}const offeringTargets=(['flower','candle'] as const).map(kind=>nearestOfferingStation(kind,s.position,s.offeringFocus)).sort((a,b)=>a.id===s.offeringFocus?-1:b.id===s.offeringFocus?1:distance(s.position,a.spot)-distance(s.position,b.spot));for(const station of offeringTargets)if(distance(s.position,station.spot)<=OFFERING_RANGE){s.perform(station.kind,station.id);return;}if(distance(s.position,incenseSpot)<=INCENSE_RANGE){s.perform('incense');return;}if(nearBodhiAltar(s.position)){s.perform('incense');return;}if(s.seated){s.stand();return;}const waterJar=nearestWaterJar(s.position,s.waterJars);if(s.waterQuest?.phase==='drawing'||s.waterQuest?.phase==='pouring')return;if(s.waterQuest?.phase==='carrying'&&waterJar&&nearWaterJar(s.position,waterJar.id)){s.waterTask(waterJar.id);return;}if(!s.waterQuest&&nearWaterWell(s.position)){s.waterTask();return;}if(nearGate(s.position)){toggleTempleGate();return;}const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot){s.garden(plot.id);return;}const npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&(n.id!=='chef'||!s.meal||chefPhase(s.meal,Date.now())==='idle')&&Math.hypot(n.x-s.position[0],n.z-s.position[1])<3);if(npc){s.set({npc:npc.id,panel:'dialogue'});return;}const seat=nearestSeat(s.position);if(seat&&distance(s.position,[seat.position[0],seat.position[2]])<2.5){s.sit(seat.id);return;}const p=s.position;if(distance(p,nearestFeedStation(p).spot)<2.5){s.perform('feed');return;}if(distance(p,[-19,-9])<7){s.perform('bell');return;}if(distance(p,WISH_STATION)<10){s.perform('lantern');return;}if(distance(p,[0,-24])<14){s.perform('incense');return;}s.sit();}
 function Keyboard(){useEffect(()=>{const down=(e:KeyboardEvent)=>{if((e.target as HTMLElement).matches('input,textarea,select')||e.ctrlKey||e.metaKey)return;const k=e.key.toLowerCase(),s=useGame.getState();if(k==='escape'){if(s.panel){s.closePanel();return;}if(s.waterQuest){s.cancelWaterTask();return;}if(s.pendingActivity==='carryWater'){s.stand();return;}if(s.seated)s.stand();else s.set({action:'walk'});return;}if(s.panel||!s.characterConfigured)return;
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','q','c',' '].includes(k)){e.preventDefault();keys.add(k)}
   if(e.repeat)return;if(k==='e')interact();if(k==='m')s.set({panel:'map'});if(k==='b')s.set({panel:'bag'});if(k==='v')s.set({camera:s.camera==='follow'?'overview':'follow'});if(k==='f')s.set({cameraReset:s.cameraReset+1});if(k==='h')s.set({panel:'help'});
 };const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());const clear=()=>{keys.clear();joy.x=0;joy.y=0};const joystick=(e:Event)=>{Object.assign(joy,(e as CustomEvent).detail)};window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);window.addEventListener('sen-joystick',joystick);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);window.removeEventListener('sen-joystick',joystick)}},[]);return null;}
 const malaCameraAngles=[.72,-.72,1.38,-1.38];
+function TouchCameraInput(){
+  const {gl}=useThree();
+  useEffect(()=>{
+    const canvas=gl.domElement,gesture=new TouchLookGesture();
+    const down=(e:PointerEvent)=>{const s=useGame.getState();if(e.pointerType!=='touch'||s.panel||!s.characterConfigured)return;if(gesture.begin(e.pointerId,e.clientX,e.clientY))canvas.setPointerCapture(e.pointerId);};
+    const move=(e:PointerEvent)=>{const delta=gesture.move(e.pointerId,e.clientX,e.clientY);if(delta){touchLookDelta.yaw+=delta.yaw;touchLookDelta.pitch+=delta.pitch;}};
+    const up=(e:PointerEvent)=>gesture.end(e.pointerId);
+    const clear=()=>{gesture.clear();touchLookDelta.yaw=touchLookDelta.pitch=0;};
+    canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('lostpointercapture',up);window.addEventListener('blur',clear);
+    return()=>{canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('lostpointercapture',up);window.removeEventListener('blur',clear);clear();};
+  },[gl]);return null;
+}
 function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>new rapier.Ball(.23),[rapier]);const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1);const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(DEFAULT_FOLLOW_DISTANCE),lastDistance=useRef(DEFAULT_FOLLOW_DISTANCE);
-  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3());
+  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3()),lastZoom=useRef(6.5),sphere=useRef(new THREE.Spherical());
   useFrame(({camera},dt)=>{
     if(!controls.current)return;
     const s=useGame.getState(),target=offsetTarget.current;
@@ -60,7 +76,7 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
     if(cameraReset||lastMalaFocus.current!==malaFocus){
       const heading=playerMotion.object?playerMotion.heading:s.heading;
       const direction=heading+Math.PI;
-      offset.current.set(Math.sin(direction)*6.15,2.10,Math.cos(direction)*6.15).setLength(DEFAULT_FOLLOW_DISTANCE);
+      offset.current.set(Math.sin(direction)*6.15,2.10,Math.cos(direction)*6.15).setLength(s.cameraZoom);
       if(mode==='overview')offset.current.set(52,88,100);
       if(lanternFocus)offset.current.set(-11,5.5,13);
       if(malaFocus){
@@ -88,6 +104,15 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
     }
     const delta=deltaTarget.current.copy(target).sub(lastTarget.current);if(mode==='follow'&&!lanternFocus&&!malaFocus)followAfterObstruction(camera.position,lastTarget.current,target,requestedDistance.current);else camera.position.add(delta);controls.current.target.copy(target);lastTarget.current.copy(target);
     if(keys.has('q')||keys.has('c')){offset.current.copy(camera.position).sub(target).applyAxisAngle(new THREE.Vector3(0,1,0),(keys.has('q')?1:-1)*dt);camera.position.copy(target).add(offset.current)}
+    if(mode==='follow'&&!lanternFocus&&!malaFocus){
+      if(s.cameraZoom!==lastZoom.current){lastZoom.current=s.cameraZoom;requestedDistance.current=s.cameraZoom;offset.current.copy(camera.position).sub(target).setLength(s.cameraZoom);camera.position.copy(target).add(offset.current);}
+      if(!s.panel&&(touchLookDelta.yaw||touchLookDelta.pitch)){
+        sphere.current.setFromVector3(offset.current.copy(camera.position).sub(target));
+        sphere.current.theta+=touchLookDelta.yaw;sphere.current.phi=THREE.MathUtils.clamp(sphere.current.phi+touchLookDelta.pitch,.25,Math.PI/2.12);
+        camera.position.copy(target).add(offset.current.setFromSpherical(sphere.current));
+      }
+    }
+    touchLookDelta.yaw=touchLookDelta.pitch=0;
     const beforeInputDistance=camera.position.distanceTo(target);
     controls.current.update();
     if(mode!=='overview'&&!lanternFocus){
@@ -99,7 +124,7 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
       lastDistance.current=camera.position.distanceTo(target);
     }
   },0);
-  return <OrbitControls ref={controls} target={[0,1.2,22]} enablePan={false} minDistance={mode==='overview'?35:.05} maxDistance={mode==='overview'?170:35} minPolarAngle={.25} maxPolarAngle={Math.PI/2.12} enableDamping dampingFactor={.08} mouseButtons={{LEFT:undefined as unknown as THREE.MOUSE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE}} touches={{ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN}}/>;
+  return <OrbitControls ref={controls} target={[0,1.2,22]} enablePan={false} minDistance={mode==='overview'?35:.05} maxDistance={mode==='overview'?170:35} minPolarAngle={.25} maxPolarAngle={Math.PI/2.12} enableDamping dampingFactor={.08} mouseButtons={{LEFT:undefined as unknown as THREE.MOUSE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE}} touches={{ONE:undefined as unknown as THREE.TOUCH,TWO:undefined as unknown as THREE.TOUCH}}/>;
 }
 function RemoteAvatar({peer}:{peer:Peer}){
   const [moving,setMoving]=useState(false),movingRef=useRef(false);
@@ -152,17 +177,17 @@ function Villager({n}:{n:typeof npcs[number]}){
 }
 function Villagers(){return <>{npcs.map(n=><Villager key={n.id} n={n}/>)}</>}
 
-function OfferingEffects(){const allBurning=useGame(s=>s.burningIncense),slots=useGame(s=>s.offeringSlots),burning=allBurning.filter(at=>slots[at]!==QUAN_AM.incenseId);useGame(s=>s.sessionSeconds);const active=burning.filter(at=>Date.now()-at<INCENSE_BURN_MS);const ref=useRef<THREE.Group>(null);useFrame(({clock})=>ref.current?.children.forEach((m,i)=>{const t=(clock.elapsedTime*.2+i*.17)%1;m.position.set(Math.sin(t*8+i)*.18,.4+t*1.5,0);m.scale.setScalar(.03+t*.07)}));return <group>
-  {burning.length>0&&<IncenseSticks times={burning} heightScale={.85} thicknessScale={.75}/>}
-  {active.length>0&&<group position={[incenseSpot[0],INCENSE_ASH_Y,incenseSpot[1]]} ref={ref}>{Array.from({length:8},(_,i)=><mesh key={i}><sphereGeometry args={[1,6,6]}/><meshBasicMaterial transparent opacity={.15} color="#ede8d0" depthWrite={false}/></mesh>)}</group>}
-  <FishFood/>
-</group>}
+function OfferingEffects(){
+  const all=useGame(s=>s.burningIncense),slots=useGame(s=>s.offeringSlots);useGame(s=>s.sessionSeconds);
+  const burning=all.filter(at=>slots[at]!==QUAN_AM.incenseId&&slots[at]!==HALL_INCENSE.id),lit=burning.some(at=>Date.now()-at<INCENSE_BURN_MS);
+  return <group>{burning.length>0&&<IncenseSticks times={burning} heightScale={.85} thicknessScale={.75}/>}<AltarSmoke position={[incenseSpot[0],INCENSE_ASH_Y+.4,incenseSpot[1]]} lit={lit}/><FishFood/></group>;
+}
 function FrameMetrics(){const samples=useRef<number[]>([]),elapsed=useRef(0);useFrame((_,dt)=>{samples.current.push(dt*1000);elapsed.current+=dt;if(elapsed.current>=2){const sorted=samples.current.slice().sort((a,b)=>a-b);performanceStats.fps=Math.round(samples.current.length/elapsed.current);performanceStats.p95=Math.round(sorted[Math.floor(sorted.length*.95)]||0);performanceStats.frames+=samples.current.length;document.documentElement.dataset.performance=JSON.stringify(performanceStats);samples.current=[];elapsed.current=0}});return null;}
 function SceneReady(){useEffect(()=>{document.documentElement.dataset.scene='ready';return()=>{delete document.documentElement.dataset.scene}},[]);return null;}
 function WorldV2(){const quality=useGame(s=>s.quality);return <Canvas shadows={quality==='high'} dpr={quality==='high'?[1,1.3]:1} gl={{antialias:quality==='high',powerPreference:quality==='low'?'low-power':'high-performance'}} camera={{position:[0,6.8,36],fov:48}}>
   <Environment frames={1} resolution={quality==='low'?64:128}><Lightformer intensity={1.2} position={[0,10,0]} rotation={[Math.PI/2,0,0]} scale={[30,30,1]}/><Lightformer intensity={.7} color="#e6efff" position={[10,4,0]} rotation={[0,Math.PI/2,0]} scale={[20,20,1]}/></Environment><FrameMetrics/><CourtyardLighting/><PerspectiveCamera makeDefault position={[0,6.8,36]} fov={48} near={.1} far={280}/><Keyboard/>
   <Suspense fallback={<Html center><div className="scene-loading"><span className="loading-lotus">❋</span>Đang mở khuôn viên an nhiên…</div></Html>}>
-    <Physics gravity={[0,-9.81,0]} timeStep={1/60} interpolate updatePriority={-50}><CameraRig/><Ground/><Architecture/><Waters/><Seats/><Garden/><PlayerV3/><Others/><Villagers/><TreeLeaves/><MealPlates/><OfferingEffects/><SceneReady/></Physics>
+    <Physics gravity={[0,-9.81,0]} timeStep={1/60} interpolate updatePriority={-50}><TouchCameraInput/><CameraRig/><Ground/><Architecture/><Waters/><Seats/><Garden/><PlayerV3/><Others/><Villagers/><TreeLeaves/><MealPlates/><OfferingEffects/><SceneReady/></Physics>
   </Suspense>
 </Canvas>}
 export default memo(WorldV2);

@@ -68,6 +68,17 @@ Sửa trang trắng trên điện thoại qua LAN ngày 06/11: video cho thấy 
 
 Kiểm chứng bản sửa LAN: 131 kiểm thử client + 5 server = 136/136 đạt, production build đạt. Bốn kiểm thử mới bao phủ native UUID, HTTP không có randomUUID, API bị từ chối và WebView thiếu crypto; kiểm tra định dạng hợp lệ cùng tính duy nhất của ID. Đã tải lại bản production trên http://192.168.0.109:5174, hoàn tất tạo nhân vật, vào sân chùa và mở bảng phòng thấy kết nối hai người; không có lỗi JavaScript mới sau build. Kiểm tra hiển thị ở khung 430 × 820, ảnh trước/sau trong artifacts/phone-lan-before.jpg và phone-lan-after.jpg (không commit). Đây là kiểm tra HTTP LAN và khung điện thoại trên trình duyệt máy tính; cần người dùng tải lại Safari trên iPhone để xác nhận trên thiết bị thật.
 
+## Cập nhật điện thoại và LAN ngày 09/11
+
+- Dựa trên main `3556bb9` đã merge PR #8. Sửa nguyên nhân POST trên LAN bị từ chối do chỉ cho phép Origin localhost: chấp nhận đúng hostname và cổng của máy chủ, giữ chặn Origin bên ngoài. Gửi vị trí mới nhất trước khi dâng lễ/chăm vườn và dùng AbortController thay AbortSignal.timeout cho Safari/WebView cũ. Giữ thao tác retry có ID để tránh trừ vật phẩm hai lần.
+- Tách quyền điều khiển từng ngón tay giữa joystick và camera; xoay bằng một ngón, tắt pinch zoom, thêm thanh khoảng cách camera dọc bên phải. Joystick không cập nhật React theo từng khung hình. Camera vẫn kiểm tra vật cản.
+- Tắt popup khoảnh khắc chuông và trà. Thực đơn, bản đồ, chọn sách dùng khung cuộn trong viewport; HUD hoạt động, gọi món và gánh nước nhỏ, trong suốt và xếp chồng có khoảng cách. Ngồi nghỉ tại thư viện tự đọc; nút mở Tàng kinh các mới mở cửa sổ sách.
+- Thêm đánh trống ba nhịp với tay/cùi trống chạm mặt trống, âm màng trống tổng hợp lưu đệm, đồng bộ thời điểm đánh và dừng các nhịp chưa phát khi hủy. Có ghi tiến trình và đồng bộ tư thế sang người chơi khác.
+- Dâng hương tại Trúc Lâm dùng cùng giao dịch đồ cúng của phòng; khói dùng chung với chánh điện, bồ đề và Quan Âm. Thêm nến/mâm quả Quan Âm; đồng nhất lửa nến dâng lễ, tăng quầng sáng nến/đèn vào ban đêm, thêm sao và trăng tròn.
+- Chỉnh điểm neo đòn gánh riêng theo tỉ lệ chibi, giữ điểm neo của nhân vật nữ trong nhóm thân trên; thùng không còn chìm xuống sàn.
+
+Kiểm chứng: 160 kiểm thử client + 8 server = 168/168 đạt; TypeScript và production build đạt. Bộ kiểm thử có HTTP Origin/Host LAN thật cho các loại lễ vật, koi, vườn, chat; kiểm tra chống lặp, hương Trúc Lâm/Quan Âm, quyền sở hữu ngón tay, thời hạn fetch trên Safari thiếu API, luồng đọc sách và ba nhịp trống/âm thanh. Đã thao tác game qua HTTP LAN: cho cá ăn, dâng hương, đọc sách, gọi/dùng bữa, thanh zoom và đánh trống. Bản build cuối được xem ở 390 × 640 và 844 × 390: thực đơn/bản đồ không tràn ngang, dâng hương tăng công đức và không có lỗi JavaScript mới. Ảnh lưu trong artifacts/ (không commit). Đây là trình duyệt máy tính với viewport điện thoại; chưa xác nhận cảm ứng hai tay trên iPhone thật hay đo FPS thiết bị.
+
 ## Kiểm chứng
 
 - TypeScript và production build đạt.
@@ -84,7 +95,7 @@ npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 131 kiểm thử client và 5 kiểm thử server (tổng 136); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 160 kiểm thử client và 8 kiểm thử server (tổng 168); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 

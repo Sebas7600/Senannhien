@@ -81,7 +81,10 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
     rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced);
     const prop = heldProp.current;
     if (prop) prop.position.set(0,0,0);
-    if ((pose === 'tea' || pose === 'read') && prop?.parent) {
+    if(pose==='drum'&&prop?.parent){
+      avatar.localToWorld(upright.rest.set(0,1.54-.37*rig.drumStrike,.3+.65*rig.drumStrike));
+      prop.parent.worldToLocal(upright.rest);prop.quaternion.setFromUnitVectors(upright.axis,upright.rest.normalize());prop.scale.setScalar(1);
+    } else if ((pose === 'tea' || pose === 'read') && prop?.parent) {
       if(pose==='read'){
         avatar.localToWorld(upright.rest.set(0,.30+rig.quiet.breath,.34));
         prop.position.copy(prop.parent.worldToLocal(upright.rest));

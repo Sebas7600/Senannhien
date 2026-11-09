@@ -1,8 +1,9 @@
+import {useGame} from './gameStore';
 import {useLayoutEffect,useRef} from 'react';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {Box} from './models';
-import {SacredCandle,SacredFlames,IncenseSmoke} from './FireEffects';
+import {SacredCandle,SacredFlames} from './FireEffects';
 import {readingTables,teaTables,diningTables,RECEPTION,type Vec3} from './gameData';
 
 function transformed(g:THREE.BufferGeometry,p:Vec3=[0,0,0],r:Vec3=[0,0,0],scale:Vec3=[1,1,1]){
@@ -62,7 +63,7 @@ function FlowerVase({x}:{x:number}){return <group position={[x,.02,-.10]}>
     </group>
   </group>)}
 </group>}
-export function AltarOfferings(){return <group position={[-33,1.16,-22]}>
+export function AltarOfferings(){const night=useGame(s=>s.night);return <group position={[-33,1.16,-22]}>
   <Box position={[0,-.10,0]} scale={[6.1,.12,1.03]} color="#b49459"/>
   <Box position={[0,-.20,.45]} scale={[5.65,.18,.10]} color="#73442d"/>
   {[-2.45,2.45].map(x=><AltarCandle key={x} x={x}/>)}
@@ -81,14 +82,10 @@ export function AltarOfferings(){return <group position={[-33,1.16,-22]}>
     <mesh position={[0,.23,.30]}><torusGeometry args={[.085,.018,6,18]}/><meshStandardMaterial color="#c5ab70" metalness={.7}/></mesh>
     <mesh position={[0,.23,.31]}><sphereGeometry args={[.045,10,8]}/><meshStandardMaterial color="#c5ab70" metalness={.7}/></mesh>
     {[-1,1].map(s=><mesh key={s} position={[s*.34,.32,0]}><torusGeometry args={[.10,.026,6,16]}/><meshStandardMaterial color="#b59a60" metalness={.7}/></mesh>)}
-    {[-.07,0,.07].map(x=><group key={x} position={[x,.40,0]}>
-      <mesh position={[0,.23,0]}><cylinderGeometry args={[.006,.006,.46,5]}/><meshStandardMaterial color="#ab7049"/></mesh>
-      <mesh position={[0,.46,0]}><sphereGeometry args={[.012,6,5]}/><meshBasicMaterial color="#eaa06b"/></mesh>
-    </group>)}
-    <IncenseSmoke position={[0,.86,0]}/>
+
   </group>
   {[-.6,-.3,0,.3,.6].map(x=><group key={x} position={[x,.05,.39]}><mesh><cylinderGeometry args={[.063,.042,.10,12]}/><meshStandardMaterial color="#d5caa8" roughness={.3}/></mesh><mesh position={[0,.052,0]}><cylinderGeometry args={[.052,.052,.004,12]}/><meshStandardMaterial color="#947751" roughness={.2}/></mesh></group>)}
-  <pointLight position={[0,1.1,.6]} color="#ffd5a0" intensity={1.4} distance={5} decay={2}/>
+  <pointLight position={[0,1.1,.6]} color="#ffd5a0" intensity={night?4.2:1.4} distance={5} decay={2}/>
 </group>}
 export function ReceptionDesk(){return <group position={[RECEPTION[0],.16,RECEPTION[1]]} rotation={[0,Math.PI,0]}>
   <Box position={[0,.06,0]} scale={[1.3,.12,.8]} color="#9b805b"/>
