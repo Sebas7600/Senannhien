@@ -1,0 +1,158 @@
+{
+  "sources": [
+    {
+      "file": "Gieng_Da/Gieng_Da.glb",
+      "bytes": 2375780,
+      "sha256": "5f31eec69aa17ce2f787628e862c262ab0012afffc1bc502fc36fba8185f25a6",
+      "triangles": 15296
+    },
+    {
+      "file": "Chum_Nuoc_Men_Nau/Chum_Nuoc.glb",
+      "bytes": 903600,
+      "sha256": "58262a3884750ee1f8302b3b15ab415f500572686f11e57763d278a5bf36720e",
+      "triangles": 12864
+    }
+  ],
+  "assets": [
+    {
+      "file": "water-stations-v1.glb",
+      "bytes": 279456,
+      "triangles": 8142,
+      "draws": 3,
+      "decodedGeometryBytes": 397748,
+      "parts": [
+        {
+          "name": "Well_Stone",
+          "triangles": 5374
+        },
+        {
+          "name": "Well_Arch",
+          "triangles": 946
+        },
+        {
+          "name": "Jar_Body",
+          "triangles": 1822
+        }
+      ]
+    },
+    {
+      "file": "water-stations-v1-low.glb",
+      "bytes": 253172,
+      "triangles": 6319,
+      "draws": 3,
+      "decodedGeometryBytes": 355868,
+      "parts": [
+        {
+          "name": "Well_Stone",
+          "triangles": 5044
+        },
+        {
+          "name": "Well_Arch",
+          "triangles": 425
+        },
+        {
+          "name": "Jar_Body",
+          "triangles": 850
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "file": "well-stone-v1-color.webp",
+      "bytes": 33958,
+      "width": 512,
+      "height": 512,
+      "kind": "color"
+    },
+    {
+      "file": "well-stone-v1-roughness.webp",
+      "bytes": 12440,
+      "width": 256,
+      "height": 256,
+      "kind": "roughness"
+    },
+    {
+      "file": "well-stone-v1-normal.webp",
+      "bytes": 36116,
+      "width": 256,
+      "height": 256,
+      "kind": "normal"
+    },
+    {
+      "file": "well-arch-v1-color.webp",
+      "bytes": 23468,
+      "width": 512,
+      "height": 512,
+      "kind": "color"
+    },
+    {
+      "file": "well-arch-v1-roughness.webp",
+      "bytes": 3220,
+      "width": 256,
+      "height": 256,
+      "kind": "roughness"
+    },
+    {
+      "file": "well-arch-v1-normal.webp",
+      "bytes": 26916,
+      "width": 256,
+      "height": 256,
+      "kind": "normal"
+    },
+    {
+      "file": "jar-glaze-v1-color.webp",
+      "bytes": 7162,
+      "width": 512,
+      "height": 512,
+      "kind": "color"
+    },
+    {
+      "file": "jar-glaze-v1-roughness.webp",
+      "bytes": 8704,
+      "width": 256,
+      "height": 256,
+      "kind": "roughness"
+    },
+    {
+      "file": "jar-glaze-v1-normal.webp",
+      "bytes": 2356,
+      "width": 256,
+      "height": 256,
+      "kind": "normal"
+    }
+  ],
+  "waterLevels": [
+    {
+      "fill": 0,
+      "height": 0.18,
+      "radius": 0.267
+    },
+    {
+      "fill": 0.25,
+      "height": 0.365,
+      "radius": 0.3383
+    },
+    {
+      "fill": 0.5,
+      "height": 0.55,
+      "radius": 0.3841
+    },
+    {
+      "fill": 0.75,
+      "height": 0.7349999999999999,
+      "radius": 0.3983
+    },
+    {
+      "fill": 1,
+      "height": 0.9199999999999999,
+      "radius": 0.3423
+    }
+  ],
+  "highDownloadBytes": 433796,
+  "lowDownloadBytes": 407512,
+  "textureGpuBytesWithMipmaps": 6291455.999999999,
+  "jarGeometryCopies": 1,
+  "jarDrawCalls": 1,
+  "wellDrawCalls": 2
+}

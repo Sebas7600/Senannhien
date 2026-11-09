@@ -7,7 +7,7 @@ const lobes=[
 [0,3.55,1.15,1.55,.92,1.1],[-.7,4.0,-.95,1.4,1,1.2],[1.0,3.95,-.8,1.35,1,1.15],
 [-1.9,3.2,-.45,1.08,.8,1.0],[1.9,3.25,-.35,1.08,.85,1.1],[0,3.4,-1.65,1.15,.85,1.1]];
 const masses=lobes.map(([x,y,z,sx,sy,sz],i)=>{
-  const g=coloredGeometry(new THREE.IcosahedronGeometry(1,1),['#526e40','#5c7747','#64804b','#567345'][i%4],[x,y,z],[sx,sy,sz],[0,i*.8,.1*Math.sin(i)]);
+  const g=coloredGeometry(new THREE.IcosahedronGeometry(1,1),['#5c7739','#648042','#718a45','#5d7b3d'][i%4],[x,y,z],[sx,sy,sz],[0,i*.8,.1*Math.sin(i)]);
   // Baked sunlit tops and cooler shaded undersides: no extra texture or shader cost.
   const p=g.attributes.position,c=g.attributes.color;
   for(let v=0;v<p.count;v++){const top=THREE.MathUtils.clamp((p.getY(v)-(y-sy))/(2*sy),0,1),shade=.78+top*.28;c.setXYZ(v,c.getX(v)*shade,c.getY(v)*shade,c.getZ(v)*(.92+top*.09));}
@@ -39,7 +39,7 @@ for(let patch=0;patch<FOLIAGE_DETAIL_CLUSTERS;patch++){
     const angle=j*Math.PI*.5+patch*.8,offset=new THREE.Vector3(Math.sin(angle)*.04,Math.cos(angle)*.04,.025+j*.004).applyQuaternion(alignment);
     object.position.copy(hit.point).add(offset);object.quaternion.copy(alignment).multiply(new THREE.Quaternion().setFromAxisAngle(zAxis,angle));object.scale.setScalar(.66+(patch+j)%3*.09);object.updateMatrix();
     const g=prototype.clone();g.applyMatrix4(object.matrix);
-    const tint=new THREE.Color(['#6d884d','#688448','#779155','#6c884d'][(patch+j)%4]),colors=new Float32Array(g.attributes.position.count*3);
+    const tint=new THREE.Color(['#829a46','#789241','#90a450','#7f9949'][(patch+j)%4]),colors=new Float32Array(g.attributes.position.count*3);
     for(let v=0;v<g.attributes.position.count;v++){const shade=v===0?1.04:v>=11?.88:1;colors[v*3]=tint.r*shade;colors[v*3+1]=tint.g*shade;colors[v*3+2]=tint.b*shade;}
     g.setAttribute('color',new THREE.BufferAttribute(colors,3));parts.push(g);
   }

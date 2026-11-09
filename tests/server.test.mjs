@@ -4,6 +4,7 @@ import http from 'node:http';
 import {mkdir,writeFile,unlink} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {createGameServer} from '../server-runtime.mjs';
+import {feedStations,QUAN_AM_SPOT,ISLAND} from '../src/pondScene.mjs';
 function stream(base,id,room='an-nhien'){
   let state={peers:[],messages:[]},request,buffer='',listeners=[];
   const opened=new Promise((resolve,reject)=>{request=http.get(`${base}/api/events?id=${id}&room=${room}`,res=>{assert.equal(res.statusCode,200);res.setEncoding('utf8');res.on('data',chunk=>{buffer+=chunk;let i;while((i=buffer.indexOf('\n\n'))>=0){const frame=buffer.slice(0,i);buffer=buffer.slice(i+2);const data=frame.split('\n').find(l=>l.startsWith('data: '));if(data){state=JSON.parse(data.slice(6));resolve();listeners.forEach(fn=>fn());}}});res.on('error',()=>{})});request.on('error',reject)});
@@ -57,7 +58,7 @@ test('Quan Am incense stays at its altar, reaches late joiners, rejects remote/i
  const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'quan_am_test_a',room:'an-nhien',...data})});return res.status};
  try{const a=stream(base,'quan_am_test_a'),other=stream(base,'quan_am_test_other','truc-lam');all.push(a,other);await Promise.all(all.map(s=>s.opened));
   assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_remote'}),409);
-  await post('/api/state',{x:38.9,y:.06,z:25.25,action:'incense'});
+  await post('/api/state',{x:QUAN_AM_SPOT[0],y:ISLAND.top,z:QUAN_AM_SPOT[1],action:'incense'});
   assert.equal(await post('/api/offerings',{kind:'incense',station:'wrong-altar',operation:'quan_am_invalid'}),400);
   assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_valid'}),200);
   assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_valid'}),200);
@@ -85,7 +86,8 @@ test('room offerings: all kinds, late join, isolation, deduplication, capacity a
   const late=stream(base,'offer_player_late');all.push(late);await late.opened;assert.deepEqual(late.state.offerings.map(o=>o.kind),['incense','flower','candle']);
   for(let i=2;i<=8;i++){clock+=3000;assert.equal(await post('/api/offerings',{kind:'candle',station:'candle-table-2',operation:'candle_0000'+i}),200)}
   clock+=3000;assert.equal(await post('/api/offerings',{kind:'candle',station:'candle-table-2',operation:'candle_full1'}),409);
-  clock+=3000;await post('/api/state',{x:23.6,z:9});assert.equal(await post('/api/offerings',{kind:'feed',station:'shore-6',operation:'feeding_0001'}),200);await b.wait(s=>s.offerings.some(o=>o.kind==='feed'));assert.equal(other.state.offerings.length,0);
+  const station=feedStations.find(item=>item.id==='shore-6');
+  clock+=3000;await post('/api/state',{x:station.spot[0],z:station.spot[1]});assert.equal(await post('/api/offerings',{kind:'feed',station:station.id,operation:'feeding_0001'}),200);await b.wait(s=>s.offerings.some(o=>o.kind==='feed'));assert.equal(other.state.offerings.length,0);
   clock+=12001;await b.wait(s=>!s.offerings.some(o=>o.kind==='feed'));
   clock+=480001;await b.wait(s=>s.offerings.length===1);assert.equal(b.state.offerings[0].kind,'incense');
   clock+=170000;await b.wait(s=>s.offerings.length===0);
@@ -117,4 +119,27 @@ test('shared garden: room isolation, late join, stale actions, one harvest and r
   await b.wait(s=>s.plots['plot-0']?.revision===4);assert.equal(b.state.plots['plot-0'].harvested,false);
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 
+});
+
+test('two players share meditation heading, chibi appearance and bow phase, including late joins',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const base=`http://127.0.0.1:${server.address().port}`,all=[];
+ const post=async(data)=>{const res=await fetch(base+'/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'meditation_player_a',room:'an-nhien',...data})});assert.equal(res.status,200);return res.json()};
+ try{
+  const a=stream(base,'meditation_player_a'),b=stream(base,'meditation_player_b');all.push(a,b);await Promise.all(all.map(s=>s.opened));
+  const seated={seat:'temple-8',x:-10.1,y:2.5,z:-26.1,heading:2.12,gender:'male',robe:'#829795',skin:'#c99c79',robeStyle:'cross'};
+  await post({...seated,action:'meditate'});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='meditate'));
+  let peer=b.state.peers.find(p=>p.id==='meditation_player_a');assert.equal(peer.heading,2.12);assert.equal(peer.gender,'male');assert.equal(peer.robe,'#829795');assert.equal(peer.seat,'temple-8');
+  const token=12345;await post({...seated,action:'bow',bow:{at:token,elapsed:700}});
+  await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.bow));peer=b.state.peers.find(p=>p.id==='meditation_player_a');
+  assert.equal(peer.bow.mode,'cushion');assert.equal(b.state.serverTime-peer.bow.at,700);assert.equal(peer.heading,2.12);assert.equal(peer.y,2.5);
+  const original=peer.bow.at;clock+=400;
+  await post({...seated,action:'bow',bow:{at:token,elapsed:1100}});
+  const late=stream(base,'meditation_player_late');all.push(late);await late.opened;
+  peer=late.state.peers.find(p=>p.id==='meditation_player_a');assert.equal(peer.bow.at,original);assert.equal(late.state.serverTime-peer.bow.at,1100);
+  const conflict=await fetch(base+'/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'meditation_player_b',room:'an-nhien',action:'sit',seat:'temple-8'})});assert.equal((await conflict.json()).seat,null);
+  await post({...seated,action:'meditate',bow:null});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='meditate'&&!p.bow));
+  clock+=60000;await post({...seated,action:'bow',bow:{at:token+60000,elapsed:0}});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.bow?.at===clock));
+  await post({...seated,seat:null,action:'walk',bow:null});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='walk'&&!p.bow&&!p.seat));
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 });

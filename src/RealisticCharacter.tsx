@@ -18,7 +18,7 @@ import {sampleBeadMotion,type BeadMotion} from './beadMotion';
 import {useGame} from './gameStore';
 import type {ServeFrame} from './mealService';
 import {createServiceGarment,updateServiceGarment,serviceBodyForward,serviceKnee} from './serviceRig';
-export interface CharacterProps{localPlayer?:boolean;robe?:string;dish?:DishId;pose?:string;moving?:boolean;chair?:boolean;seated?:boolean;gender?:'male'|'female';skin?:string;robeStyle?:'traditional'|'cross';bowStartedAt?:number;bowMode?:BowMode;bowElapsed?:number;serveFrame?:{current:ServeFrame};apron?:boolean}
+export interface CharacterProps{localPlayer?:boolean;robe?:string;dish?:DishId;pose?:string;moving?:boolean;climbing?:boolean;chair?:boolean;seated?:boolean;gender?:'male'|'female';skin?:string;robeStyle?:'traditional'|'cross';bowStartedAt?:number;bowMode?:BowMode;bowElapsed?:number;serveFrame?:{current:ServeFrame};apron?:boolean}
 
 const yAxis=new THREE.Vector3(0,1,0);
 const shoeMaterial=new THREE.MeshStandardMaterial({color:'#4c463a',roughness:.85});
@@ -43,7 +43,7 @@ function MalaGrip({material,thumb,motion}:{material:THREE.Material;thumb:RefObje
   </>;
 }
 function setSegment(group:THREE.Group|null,a:THREE.Vector3,b:THREE.Vector3,radius:number,work:THREE.Vector3){if(!group)return;group.position.copy(a);work.copy(b).sub(a);group.scale.set(radius,work.length(),radius);group.quaternion.setFromUnitVectors(yAxis,work.normalize());}
-function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pose='walk',moving=false,chair=false,seated=false,gender='male',skin='#c99c79',robeStyle='traditional',bowStartedAt,bowMode,bowElapsed,serveFrame,apron=false}:CharacterProps){
+function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pose='walk',moving=false,climbing=false,chair=false,seated=false,gender='male',skin='#c99c79',robeStyle='traditional',bowStartedAt,bowMode,bowElapsed,serveFrame,apron=false}:CharacterProps){
   const sweeping=useRef({pose:createSweepPose(),inverse:new THREE.Matrix4(),axis:new THREE.Vector3(),handRotation:new THREE.Quaternion(),direction:new THREE.Vector3(),pole:new THREE.Vector3()});
   const malaMotion=useRef<BeadMotion>({offset:0,pull:0,direction:1}),malaThumb=useRef<THREE.Group>(null);
 
@@ -52,8 +52,8 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
   useEffect(()=>()=>serviceGarment?.geometry.dispose(),[serviceGarment]);
   const walkLegs=useRef<THREE.Group>(null),kneelLegs=useRef<THREE.Group>(null),thighL=useRef<THREE.Mesh>(null),thighR=useRef<THREE.Mesh>(null),shinL=useRef<THREE.Mesh>(null),shinR=useRef<THREE.Mesh>(null),kneeL=useRef<THREE.Mesh>(null),kneeR=useRef<THREE.Mesh>(null),footL=useRef<THREE.Mesh>(null),footR=useRef<THREE.Mesh>(null),bowFrame=useRef({kneel:0,bend:0,reach:0,done:false});
   const waterDrops=useRef<THREE.Group>(null);const root=useRef<THREE.Group>(null),upper=useRef<THREE.Group>(null),head=useRef<THREE.Group>(null),armL=useRef<THREE.Group>(null),armR=useRef<THREE.Group>(null),foreL=useRef<THREE.Group>(null),foreR=useRef<THREE.Group>(null),handL=useRef<THREE.Group>(null),handR=useRef<THREE.Group>(null),legL=useRef<THREE.Group>(null),legR=useRef<THREE.Group>(null),coat=useRef<THREE.Mesh>(null);
-  const robeMaterial=useSurface('cloth',robe),trimMaterial=useSurface('cloth',new THREE.Color(robe).multiplyScalar(.75).getStyle()),skinMat=skinMaterial(skin),blend=useRef({prayer:0,eat:0,bend:0,hips:.84,gait:0,kneel:0,reach:0,forward:0}),points=useRef(Array.from({length:8},()=>new THREE.Vector3())),work=useRef(new THREE.Vector3()),lastPose=useRef(pose),bowTime=useRef(-1);
-  useFrame(({clock},dt)=>{const t=clock.elapsedTime;if(waterDrops.current)waterDrops.current.children.forEach((drop,i)=>{const f=(t*1.7+i/7)%1;drop.position.set(Math.sin(i*2.4)*.045,-.04-f*.45,.3+f*.21)});const b=blend.current,mode=bowMode||(seated&&!chair?'cushion':'standing');const prayer=['incense','flower','candle','pray','chant','meditate','bow'].includes(pose);if(lastPose.current!==pose||bowTime.current<0){lastPose.current=pose;bowTime.current=t;}
+  const robeMaterial=useSurface('cloth',robe),trimMaterial=useSurface('cloth',new THREE.Color(robe).multiplyScalar(.75).getStyle()),skinMat=skinMaterial(skin),blend=useRef({prayer:0,eat:0,bend:0,hips:.84,gait:0,climb:0,kneel:0,reach:0,forward:0}),points=useRef(Array.from({length:8},()=>new THREE.Vector3())),work=useRef(new THREE.Vector3()),lastPose=useRef(pose),bowTime=useRef(-1);
+  useFrame(({clock},dt)=>{const t=clock.elapsedTime;if(waterDrops.current)waterDrops.current.children.forEach((drop,i)=>{const f=(t*1.7+i/7)%1;drop.position.set(Math.sin(i*2.4)*.045,-.04-f*.45,.3+f*.21)});const b=blend.current,mode=bowMode||(seated&&!chair?'cushion':'standing');const prayer=['incense','flower','candle','pray','chant','bow'].includes(pose);if(lastPose.current!==pose||bowTime.current<0){lastPose.current=pose;bowTime.current=t;}
     if(pose==='beads'&&localPlayer){
       const state=useGame.getState(),motion=sampleBeadMotion(state.lifetime.beads||0,Date.now()-state.beadStepAt,reduced,malaMotion.current);
       if(malaThumb.current){
@@ -64,14 +64,20 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
     if(pose==='bow'){sampleBow(bowElapsed??(bowStartedAt===undefined?t-bowTime.current:(Date.now()-bowStartedAt)/1000),mode,bowFrame.current);b.kneel=mode==='standing'?bowFrame.current.kneel:0;b.bend=bowFrame.current.bend;b.reach=bowFrame.current.reach;}else{b.kneel=THREE.MathUtils.damp(b.kneel,0,10,dt);b.bend=THREE.MathUtils.damp(b.bend,pose==='serve'&&serveFrame?serveFrame.current.bend:pose==='cook'?.1:pose==='sweep'?.07:['plant','harvest'].includes(pose)?.38:['water','drawWater','pourWater'].includes(pose)?.14:['incense','flower','candle'].includes(pose)?Math.sin(Math.min((t-bowTime.current)/3,1)*Math.PI)*.18:0,pose==='serve'?18:10,dt);b.reach=THREE.MathUtils.damp(b.reach,0,10,dt)}
     b.prayer=THREE.MathUtils.damp(b.prayer,prayer?1:0,9,dt);b.eat=THREE.MathUtils.damp(b.eat,pose==='eat'?1:0,7,dt);const hip=pose==='serve'&&serveFrame?serveFrame.current.hips:seated?(chair?.10:.22):THREE.MathUtils.lerp(.84,.24,b.kneel);b.hips=pose==='bow'?hip:THREE.MathUtils.damp(b.hips,hip,pose==='serve'?18:12,dt);b.gait=THREE.MathUtils.damp(b.gait,moving&&!seated&&pose!=='bow'?1:0,10,dt);
     if(bookLeaf.current)bookLeaf.current.rotation.z=reduced?0:Math.sin(t*.7)*.28;
+    b.climb=THREE.MathUtils.damp(b.climb,climbing&&moving&&!seated?1:0,9,dt);
+    if(root.current)root.current.rotation.x=b.climb*.13;
     if(root.current)root.current.position.y=pose==='serve'?0:Math.abs(Math.sin(t*7))*b.gait*(pose==='sweep'?.007:.022);
     b.forward=THREE.MathUtils.damp(b.forward,pose==='serve'&&serveFrame?serviceBodyForward(b.bend):0,18,dt);
     const bodyForward=serveFrame?b.forward:b.reach*.08;
     if(upper.current){upper.current.position.y=b.hips;upper.current.position.z=bodyForward;upper.current.rotation.x=b.bend;upper.current.scale.x=gender==='female'?.95:1;}
     if(pose==='sweep'&&upper.current){const f=sweeping.current;sampleSweepPose(Date.now(),reduced,f.pose,localPlayer?sweepContact:null);upper.current.updateMatrix();f.inverse.copy(upper.current.matrix).invert();f.axis.copy(f.pose.axis).transformDirection(f.inverse);f.handRotation.setFromUnitVectors(yAxis,f.axis);}
-    if(head.current)head.current.rotation.x=(['meditate','chant','read','beads'].includes(pose)?.16:0)+b.eat*.07+b.reach*.12;
+    if(head.current)head.current.rotation.x=(pose==='meditate'?.08:['chant','read','beads'].includes(pose)?.16:0)+b.eat*.07+b.reach*.12;
 
-    if(legL.current&&legR.current){legL.current.rotation.x=Math.sin(t*7)*b.gait*.35;legR.current.rotation.x=-Math.sin(t*7)*b.gait*.35;}
+    if(legL.current&&legR.current){const stride=Math.sin(t*7)*b.gait;
+      legL.current.rotation.x=stride*(.35+b.climb*.22);
+      legR.current.rotation.x=-legL.current.rotation.x;
+      legL.current.position.y=.8+Math.max(0,-stride)*b.climb*.12;
+      legR.current.position.y=.8+Math.max(0,stride)*b.climb*.12;}
     if(coat.current){coat.current.rotation.x=serviceGarment?0:Math.sin(t*7)*b.gait*.018;coat.current.scale.set(1,THREE.MathUtils.lerp(1,.32,b.kneel),THREE.MathUtils.lerp(1,2.05,b.kneel));}
     if(serviceGarment)updateServiceGarment(serviceGarment,b.hips,bodyForward,b.bend,gender==='female'?.95:1);
     const serviceLegs=!!serveFrame&&!seated&&pose!=='bow'&&b.kneel<.001&&b.gait<.04;
@@ -99,12 +105,13 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
         elbow.copy(shoulder).lerp(wrist,.5);elbow.x+=s*.045;elbow.y+=.08;
       }
       if(pose==='eat'&&dish==='bread'){const bite=(Math.sin(t*2)+1)/2;wrist.set(s*.09,.25+bite*.17,.32-bite*.1);}
+      if(pose==='meditate'&&seated&&!chair){elbow.set(s*.24,.05,.12);wrist.set(s*.13,-.015,.27);}
       if(b.reach>0){const ground=seated&&!chair?-CUSHION.seatLift:0,cos=Math.cos(b.bend),sin=Math.sin(b.bend),forward=b.reach*.08;
         const ey=ground+.19-b.hips,ez=.58-forward,wy=ground+.014-b.hips,wz=.78-forward;
         elbow.lerp(points.current[4].set(s*.29,ey*cos+ez*sin,-ey*sin+ez*cos),b.reach);wrist.lerp(points.current[5].set(s*.22,wy*cos+wz*sin,-wy*sin+wz*cos),b.reach);
       }
       if(pose==='sweep'){const f=sweeping.current;hand.copy(i===0?f.pose.upperGrip:f.pose.lowerGrip).applyMatrix4(f.inverse);wrist.set(1,0,0).applyQuaternion(f.handRotation).multiplyScalar(i===0?.036:-.036).add(hand);sweepElbow(shoulder,wrist,s,elbow,f.direction,f.pole);}
-      setSegment(i?armR.current:armL.current,shoulder,elbow,.10,work.current);setSegment(i?foreR.current:foreL.current,elbow,wrist,.085,work.current);const h=i?handR.current:handL.current;if(h){if(pose==='sweep'){h.position.copy(hand);h.quaternion.copy(sweeping.current.handRotation);if(i===0)h.rotateY(Math.PI);}else{h.position.copy(wrist);h.rotation.set(THREE.MathUtils.lerp((1-b.prayer)*(seated?-.8:Math.PI),Math.PI/2-b.bend,b.reach),s*b.prayer*Math.PI/2*(1-b.reach),s*.04*(1-b.prayer)*(1-b.reach));if((pose==='carryWater'||pose==='pourWater')&&i===1)h.rotation.set(-.45,0,.2);if(pose==='serve'&&serveFrame)h.rotation.x=Math.PI/2-b.bend+serveFrame.current.release*Math.PI/2;if(pose==='cook')h.rotation.set(-.4,0,0);}}
+      setSegment(i?armR.current:armL.current,shoulder,elbow,.10,work.current);setSegment(i?foreR.current:foreL.current,elbow,wrist,.085,work.current);const h=i?handR.current:handL.current;if(h){if(pose==='sweep'){h.position.copy(hand);h.quaternion.copy(sweeping.current.handRotation);if(i===0)h.rotateY(Math.PI);}else{h.position.copy(wrist);h.rotation.set(THREE.MathUtils.lerp((1-b.prayer)*(seated?-.8:Math.PI),Math.PI/2-b.bend,b.reach),s*b.prayer*Math.PI/2*(1-b.reach),s*.04*(1-b.prayer)*(1-b.reach));if((pose==='carryWater'||pose==='pourWater')&&i===1)h.rotation.set(-.45,0,.2);if(pose==='serve'&&serveFrame)h.rotation.x=Math.PI/2-b.bend+serveFrame.current.release*Math.PI/2;if(pose==='cook')h.rotation.set(-.4,0,0);if(pose==='meditate'&&seated&&!chair)h.rotation.set(-1.35,0,s*.25);}}
       if(h&&pose==='beads'){
         const pull=malaMotion.current.pull;
         if(i===1)h.rotation.set(.03+pull*.06,-.29,-.11);
@@ -152,7 +159,7 @@ function RealisticCharacter({localPlayer=false,robe='#9b704a',dish='noodles',pos
         {[footL,footR].map((ref,i)=><mesh key={i} ref={ref} scale={[.08,.045,.14]} material={serveFrame?shoeMaterial:trimMaterial} castShadow><sphereGeometry args={[1,10,6]}/></mesh>)}
       </group>
     </group>
-    <group visible={seated&&!chair}>{[-1,1].map(s=><mesh key={s} position={[s*.13,.14,.10]} rotation={[0,s*.65,s*.2]} scale={[.23,.12,.17]} material={robeMaterial} castShadow><sphereGeometry args={[1,24,16]}/></mesh>)}</group>
+    <group visible={seated&&!chair}>{[-1,1].map(s=><mesh key={s} position={[s*.13,.115,pose==='meditate'?.16:.10]} rotation={[0,s*(pose==='meditate'?.85:.65),s*.15]} scale={[.23,.105,.17]} material={robeMaterial} castShadow><sphereGeometry args={[1,24,16]}/></mesh>)}</group>
     <group visible={seated&&chair}>{[-1,1].map(s=><group key={s}><mesh position={[s*.10,.085,.11]} rotation={[Math.PI/2,0,0]} scale={[.095,.22,.09]} material={robeMaterial} castShadow><sphereGeometry args={[1,20,12]}/></mesh><mesh position={[s*.10,-.15,.28]} material={trimMaterial}><cylinderGeometry args={[.075,.06,.38,16]}/></mesh><mesh position={[s*.10,-.38,.33]} scale={[.075,.05,.13]}><sphereGeometry args={[1,16,10]}/><meshStandardMaterial color="#4c463a" roughness={.85}/></mesh></group>)}</group>
     {pose==='mok'&&<mesh position={[.37,.17,.50]} scale={[.18,.14,.21]}><sphereGeometry args={[1,20,14]}/><meshStandardMaterial color="#8e6039" roughness={.6}/></mesh>}
     {pose==='sweep'&&<Suspense fallback={null}><SweepBroom frame={sweeping.current.pose} localPlayer={localPlayer}/></Suspense>}

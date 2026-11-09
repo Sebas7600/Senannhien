@@ -1,21 +1,23 @@
 import {QUAN_AM} from './quanAmData';
+import {GATE_ENTRY} from './courtyardPropsData';
 import {WATER_WELL,WATER_JARS} from './waterTaskData';
-import {KOI_POND} from './pondLayout';
+import {ISLAND,POND,POND_BRIDGES} from './pondLayout';
 import { useState } from 'react';
 import { ArrowUpRight, Footprints, LocateFixed, MapPin } from 'lucide-react';
-import { places, type PlaceId, type Vec2 } from './gameData';
+import { places,WISH_APPROACH, type PlaceId, type Vec2 } from './gameData';
 import { floorAt, useGame } from './gameStore';
 import {courtyardTrees,restingBenches} from './courtyardData';
-const entries:Record<PlaceId,Vec2>={gate:[0,26],courtyard:[0,6],temple:[0,-18],hall:[-33,-9],bell:[-19,-9],pond:[KOI_POND.x-KOI_POND.bridgeHalfLength,KOI_POND.z],dining:[34,-17],library:[-34,-35],garden:[28,-45],terrace:[0,-50],lotus:[14,39],stupa:[-35,49],bamboo:[-38,12]};
-export function travel(id:PlaceId){const s=useGame.getState(),p=entries[id];if(s.waterQuest){s.notify('Đang gánh nước: đi bộ tới lu hoặc đặt gánh xuống trước khi đến nhanh nhé.');return;}s.stand();s.set({position:p,height:floorAt(...p)+.1,destination:null,panel:null,teleport:{position:[p[0],floorAt(...p)+.1,p[1]],heading:Math.PI,at:Date.now()},cameraReset:s.cameraReset+1});s.notify(`Đã đến ${places.find(v=>v.id===id)!.name}.`);}
+const entries:Record<PlaceId,Vec2>={gate:GATE_ENTRY,courtyard:[0,6],temple:[0,-18],hall:[-33,-9],bell:[-19,-9],pond:[POND_BRIDGES[0].start,POND_BRIDGES[0].z],dining:[34,-17],library:[-34,-35],garden:[28,-45],terrace:[0,-50],lotus:WISH_APPROACH,stupa:[-35,49],bamboo:[-38,12]};
+export function travel(id:PlaceId){const s=useGame.getState(),p=entries[id];if(s.waterQuest){s.notify('Đang gánh nước: đi bộ tới lu hoặc đặt gánh xuống trước khi đến nhanh nhé.');return;}s.stand();const heading=id==='lotus'?Math.atan2(ISLAND.x-p[0],ISLAND.z-p[1]):id==='pond'?Math.PI/2:Math.PI;s.set({position:p,height:floorAt(...p)+.1,destination:null,panel:null,teleport:{position:[p[0],floorAt(...p)+.1,p[1]],heading,at:Date.now()},cameraReset:s.cameraReset+1});s.notify(`Đã đến ${places.find(v=>v.id===id)!.name}.`);}
 export function MapArtwork({mini=false,onSelect}:{mini?:boolean;onSelect?:(id:PlaceId)=>void}){const position=useGame(s=>s.position),heading=useGame(s=>s.heading),peers=useGame(s=>s.peers),visited=useGame(s=>s.visited);
   return <svg className={mini?'map-art mini':'map-art'} viewBox="-66 -72 132 140" role="img" aria-label="Bản đồ toàn khuôn viên chùa">
     <defs><pattern id={mini?'grid-mini':'grid-big'} width="8" height="8" patternUnits="userSpaceOnUse"><path d="M 8 0 L 0 0 0 8" fill="none" stroke="#97ad7913" strokeWidth=".3"/></pattern></defs>
     <rect x="-65" y="-71" width="130" height="138" rx="5" fill="#dce5cf"/><rect x="-60" y="-66" width="120" height="128" rx="2" fill={`url(#${mini?'grid-mini':'grid-big'})`} stroke="#a4b28d" strokeWidth=".5"/>
-    <path d="M0 52V-55 M-45 -6H45 M-43 -32H45 M-17 -55V48 M17 -55V48 M-35 42H28 M34 -50V-6" stroke="#d2c7a4" strokeWidth="4" fill="none"/>
+    <path d={`M0 ${GATE_ENTRY[1]}V-55 M-45 -6H45 M-43 -32H45 M-17 -55V48 M17 -55V48 M-35 42H28 M34 -50V-6`} stroke="#d2c7a4" strokeWidth="4" fill="none"/>
     <rect x="-14" y="-17" width="28" height="44" fill="#e6ddbe"/>
-    <ellipse cx={KOI_POND.x} cy={KOI_POND.z} rx={KOI_POND.rx} ry={KOI_POND.rz} fill="#92b5a4"/><ellipse cx="28" cy="39" rx="12" ry="9" fill="#92b5a4"/>
-    <path d={`M${KOI_POND.x-KOI_POND.bridgeHalfLength} ${KOI_POND.z}H${KOI_POND.x+KOI_POND.bridgeHalfLength} M14 39H42`} stroke="#bda881" strokeWidth="2.7"/>
+    <ellipse cx={POND.x} cy={POND.z} rx={POND.rx} ry={POND.rz} fill="#92b5a4"/>
+    {POND_BRIDGES.map(bridge=><path key={bridge.z} d={`M${bridge.start} ${bridge.z}H${bridge.end}`} stroke="#bda881" strokeWidth="2.7"/>)}
+    <circle cx={ISLAND.x} cy={ISLAND.z} r={ISLAND.radius} fill="#cfbf9b"/>
     {[{x:-11,z:-36,w:22,d:18},{x:-43,z:-25,w:20,d:16},{x:22.5,z:-36,w:23,d:18},{x:-42.5,z:-50,w:17,d:14},{x:-8,z:-61,w:16,d:10}].map((r,i)=><rect key={i} x={r.x} y={r.z} width={r.w} height={r.d} rx=".7" fill="#879d81" stroke="#6c876b" strokeWidth=".5"/>)}
     <rect x="28" y="-56" width="16" height="13" rx="1" fill="#9eac7c"/>{Array.from({length:4},(_,i)=><path key={i} d={`M${30+i*3.2} -55V-44`} stroke="#c6ce9f" strokeWidth="1.6"/>)}
     <circle cx="-10" cy="0" r="4.5" fill="#83a075"/><circle cx="-35" cy="42" r="4" fill="#b8aa7c"/><ellipse cx="-38" cy="12" rx="8" ry="10" fill="#8fa98188"/>

@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import {feedStations,QUAN_AM_SPOT} from './src/pondScene.mjs';
 const root=path.resolve(fileURLToPath(new URL('./dist/',import.meta.url)));
 const mime={'.glb':'model/gltf-binary','.json':'application/json; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.wasm':'application/wasm','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.mp3':'audio/mpeg','.wav':'audio/wav','.ogg':'audio/ogg','.woff2':'font/woff2'};
 const allowedRooms=new Set(['an-nhien','truc-lam','huong-sen']);
@@ -10,7 +11,7 @@ export function createGameServer({now=Date.now}={}){
   const rooms=new Map();
   const roomFor=id=>{if(!rooms.has(id))rooms.set(id,{peers:new Map(),streams:new Map(),messages:[],lastChat:new Map(),offerings:[],operations:new Map(),lastOffering:new Map(),plots:{},gardenOperations:new Map()});return rooms.get(id)};
   const prune=room=>{room.offerings=room.offerings.filter(o=>now()-o.at<(o.kind==='feed'?12000:o.kind==='incense'?650000:480000));for(const [key,at] of room.operations)if(now()-at>650000)room.operations.delete(key)};
-  const snapshot=room=>{prune(room);return JSON.stringify({offerings:room.offerings,plots:room.plots,peers:[...room.peers.values()].map(p=>{const {updated,...safe}=p;return safe}),messages:room.messages})};
+  const snapshot=room=>{prune(room);return JSON.stringify({serverTime:now(),offerings:room.offerings,plots:room.plots,peers:[...room.peers.values()].map(p=>{const {updated,bowToken,...safe}=p;return safe}),messages:room.messages})};
   const emit=room=>{const data=`event: snapshot\ndata: ${snapshot(room)}\n\n`;for(const res of room.streams.values())if(!res.writableEnded&&!res.destroyed)res.write(data)};
   const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
   async function body(req){let value='';for await(const chunk of req){value+=chunk;if(value.length>8192)throw new Error('too large')}return JSON.parse(value)}
@@ -35,8 +36,11 @@ export function createGameServer({now=Date.now}={}){
           const finite=(n,min,max,fallback)=>typeof n==='number'&&Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
           const seat=typeof b.seat==='string'&&b.seat.length<40&&!([...room.peers.values()].some(p=>p.id!==b.id&&p.seat===b.seat))?b.seat:null;
           const actions=['drawWater','carryWater','pourWater','plant','water','harvest','feed','flower','candle','incense','walk','sit','eat','pray','bow','sweep','meditate','beads','chant','mok','read','tea'];
+          // Relative elapsed time avoids trusting clocks on different players' devices.
+          const bow=b.action==='bow'&&b.bow&&Number.isFinite(b.bow.at)&&Number.isFinite(b.bow.elapsed)
+            ? {at:peer.action==='bow'&&peer.bowToken===b.bow.at&&peer.bow?peer.bow.at:now()-finite(b.bow.elapsed,0,6000,0),mode:seat?'cushion':'standing'}:null;
           const meal=b.meal&&['noodles','rice','soup','bread'].includes(b.meal.dish)&&['preparing','ready','eating','finished'].includes(b.meal.status)&&typeof b.meal.seatId==='string'?{dish:b.meal.dish,seatId:b.meal.seatId.slice(0,40),status:b.meal.status,orderedAt:finite(b.meal.orderedAt,0,Date.now()+60000,0),cookedAt:finite(b.meal.cookedAt,0,Date.now()+60000,0),...(Number.isFinite(b.meal.counterReadyAt)?{counterReadyAt:finite(b.meal.counterReadyAt,0,Date.now()+60000,0)}:{}),kitchenAt:finite(b.meal.kitchenAt,0,Date.now()+60000,0),deliveryAt:finite(b.meal.deliveryAt,0,Date.now()+60000,0),homeAt:finite(b.meal.homeAt,0,Date.now()+60000,0),readyAt:finite(b.meal.readyAt,0,Date.now()+60000,0),eatUntil:finite(b.meal.eatUntil,0,Date.now()+60000,0)}:null;
-          room.peers.set(b.id,{...peer,name:typeof b.name==='string'?b.name.trim().slice(0,22)||'An Nhiên':peer.name,robe:typeof b.robe==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.robe)?b.robe:peer.robe,gender:b.gender==='female'?'female':'male',skin:typeof b.skin==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.skin)?b.skin:'#c99c79',robeStyle:b.robeStyle==='cross'?'cross':'traditional',x:finite(b.x,-60,60,peer.x),y:finite(b.y,-1,12,peer.y),z:finite(b.z,-66,62,peer.z),heading:finite(b.heading,-100,100,peer.heading),action:actions.includes(b.action)?b.action:'walk',seat,meal,updated:Date.now()});json(res,200,{ok:true,seat});return;
+          room.peers.set(b.id,{...peer,name:typeof b.name==='string'?b.name.trim().slice(0,22)||'An Nhiên':peer.name,robe:typeof b.robe==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.robe)?b.robe:peer.robe,gender:b.gender==='female'?'female':'male',skin:typeof b.skin==='string'&&/^#[a-fA-F0-9]{6}$/.test(b.skin)?b.skin:'#c99c79',robeStyle:b.robeStyle==='cross'?'cross':'traditional',x:finite(b.x,-60,60,peer.x),y:finite(b.y,-1,12,peer.y),z:finite(b.z,-66,62,peer.z),heading:finite(b.heading,-100,100,peer.heading),action:actions.includes(b.action)?b.action:'walk',seat,bow,bowToken:bow?b.bow.at:null,meal,updated:Date.now()});json(res,200,{ok:true,seat});return;
         }
         if(pathname==='/api/garden'){
           if(!validId(b.operation)||!/^plot-([0-9]|1[01])$/.test(b.plot)||!['plant','water','harvest'].includes(b.action)||!Number.isInteger(b.revision)){json(res,400,{error:'Yêu cầu chăm cây không hợp lệ.'});return;}
@@ -58,10 +62,9 @@ export function createGameServer({now=Date.now}={}){
           if(!validId(b.operation)||!['incense','flower','candle','feed'].includes(b.kind)){json(res,400,{error:'invalid offering'});return;}
           const key=b.id+':'+b.operation;
           if(room.operations.has(key)){json(res,200,{ok:true});return;}
-          let spot=[0,-8.7],target=[22,6];if(b.kind==='incense'&&b.station){if(b.station!=='quan-am'){json(res,400,{error:'invalid station'});return;}spot=[39.35,25.25];}
+          let spot=[0,-8.7],target;if(b.kind==='incense'&&b.station){if(b.station!=='quan-am'){json(res,400,{error:'invalid station'});return;}spot=QUAN_AM_SPOT;}
           if(b.kind==='feed'){
-            const stations=[...Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return {id:'shore-'+i,spot:[33+Math.cos(a)*9.4,9+Math.sin(a)*11.9],target:[33+Math.cos(a)*7.1,9+Math.sin(a)*9.3]}}),...[-5,0,5].flatMap((x,i)=>[-1,1].map(side=>({id:'bridge-'+i+'-'+(side+1),spot:[33+x,9+side*.85],target:[33+x,9+side*3]})))];
-            const station=stations.find(s=>s.id===b.station);if(!station){json(res,400,{error:'invalid station'});return;}spot=station.spot;target=station.target;
+            const station=feedStations.find(s=>s.id===b.station);if(!station){json(res,400,{error:'invalid station'});return;}spot=station.spot;target=station.target;
           }
           const xs={flower:{table:[-5.7,-3.7,-1,1,3.7,5.7],floor:[-6.575,-2.825,-1.875,1.875,2.825,6.575],low:[-.76,.76]},candle:{table:[-4.7,0,4.7]}};
           if(b.kind!=='incense'&&b.kind!=='feed'){

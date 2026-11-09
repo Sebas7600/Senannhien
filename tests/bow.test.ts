@@ -48,3 +48,28 @@ test('every cushion, including all Truc Lam seats, bows without releasing or cha
     useGame.setState({bow:{at:Date.now()-4000,mode:'cushion'}});useGame.getState().finishBow();s=useGame.getState();assert.equal(s.action,'sit');assert.equal(s.seated,seat.id);assert.deepEqual(s.position,position);
   }
 });
+
+test('meditation bows once per minute, resumes in the same seat and cancels on standing',()=>{
+  useGame.setState({seated:'temple-0',action:'meditate'});
+  for(let cycle=0;cycle<2;cycle++){
+    useGame.getState().record('meditate',59);
+    assert.equal(useGame.getState().action,'meditate');
+    useGame.getState().record('meditate');
+    let s=useGame.getState();assert.equal(s.action,'bow');assert.equal(s.meditationBow,true);assert.equal(s.bow?.mode,'cushion');assert.equal(s.meditationSeconds,60);
+    s.finishBow();assert.equal(useGame.getState().action,'bow');
+    useGame.setState({bow:{at:Date.now()-4000,mode:'cushion'}});
+    useGame.getState().finishBow();s=useGame.getState();
+    assert.equal(s.action,'meditate');assert.equal(s.meditationSeconds,0);assert.equal(s.seated,'temple-0');assert.equal(s.meditationBow,false);
+  }
+  useGame.getState().record('meditate',60);useGame.getState().stand();
+  useGame.getState().finishBow();assert.equal(useGame.getState().action,'walk');assert.equal(useGame.getState().meditationBow,false);
+});
+
+test('meditation faces the Buddha altar from every temple and hall cushion',async()=>{
+  const {meditationHeading}=await import('../src/gameData');
+  for(const seat of seats.filter(s=>s.zone==='temple'||s.zone==='hall')){
+    const heading=meditationHeading(seat),x=seat.zone==='hall'?-33:0,z=seat.zone==='hall'?-22.9:-32.35;
+    assert.ok(Math.abs(Math.atan2(x-seat.position[0],z-seat.position[2])-heading)<.00001);
+    assert.ok(Math.cos(heading)<0);
+  }
+});
