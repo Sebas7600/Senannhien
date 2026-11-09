@@ -1,5 +1,8 @@
 .camera-zoom{display:none}.action-notices{display:contents}
 .world canvas{touch-action:none;overscroll-behavior:none}
+.world>div{overflow:clip!important}
+.reading-library .book-cover,.reading-library .book-details{box-sizing:border-box;min-width:0}
+.reading-library .book-details{overflow-wrap:anywhere}
 @media(max-width:760px),(max-width:1100px) and (pointer:coarse),(max-width:1100px) and (max-height:500px){
   .camera-zoom{position:absolute;right:12px;top:90px;z-index:6;display:flex;align-items:center;flex-direction:column;gap:5px;width:40px;height:170px;box-sizing:border-box;padding:8px 4px;border:1px solid #f4f0dc70;border-radius:18px;background:#f5f2df75;color:#546b4d;backdrop-filter:blur(5px);touch-action:none}
   .camera-zoom input{-webkit-appearance:slider-vertical;appearance:slider-vertical;writing-mode:vertical-lr;direction:ltr;height:112px;min-height:0;max-height:112px;flex:0 0 112px;margin:0;padding:0;width:32px;accent-color:#6a8659;touch-action:none;cursor:ns-resize}
@@ -29,5 +32,17 @@
 @media(max-height:500px) and (max-width:1100px){.camera-zoom{top:62px;height:143px}.camera-zoom input{height:85px;max-height:85px;flex-basis:85px}.v2-game .v2-side-tools{top:62px;right:66px;flex-direction:row;width:auto}.v2-game .practice-card,.v2-game .meal-status,.v2-game .water-task-card{top:111px;right:auto;width:260px;max-height:42dvh}.v2-game .location-card{max-width:260px}.v2-game .joystick{bottom:90px;width:88px;height:88px}.v2-game .toast{bottom:120px;left:auto;width:260px}.v2-game .modal-shade>.v2-modal{max-width:650px;max-height:calc(100dvh - 16px)}.v2-modal .menu-banner{display:none}}
 
 @media(max-height:500px) and (max-width:1100px){.v2-game .action-notices{top:111px;right:auto;width:260px;max-height:110px}}
+
+@media(max-width:760px),(max-width:1100px) and (pointer:coarse),(max-width:1100px) and (max-height:500px){
+  .v2-modal .catalogue-book{width:100%;box-sizing:border-box;align-items:center;grid-template-columns:minmax(0,105px) minmax(0,1fr)}
+  .v2-modal .catalogue-book>.book-cover{width:100%;max-width:100%;min-width:0;flex:none;align-self:stretch;min-height:195px;padding:14px 8px}
+  .v2-modal .book-cover .book-illustration{max-width:100%;height:40px;flex-shrink:0}
+  .v2-modal .book-cover strong{font-size:17px;overflow-wrap:anywhere;margin:10px 0}
+  .v2-modal .book-cover>span:first-of-type{font-size:6px;letter-spacing:1px}
+  .v2-modal .book-cover i{font-size:9px}.v2-modal .book-cover .cover-flower{flex-shrink:0;margin-top:12px}
+  .v2-modal .book-details h3{font-size:21px;margin:9px 0}.v2-modal .book-details p{line-height:1.65}
+  .v2-modal .book-open-link{font-size:11px;margin-top:14px;gap:6px}
+  .v2-modal .reading-seat>span{flex:1;min-width:0}.v2-modal .reading-seat>button{flex-shrink:0}
+}
 
 @media(max-width:760px),(pointer:coarse){.v2-game.night .action-notices>.ceremony-status{background:#1b2b27aa;color:#e3e8cf}.v2-game.night .ceremony-status strong{color:#e3e8cf}.v2-game.night .ceremony-status span{color:#bdc9a9}.v2-game .toast>svg{flex-shrink:0}}

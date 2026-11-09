@@ -3,7 +3,7 @@ import {courtyardSolids} from './courtyardCollisionData';
 import {quanAmObstacles} from './quanAmData';
 import {WATER_WELL,WATER_JARS} from './waterTaskData';
 import {templeSurfaceHeight} from './templeFixtures';
-import {POND_BRIDGES,pondSurface,pondBlocked} from './pondLayout';
+import {POND_BRIDGES,bridgeRailEnd,pondSurface,pondBlocked} from './pondLayout';
 import {removedTemplePost} from './templeLayout';
 import templeObjectShapes from './templeObjectColliders.json';
 import {stoneBenches,benchSeatWorld} from './stoneBenchData';
@@ -124,8 +124,8 @@ export const obstacles:Obstacle[]=[
   ...courtyardSolids.map(s=>({x:s.x,z:s.z,w:s.w,d:s.d,height:s.height,navigationOnly:true})),
   ...quanAmObstacles,
   ...POND_BRIDGES.flatMap(bridge=>[-1,1].map(side=>({
-    x:(bridge.start+bridge.end)/2,z:bridge.z+side*bridge.halfWidth,
-    w:bridge.end-bridge.start,d:.12,navigationOnly:true,
+    x:(bridge.start+bridgeRailEnd(bridge))/2,z:bridge.z+side*bridge.halfWidth,
+    w:bridgeRailEnd(bridge)-bridge.start,d:.12,navigationOnly:true,
   }))),
   {x:WATER_WELL.x,z:WATER_WELL.z,w:2.4,d:2.4,height:WATER_WELL.height+.06},
   ...WATER_JARS.map(j=>({x:j.x,z:j.z,w:j.radius*2,d:j.radius*2,height:j.height+.06})),

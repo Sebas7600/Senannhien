@@ -1,0 +1,1 @@
+POS staff.jpg and guest.jpg: supplied by the project owner on 2026-11-09 for the two screens of the Hương Thiền reception terminal. Staff uses attachment 4; guest uses attachment 5. Images are display textures only; the phone/check-in controls pictured are not interactive game forms.

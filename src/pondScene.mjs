@@ -6,6 +6,11 @@ export const POND_BRIDGES=[
 ];
 export const QUAN_AM_SPOT=[ISLAND.x-4.15,ISLAND.z];
 
+// Stop the island bridge rails at the rim, leaving a full-width landing to turn on.
+export function bridgeRailEnd(bridge){
+  return bridge.rampEnd===0?Math.min(bridge.end,ISLAND.x-Math.sqrt(ISLAND.radius**2-bridge.halfWidth**2)-.18):bridge.end;
+}
+
 export function bridgeHeight(x,bridge=POND_BRIDGES[0]){
   const near=(x-bridge.start)/bridge.rampStart;
   const far=bridge.rampEnd?(bridge.end-x)/bridge.rampEnd:1;

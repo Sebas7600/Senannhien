@@ -3,7 +3,7 @@ import {useFrame} from '@react-three/fiber';
 import {RigidBody,CuboidCollider,CylinderCollider} from '@react-three/rapier';
 import * as T from 'three';
 import {ConvexGeometry} from 'three/examples/jsm/geometries/ConvexGeometry.js';
-import {POND,ISLAND,POND_BRIDGES,bridgeHeight,islandContains} from './pondLayout';
+import {POND,ISLAND,POND_BRIDGES,bridgeHeight,bridgeRailEnd,islandContains} from './pondLayout';
 import {batchGeometry,coloredGeometry} from './geometryBatch';
 import {useGame} from './gameStore';
 import {useReducedMotion} from './useReducedMotion';
@@ -146,6 +146,12 @@ const bridgeSpans=POND_BRIDGES.flatMap(bridge=>{
   });
 });
 const bridgeBox=new T.BoxGeometry(1,1,1);
+const railSpans=bridgeSpans.flatMap(span=>{
+  const start=span.x-Math.cos(span.angle)*span.length/2,end=Math.min(span.x+Math.cos(span.angle)*span.length/2,bridgeRailEnd(span));
+  if(end<=start)return [];
+  const y0=bridgeHeight(start,span),y1=bridgeHeight(end,span);
+  return [{...span,x:(start+end)/2,y:(y0+y1)/2,angle:Math.atan2(y1-y0,end-start),length:Math.hypot(end-start,y1-y0)}];
+});
 const bridgeParts:T.BufferGeometry[]=[];
 for(const bridge of POND_BRIDGES){
   const count=Math.ceil((bridge.end-bridge.start)/.37),step=(bridge.end-bridge.start)/count;
@@ -158,13 +164,13 @@ for(const bridge of POND_BRIDGES){
   }
   for(const side of [-1,1]){
     const z=bridge.z+side*bridge.halfWidth;
-    const posts=Math.ceil((bridge.end-bridge.start)/1.95);
+    const railEnd=bridgeRailEnd(bridge),posts=Math.ceil((railEnd-bridge.start)/1.95);
     for(let i=0;i<=posts;i++){
-      const x=T.MathUtils.lerp(bridge.start+.12,bridge.end-.12,i/posts),y=bridgeHeight(x,bridge);
+      const x=T.MathUtils.lerp(bridge.start+.12,railEnd-.12,i/posts),y=bridgeHeight(x,bridge);
       bridgeParts.push(coloredGeometry(bridgeBox,'#694633',[x,y+.34,z],[.145,.79,.15]));
       bridgeParts.push(coloredGeometry(bridgeBox,'#a38266',[x,y+.75,z],[.19,.062,.19]));
     }
-    for(const span of bridgeSpans.filter(span=>span.z===bridge.z)){
+    for(const span of railSpans.filter(span=>span.z===bridge.z)){
       for(const height of [.33,.70]){
         bridgeParts.push(coloredGeometry(bridgeBox,'#72503b',[span.x,span.y+height,z],
           [span.length+.04,.095,.115],[0,0,span.angle]));
@@ -191,9 +197,9 @@ function LakeCrossings(){
       <CylinderCollider args={[islandDepth/2,ISLAND.radius]} position={[ISLAND.x,islandCenter,ISLAND.z]}/>
       {bridgeSpans.map(span=><group key={span.x+'-'+span.z}>
         <CuboidCollider args={[span.length/2,.05,span.halfWidth]} position={[span.x,span.y-.05,span.z]} rotation={[0,0,span.angle]}/>
-        {[-1,1].map(side=><CuboidCollider key={side} args={[span.length/2,.38,.06]}
-          position={[span.x,span.y+.37,span.z+side*span.halfWidth]} rotation={[0,0,span.angle]}/>)}
       </group>)}
+      {railSpans.flatMap(span=>[-1,1].map(side=><CuboidCollider key={span.x+'-'+span.z+'-'+side} args={[span.length/2,.38,.06]}
+        position={[span.x,span.y+.37,span.z+side*span.halfWidth]} rotation={[0,0,span.angle]}/>))}
     </RigidBody>
   </>;
 }

@@ -81,6 +81,8 @@ Kiểm chứng: 160 kiểm thử client + 8 server = 168/168 đạt; TypeScript 
 
 ## Kiểm chứng
 
+Cập nhật theo ảnh kiểm thử điện thoại ngày 09/11: danh mục sách bỏ chiều rộng bìa cố định gây lấn mô tả, giữ hai cột co được ở màn hình 320–390 px và dùng biểu tượng hoa SVG để tránh emoji xanh trên iOS. Hướng dâng hương Trúc Lâm nay nhắm đúng tâm lư của thiền đường thay vì lư chánh điện. Khói dùng hai luồng hạt uốn, tăng độ rõ và giữ hình khói tĩnh khi thiết bị yêu cầu giảm chuyển động; vẫn một draw call mỗi lư, không tải texture khói. Lan can cầu sang Quan Âm dừng ở mép đảo, chừa phần đáp cầu để rẽ; hình ảnh, collider Rapier và tìm đường dùng cùng điểm kết thúc. Hai ảnh POS do chủ dự án gửi được đặt thành texture riêng: ảnh quản lý phía Cô Tâm, ảnh check-in phía khách. 162 kiểm thử client + 8 server = 170/170 đạt; có kiểm tra capsule Rapier rẽ qua đầu lan can cũ và hướng nhìn vào đúng lư từ ba phía. Production build đạt. Đã xem danh mục sách ở 390 × 640 và 320 × 568, dâng hương thành công qua LAN và không ghi nhận lỗi JavaScript; chưa xác nhận lại trên Safari thiết bị thật.
+
 - TypeScript và production build đạt.
 - 81/81 kiểm thử tự động đạt sau tích hợp main 604ab35: đường đi mọi chỗ ngồi, va chạm Rapier thật ở sàn chuông, phục vụ đủ 20 chỗ, vật phẩm/tiến trình, giới hạn đèn, flicker, hủy âm thanh đang tải, không phát trùng, âm thanh không fetch URL media, phòng và đồng bộ đồ cúng/vườn rau, MIME media và tải từng đoạn (HTTP Range) trên máy chủ.
 - Trước khi tích hợp main mới, đã thao tác trực tiếp trên Edge với viewport tablet 820 × 1180 và điện thoại 390 × 844: chọn đệm ăn, gọi bánh mì và dùng bữa; uống trà; chuông và popup; tụng kinh và nút nhạc; đài viết lời nguyện.
@@ -97,7 +99,7 @@ npm test
 node server.mjs
 ```
 
-Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 160 kiểm thử client và 8 kiểm thử server (tổng 168); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
+Mặc định là cổng 5174; có thể đặt PORT để chạy bản thử riêng. `npm test` chạy 162 kiểm thử client và 8 kiểm thử server (tổng 170); có thể chạy riêng `npm run test:client` và `npm run test:server`. Build còn cảnh báo kích thước chunk physics 2,22 MB và chunk nhạc tải riêng 1,37 MB trước gzip.
 
 ## Giới hạn còn lại
 

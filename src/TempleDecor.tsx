@@ -1,5 +1,6 @@
 import {useGame} from './gameStore';
 import {useLayoutEffect,useRef} from 'react';
+import {useTexture} from '@react-three/drei';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {Box} from './models';
@@ -87,7 +88,10 @@ export function AltarOfferings(){const night=useGame(s=>s.night);return <group p
   {[-.6,-.3,0,.3,.6].map(x=><group key={x} position={[x,.05,.39]}><mesh><cylinderGeometry args={[.063,.042,.10,12]}/><meshStandardMaterial color="#d5caa8" roughness={.3}/></mesh><mesh position={[0,.052,0]}><cylinderGeometry args={[.052,.052,.004,12]}/><meshStandardMaterial color="#947751" roughness={.2}/></mesh></group>)}
   <pointLight position={[0,1.1,.6]} color="#ffd5a0" intensity={night?4.2:1.4} distance={5} decay={2}/>
 </group>}
-export function ReceptionDesk(){return <group position={[RECEPTION[0],.16,RECEPTION[1]]} rotation={[0,Math.PI,0]}>
+export function ReceptionDesk(){
+  const [staff,guest]=useTexture(['/art/pos/staff.jpg','/art/pos/guest.jpg']);
+  useLayoutEffect(()=>{for(const texture of [staff,guest]){texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=2;texture.needsUpdate=true;}},[staff,guest]);
+  return <group position={[RECEPTION[0],.16,RECEPTION[1]]} rotation={[0,Math.PI,0]}>
   <Box position={[0,.06,0]} scale={[1.3,.12,.8]} color="#9b805b"/>
   <Box position={[0,.58,0]} scale={[1.12,.96,.63]} color="#aa8c64"/>
   <Box position={[0,1.1,0]} scale={[1.4,.12,.85]} rotation={[-.10,0,0]} color="#c4ad83"/>
@@ -96,10 +100,8 @@ export function ReceptionDesk(){return <group position={[RECEPTION[0],.16,RECEPT
   <mesh position={[0,1.4,0]} rotation={[-.13,0,0]}><boxGeometry args={[.18,.35,.14]}/><meshStandardMaterial color="#d2d5cb"/></mesh>
   {[-1,1].map(side=><group key={side} position={[0,1.65,side*.10]} rotation={[0,side===1?0:Math.PI,0]}>
     <mesh><boxGeometry args={[.82,.5,.075]}/><meshStandardMaterial color="#d5d8d0"/></mesh>
-    <mesh position={[0,0,.043]}><boxGeometry args={[.73,.4,.012]}/><meshBasicMaterial color="#233e3a"/></mesh>
-    <mesh position={[-.12,.085,.052]}><boxGeometry args={[.37,.033,.005]}/><meshBasicMaterial color="#c8d7ba"/></mesh>
-    <mesh position={[-.08,.015,.052]}><boxGeometry args={[.44,.018,.005]}/><meshBasicMaterial color="#8fa995"/></mesh>
-    <mesh position={[0,-.105,.052]}><boxGeometry args={[.33,.075,.005]}/><meshBasicMaterial color="#8cae77"/></mesh>
+    {/* Local +Z faces world -Z after desk rotation, toward Co Tam. */}
+    <mesh name={side===1?'POS-staff':'POS-guest'} position={[0,0,.043]}><planeGeometry args={[.73,.4]}/><meshBasicMaterial map={side===1?staff:guest} toneMapped={false}/></mesh>
   </group>)}
   <mesh position={[.36,1.24,.20]} rotation={[-.25,0,0]}><boxGeometry args={[.16,.12,.19]}/><meshStandardMaterial color="#bec7bc"/></mesh>
 </group>}

@@ -5,6 +5,7 @@ export const ISLAND:{x:number;z:number;radius:number;top:number};
 export const POND_BRIDGES:readonly PondBridge[];
 export const QUAN_AM_SPOT:Point;
 export function bridgeHeight(x:number,bridge?:PondBridge):number;
+export function bridgeRailEnd(bridge:PondBridge):number;
 export function pondContains(x:number,z:number,margin?:number):boolean;
 export function islandContains(x:number,z:number,margin?:number):boolean;
 export function pondBlocked(x:number,z:number,margin?:number):boolean;

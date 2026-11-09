@@ -1,5 +1,5 @@
 import {playWood} from './audio';
-import {QUAN_AM} from './quanAmData';
+import {incenseHeading} from './incenseAim';
 import {WATER_TASK,WATER_WELL,WATER_JARS} from './waterTaskData';
 import {pondBlocked} from './pondLayout';
 import {templeFixtures,offeringStation} from './templeFixtures';
@@ -39,7 +39,7 @@ export default function PlayerV3(){
     if(s.action==='drawWater')playerMotion.heading=Math.atan2(WATER_WELL.x-p.x,WATER_WELL.z-p.z);
     if(s.action==='pourWater'&&s.waterQuest?.jar!==null&&s.waterQuest?.jar!==undefined){const j=WATER_JARS[s.waterQuest.jar];playerMotion.heading=Math.atan2(j.x-p.x,j.z-p.z);}
     if(s.action==='feed'&&s.event)playerMotion.heading=Math.atan2(s.event.x-p.x,s.event.z-p.z);
-    if(s.action==='incense'){const spot=s.event?.target===QUAN_AM.incenseId?[QUAN_AM.tableX,QUAN_AM.tableZ]:incenseSpot;playerMotion.heading=Math.atan2(spot[0]-p.x,spot[1]-p.z);}
+    if(s.action==='incense')playerMotion.heading=incenseHeading([p.x,p.z],s.event?.target);
     if(['drawWater','pourWater','plant','water','harvest','feed','incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
     let walking=false,stairStep:-1|0|1=0;
     if(s.seated){if(dx||dz){s.stand();return;}const seat=seats.find(c=>c.id===s.seated)!;rb.setNextKinematicTranslation({x:seat.position[0],y:seat.position[1]+CHARACTER_OFFSET,z:seat.position[2]});playerMotion.heading=s.action==='meditate'||s.meditationBow?meditationHeading(seat):seat.rotation;if(Math.abs(s.heading-playerMotion.heading)>.001)s.set({heading:playerMotion.heading});}
