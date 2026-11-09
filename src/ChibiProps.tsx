@@ -56,13 +56,7 @@ export function ChibiHandProp({pose,dish}: {pose:string;dish?:DishId}) {
     <mesh><cylinderGeometry args={[.043,.046,.026,12]}/><meshStandardMaterial color="#e9d39b"/></mesh>
     <mesh position={[0,.054,0]} scale={[1,1.65,1]}><sphereGeometry args={[.014,6,4]}/><meshBasicMaterial color="#ffd685"/></mesh>
   </group>;
-  if (pose === 'tea') return <mesh position={[0,.04,.052]}>
-    <cylinderGeometry args={[.037,.026,.055,10]}/><meshStandardMaterial color="#b5c19a"/>
-  </mesh>;
   if (pose === 'water' || pose === 'drawWater') return <WateringCan flow={pose === 'water'}/>;
-  if (pose === 'read') return <mesh position={[0,.035,.055]} rotation={[-.45,0,0]}>
-    <boxGeometry args={[.16,.027,.13]}/><meshStandardMaterial color="#d7c49b"/>
-  </mesh>;
   if (pose === 'eat') return <group>
     {dish === 'bread' ? <mesh><capsuleGeometry args={[.035,.105,4,8]}/><meshStandardMaterial color="#c89550"/></mesh>
       : dish === 'rice' ? <>

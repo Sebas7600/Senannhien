@@ -1,6 +1,7 @@
 import {OFFERING_DURATION} from './gameData';
 import {Euler, Quaternion, Vector3, type Object3D} from 'three';
 import {sampleBow, type BowFrame, type BowMode} from './bowTimeline';
+import {createQuietActivityFrame,sampleQuietActivity} from './quietActivityMotion';
 
 const joints = ['Hong','Than','Dau','Vai_L','Vai_R','Khuyu_L','Khuyu_R','Dui_L','Dui_R','Goi_L','Goi_R','Co_Chan_L','Co_Chan_R'] as const;
 type Joint = typeof joints[number];
@@ -14,6 +15,7 @@ export function createChibiPose(model: Object3D) {
   const hip = bones.get('Hong')!;
   const hipY = hip.position.y;
   const bow: BowFrame = {kneel:0, bend:0, reach:0, done:false};
+  const quiet=createQuietActivityFrame();
   let mealLift = 0, seatedElapsed = 0, wasSeated = false;
   const rendered = new Map(joints.map(name => [name, bones.get(name)!.quaternion.clone()]));
   let action = 'walk', elapsed = 0, weight = 0, hipBeforePose = hipY;
@@ -76,16 +78,18 @@ export function createChibiPose(model: Object3D) {
   }
 
   return {
+    quiet,
     get mealLift() { return mealLift; },
     restore() {
       if (!weight) return;
       for (const name of joints) bones.get(name)!.quaternion.copy(previous.get(name)!);
       hip.position.y = hipBeforePose;
     },
-    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false) {
+    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false, reduced = false) {
       if (action !== pose) { action = pose; elapsed = 0; }
       elapsed += dt;
       mealLift = 0;
+      sampleQuietActivity(pose,elapsed,quiet,reduced);
       // Changing a seated activity must not blend the pelvis back from standing height.
       const continuingSeat = seated && wasSeated;
       seatedElapsed = seated ? seatedElapsed + dt : 0;
@@ -129,6 +133,25 @@ export function createChibiPose(model: Object3D) {
         }
       }
 
+      if (pose === 'tea') {
+        turn('Than',.035);
+        turn('Dau',.10-.08*quiet.sip);
+        const mouth=bones.get('Dau')!.localToWorld(point.set(0,.115,.215));
+        model.worldToLocal(mouth);
+        const x=-.10+(mouth.x+.075)*quiet.sip;
+        const y=.29+(mouth.y-.052-.29)*quiet.sip+quiet.breath;
+        const z=.34+(mouth.z+.025-.34)*quiet.sip;
+        reachHand('R',point.set(x,y,z));
+        reachHand('L',point.set(x+.047,y-.031,z));
+        return;
+      }
+      if (pose === 'read') {
+        turn('Than',.055);
+        turn('Dau',.23+quiet.breath*2);
+        reachHand('R',point.set(-.135,.29+quiet.breath,.34));
+        reachHand('L',point.set(.135-.23*quiet.turnHand,.29+Math.sin(quiet.page*Math.PI)*.07+quiet.breath,.34));
+        return;
+      }
       if (pose === 'meditate' && seated && !chair) {
         turn('Than',.025);
         turn('Dau',.095);

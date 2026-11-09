@@ -7,6 +7,8 @@ import {useGLTF} from '@react-three/drei';
 import {AnimationMixer, Color, MathUtils, Group, Mesh, Quaternion, SkinnedMesh, Vector3} from 'three';
 import {clone} from 'three/addons/utils/SkeletonUtils.js';
 import RealisticCharacter, {type CharacterProps} from './RealisticCharacter';
+import {useReducedMotion} from './useReducedMotion';
+import {ReadingBook,TeaCup} from './QuietActivityProps';
 
 const modelUrl = '/assets/characters/thay-chua-chibi.glb';
 
@@ -51,6 +53,7 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
   }, [avatar, robe, skin]);
   const mixer = useMemo(() => new AnimationMixer(avatar), [avatar]);
   const rig = useMemo(() => createChibiPose(avatar), [avatar]);
+  const reduced=useReducedMotion();
   const clipName = moving && !seated ? (running && !stairsDirection ? 'Run' : 'Walk') : 'Idle';
   useEffect(() => {
     const clip = animations.find(item => item.name === clipName);
@@ -75,10 +78,20 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
     }
     rig.restore();
     mixer.update(dt);
-    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving);
+    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced);
     const prop = heldProp.current;
     if (prop) prop.position.set(0,0,0);
-    if ((pose === 'incense' || pose === 'water' || pose === 'drawWater' || pose === 'flower' || pose === 'candle') && prop?.parent) {
+    if ((pose === 'tea' || pose === 'read') && prop?.parent) {
+      if(pose==='read'){
+        avatar.localToWorld(upright.rest.set(0,.30+rig.quiet.breath,.34));
+        prop.position.copy(prop.parent.worldToLocal(upright.rest));
+      }
+      avatar.getWorldQuaternion(upright.avatar);
+      prop.parent.getWorldQuaternion(upright.parent);
+      prop.quaternion.copy(upright.parent.invert().multiply(upright.avatar));
+      upright.parent.setFromAxisAngle(upright.direction.set(1,0,0),pose==='tea'?-rig.quiet.cupTilt:-.32);
+      prop.quaternion.multiply(upright.parent);prop.scale.setScalar(1);
+    } else if ((pose === 'incense' || pose === 'water' || pose === 'drawWater' || pose === 'flower' || pose === 'candle') && prop?.parent) {
       if (pose === 'flower' || pose === 'candle') {
         avatar.getObjectByName('Co_Tay_L')!.getWorldPosition(upright.leftHand);
         prop.parent.getWorldPosition(upright.rightHand);
@@ -106,7 +119,7 @@ function ChibiAvatar({moving, running, stairsDirection = 0, localPlayer, dish, p
   return <group ref={bodyVisual} position={[0,seated ? 0 : -.025,seated && !chair ? -.06 : 0]}>
     <primitive object={avatar} scale={[1.08, 1, 1.10]} />
     {seated && <ChibiLapRobe robe={robe} chair={chair}/>}
-    {hand && createPortal(<group ref={heldProp}><ChibiHandProp pose={pose} dish={dish}/></group>,hand)}
+    {hand && createPortal(<group ref={heldProp}>{pose==='tea'?<TeaCup/>:pose==='read'?<ReadingBook motion={rig.quiet}/>:<ChibiHandProp pose={pose} dish={dish}/>}</group>,hand)}
     {pose === 'sweep' && <ChibiBroom localPlayer={localPlayer}/>}
     {(pose === 'carryWater' || pose === 'pourWater') && <ChibiYoke pouring={pose==='pourWater'} moving={!!moving}/>}
   </group>;

@@ -57,6 +57,9 @@
 .moment-frame>.eyebrow,.moment-frame>.modal-subtitle{display:none}
 .v2-modal.moment-frame>h2{font:500 10px 'Be Vietnam Pro',sans-serif;letter-spacing:2px;text-transform:uppercase;color:#839075;margin:12px 0 0}
 .moment-body{text-align:center;clear:both}.moment-art{margin:6px auto 0;max-width:360px;line-height:0}.moment-art svg{width:100%;height:auto;max-height:235px}
+.bell-model-art{width:100%;height:235px;pointer-events:none}.bell-model-art canvas{display:block}.order-summary{flex-wrap:wrap}.meal-status>.text-btn{display:block;margin:8px auto 0;min-height:36px}
+@media(max-width:600px){.bell-model-art{height:195px}}
+@media(max-height:550px) and (orientation:landscape){.bell-model-art{height:140px}}
 .moment-kicker{font-size:9px;letter-spacing:2px;color:#8a9678;display:block;margin:8px 0 18px}
 .moment-body h3{font:normal 35px/1.3 Georgia,'Times New Roman',serif;letter-spacing:-.7px;color:#516e49;margin:0 0 17px}
 .moment-description{font-size:12px;line-height:1.9;color:#7b866c;margin:14px auto 8px;max-width:280px}
