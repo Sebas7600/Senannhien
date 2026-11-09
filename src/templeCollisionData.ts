@@ -1,9 +1,16 @@
-import {removedTemplePost} from './templeLayout';
+import {isPorticoColumn,porticoColumnTop,removedTemplePost} from './templeLayout';
 import objectShapes from './templeObjectColliders.json';
 import {templeFixtures} from './templeFixtures';
 export type TempleCollider={kind:'box'|'cylinder';position:[number,number,number];args:[number,number,number]|[number,number];rotationX?:number};
 const allTempleColliders:TempleCollider[]=[
- ...objectShapes.map(s=>({...s,kind:s.kind as 'box'|'cylinder',position:s.position as [number,number,number],args:s.args as [number,number,number]})),
+ ...objectShapes.map((s):TempleCollider=>{
+  const [x,y,z]=s.position;
+  if(s.kind==='cylinder'&&isPorticoColumn(x,z)){
+   const base=y-s.args[0];
+   return {kind:'cylinder',position:[x,(base+porticoColumnTop)/2,z],args:[(porticoColumnTop-base)/2,s.args[1]]};
+  }
+  return {...s,kind:s.kind as 'box'|'cylinder',position:s.position as [number,number,number],args:s.args as [number,number,number]};
+ }),
  {kind:'box',position:[0,1.05,0],args:[14.25,1.15,9.775]},
  // Solid treads follow the reference footprint and extend to the ground: no open underside.
  ...Array.from({length:templeFixtures.stairs.count},(_,i)=>{const s=templeFixtures.stairs,depth=(s.front-s.back)/s.count,height=(i+1)*s.rise/s.count;return {kind:'box' as const,position:[0,height/2,s.front-(i+.5)*depth] as [number,number,number],args:[s.halfWidth,height/2,depth/2+.001] as [number,number,number]}}),
@@ -17,7 +24,6 @@ const allTempleColliders:TempleCollider[]=[
  {kind:'box',position:[0,4.23,-7.625],args:[12.625,2.045,.15]},
  {kind:'box',position:[0,4.2,-4.3],args:[7.1,2,3]},
  ...[-11.5,-7.025,-2.35,2.35,7.025,11.5].flatMap(x=>[-6.75,-3.4,1,4.9].map(z=>({kind:'cylinder' as const,position:[x,5.2,z] as [number,number,number],args:[3,.3] as [number,number]}))),
- ...[-13.1,-7.025,-2.35,2.35,7.025,13.1].flatMap(x=>[-8.9,8.9].map(z=>({kind:'cylinder' as const,position:[x,4.3,z] as [number,number,number],args:[2.1,.3] as [number,number]})))
 ];
 
 export const templeColliders=allTempleColliders.filter(s=>!(removedTemplePost(s.position[0],s.position[2])&&(s.kind==='cylinder'||(s.args[0]<1.5&&(s.args[2]||0)<1.5))));

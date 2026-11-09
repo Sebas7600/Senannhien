@@ -1,3 +1,5 @@
+import {POND} from './pondLayout';
+import {outerGroundGeometry,courtyardGroundGeometry,bambooGrove,bambooGroundGeometry} from './outdoorGroundGeometry';
 import TempleGarden from './TempleGarden';
 import MainTempleReference from './MainTempleReference';
 import IncenseBurner from './IncenseBurner';
@@ -14,13 +16,17 @@ import GardenDetails from './GardenDetails';
 import BodhiTree from './BodhiTree';
 import CourtyardTrees from './CourtyardTrees';
 import {CourtyardDapple} from './CourtyardLighting';
-import {pondTerrain} from './pondGeometry';
-import StonePavement from './StonePavement';
 import {finishInstanceLayout} from './geometryBatch';
 import {BODHI} from './bodhiData';
 import BenchBatches from './BenchBatches';
 import CushionBatches from './CushionBatches';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {CourtyardZoneDecor,CourtyardZoneGround} from './CourtyardZones';
+import {GATE,gateAvenueTrees} from './courtyardPropsData';
+import PathLamps from './PathLamps';
+import {woodlandBarkGeometries} from './treeBranches';
+import {useOutdoorSurface,useSurface} from './materials';
+import {useEffect} from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
@@ -40,11 +46,68 @@ export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string
   useFrame(()=>{if(!ref.current)return;ref.current.getWorldPosition(point.current);const p=useGame.getState().position,visible=Math.hypot(p[0]-point.current.x,p[1]-point.current.z)<maxDistance;if(visible!==previous.current){previous.current=visible;show(visible)}});
   return <group ref={ref} position={position}>{shown&&<Html center distanceFactor={distanceFactor} zIndexRange={[3,0]}>{children}</Html>}</group>;
 }function RoofSection({x,z,w,d,children}:{x:number;z:number;w:number;d:number;children:React.ReactNode}){const ref=useRef<THREE.Group>(null);useFrame(()=>{if(!ref.current)return;const s=useGame.getState();ref.current.visible=!(Math.abs(s.position[0]-x)<w/2+1&&Math.abs(s.position[1]-z)<d/2+2)});return <group ref={ref}>{children}</group>}
+const pavedCells=new Map<string,[number,number]>();
+function paveStrip(minX:number,maxX:number,minZ:number,maxZ:number){
+  for(let x=minX;x<=maxX;x++)for(let z=minZ;z<=maxZ;z++){
+    const pondX=(x-POND.x)/(POND.rx+.65),pondZ=(z-POND.z)/(POND.rz+.65);
+    if(pondX**2+pondZ**2>=1)pavedCells.set(`${x},${z}`,[x,z]);
+  }
+}
+paveStrip(-3,3,-17,GATE.z+10);
+paveStrip(-47,47,-7,-4);
+paveStrip(-18,18,26,27);
+paveStrip(-47,-15,-33,-32);
+paveStrip(15,47,-33,-32);
+paveStrip(-18,-17,-57,47);
+paveStrip(17,18,-57,47);
+const paverGeometry=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2);
+const borderGeometry=paverGeometry.clone();
+const borderUV=borderGeometry.getAttribute('uv');
+for(let i=0;i<borderUV.count;i++)borderUV.setXY(i,borderUV.getX(i)*.5,borderUV.getY(i)*.25);
+const trimWidth=.17;
+const borderSegments:{x:number;z:number;length:number;angle:number}[]=[];
+const isPaved=(x:number,z:number)=>pavedCells.has(`${x},${z}`);
+for(const [x,z] of pavedCells.values()){
+  const left=!isPaved(x-1,z),right=!isPaved(x+1,z);
+  if(left)borderSegments.push({x:x-.5+trimWidth/2,z,length:1,angle:Math.PI/2});
+  if(right)borderSegments.push({x:x+.5-trimWidth/2,z,length:1,angle:Math.PI/2});
+  const length=1-(Number(left)+Number(right))*trimWidth;
+  const center=x+(Number(left)-Number(right))*trimWidth/2;
+  if(!isPaved(x,z-1))borderSegments.push({x:center,z:z-.5+trimWidth/2,length,angle:0});
+  if(!isPaved(x,z+1))borderSegments.push({x:center,z:z+.5-trimWidth/2,length,angle:0});
+}
+
+function Pavers(){
+  const material=useOutdoorSurface('herringbone'),trimMaterial=useOutdoorSurface('brick-edge');
+  const ref=useRef<THREE.InstancedMesh>(null),border=useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(()=>{
+    const mesh=ref.current!,edge=border.current!,pose=new THREE.Object3D();
+    let index=0;
+    for(const [x,z] of pavedCells.values())mesh.setMatrixAt(index++,pose.matrix.makeTranslation(x,.05,z));
+    borderSegments.forEach(({x,z,length,angle},i)=>{
+      pose.position.set(x,.057,z);
+      pose.rotation.set(0,angle,0);
+      pose.scale.set(length,1,trimWidth);
+      pose.updateMatrix();
+      edge.setMatrixAt(i,pose.matrix);
+    });
+    for(const batch of [mesh,edge]){
+      batch.instanceMatrix.needsUpdate=true;
+      batch.computeBoundingSphere();
+    }
+  },[]);
+  return <group dispose={null}>
+    <instancedMesh ref={ref} args={[paverGeometry,material,pavedCells.size]} receiveShadow/>
+    <instancedMesh ref={border} args={[borderGeometry,trimMaterial,borderSegments.length]} receiveShadow/>
+  </group>;
+}
 function WalkSurface(){const click=(e:ThreeEvent<MouseEvent>)=>{if(e.delta>5)return;e.stopPropagation();const s=useGame.getState();s.stand();s.set({destination:[e.point.x,e.point.z],pendingSeat:null});};return <mesh position={[0,.065,0]} rotation={[-Math.PI/2,0,0]} onClick={click}><planeGeometry args={[124,132]}/><meshBasicMaterial transparent opacity={0} depthWrite={false}/></mesh>}
-export function Ground(){return <group><IncenseBurner/>
-  <mesh position={[0,-.67,0]} receiveShadow rotation={[-Math.PI/2,0,0]}><planeGeometry args={[350,350]}/><meshStandardMaterial color="#9faa78"/></mesh>
-  <mesh geometry={pondTerrain} position-y={.01} receiveShadow><meshStandardMaterial color="#a7af7b"/></mesh>
-  <StonePavement/><CourtyardDapple/><WalkSurface/>
+export function Ground(){const night=useGame(s=>s.night),soil=useOutdoorSurface('bamboo-soil'),stone=useOutdoorSurface('flagstone');return <group><IncenseBurner/>
+  <mesh position={[0,-.15,0]} geometry={outerGroundGeometry} receiveShadow dispose={null}><meshStandardMaterial color={night?'#4b596a':'#a6b18a'}/></mesh>
+  <mesh position={[0,.01,0]} geometry={courtyardGroundGeometry} material={stone} receiveShadow dispose={null}/>
+  <mesh position={[0,.01,0]} geometry={bambooGroundGeometry} material={soil} receiveShadow dispose={null}/>
+  <CourtyardZoneGround/>
+  <Pavers/><CourtyardDapple/><WalkSurface/>
   {[-1,1].map(s=><group key={s}><Box position={[s*60,.8,-2]} scale={[.35,1.6,128]} color="#b7b89c"/>{Array.from({length:33},(_,i)=><Box key={i} position={[s*60,1.35,-64+i*4]} scale={[.65,2.7,.65]} color="#acb095"/>)}</group>)}
   {[-66,62].map(z=><Box key={z} position={[0,.8,z]} scale={[120,1.6,.35]} color="#b7b89c"/>)}
   <RigidBody type="fixed" colliders={false}>
@@ -121,80 +184,59 @@ export function Seats(){return <><BenchBatches/><CushionBatches/></>}
 export function MealPlates(){const peers=useGame(s=>s.peers);return <>{peers.filter(p=>p.meal&&(p.meal.status==='ready'||p.meal.status==='eating')).map(p=>{const meal=p.meal!,seat=seats.find(s=>s.id===meal.seatId);if(!seat?.table)return null;const plan=mealPlan(seat.id);return <group key={p.id} position={plan.plate} rotation={[0,plan.heading,0]} scale={MEAL_SCALE}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>})}</>}
 export function Garden(){return <><TempleGarden/><WorldLabel position={[36,2.3,-42]} title="VƯỜN RAU TỪ TÂM" subtitle="Vườn chung · Gieo · Tưới · Thu hoạch sau 60 giây"/></>}
 function Forest(){
-  const trunks=useRef<THREE.InstancedMesh>(null),leaves=useRef<THREE.InstancedMesh>(null);
+  const broad=useRef<THREE.InstancedMesh>(null),upright=useRef<THREE.InstancedMesh>(null),leaves=useRef<THREE.InstancedMesh>(null);
+  const bark=useOutdoorSurface('bark');
   const coords=useMemo(()=>{
     const positions:Vec3[]=[];
-    for(let i=0;i<138;i++){
+    for(let i=0;i<145;i++){
       const angle=i*2.399,radius=64+(i%9)*3;
       positions.push([Math.sin(angle)*radius,0,Math.cos(angle)*radius-5]);
     }
     for(let i=0;i<30;i++)positions.push([-47+Math.sin(i*2.4)*8,0,-5+i*1.6]);
-    for(let i=0;i<7;i++)positions.push([62+i%2*4,0,2+i*8]);
     return positions;
   },[]);
   useLayoutEffect(()=>{
-    const pose=new THREE.Object3D(),palette=['#517454','#68825a','#84966a'].map(color=>new THREE.Color(color));
+    const trunkBatches=[broad.current!,upright.current!],crown=leaves.current!,pose=new THREE.Object3D();
+    const shades=['#517454','#68825a','#84966a'].map(color=>new THREE.Color(color));
     coords.forEach(([x,y,z],i)=>{
-      const size=.75+i%4*.18;
-      pose.position.set(x,2*size,z);
-      pose.scale.set(.28*size,4*size,.28*size);
-      pose.rotation.set(0,i,0);
+      const size=.75+i%4*.18,variant=i%2;
+      const width=size*(variant ? .79 : 1.04),height=size*(variant ? 1.13 : 1);
+      pose.position.set(x,y,z);
+      pose.scale.set(width,height,width);
+      pose.rotation.set(0,i*2.399,0);
       pose.updateMatrix();
-      trunks.current?.setMatrixAt(i,pose.matrix);
-      for(let j=0;j<3;j++){
-        const angle=j*2.4+i;
-        pose.position.set(x+Math.sin(angle)*size,y+(4+j*.5)*size,z+Math.cos(angle)*size);
-        pose.scale.set(2.5*size,1.5*size,2.3*size);
+      trunkBatches[variant].setMatrixAt(Math.floor(i/2),pose.matrix);
+      for(let j=0;j<5;j++){
+        const angle=j*2.399+i,radius=(j<3?1.08:.75)*width;
+        const crownSize=(j<3?1.80:1.0)*width;
+        pose.position.set(x+Math.sin(angle)*radius,y+(3.68+j*.36)*height,z+Math.cos(angle)*radius);
+        pose.scale.set(crownSize,(j<3?1.15:.78)*height,crownSize*.9);
+        pose.rotation.set(.12*Math.sin(i+j),angle,.13*Math.cos(j));
         pose.updateMatrix();
-        leaves.current?.setMatrixAt(i*3+j,pose.matrix);
-        leaves.current?.setColorAt(i*3+j,palette[(i+j)%3]);
+        crown.setMatrixAt(i*5+j,pose.matrix);
+        crown.setColorAt(i*5+j,shades[(i+j)%3]);
       }
     });
-    finishInstanceLayout(trunks.current);
-    finishInstanceLayout(leaves.current);
+    for(const mesh of [...trunkBatches,crown]){
+      mesh.instanceMatrix.needsUpdate=true;
+      mesh.computeBoundingSphere();
+    }
+    if(crown.instanceColor)crown.instanceColor.needsUpdate=true;
   },[coords]);
-  return <>
-    <instancedMesh ref={trunks} args={[undefined,undefined,coords.length]} castShadow>
-      <cylinderGeometry args={[1,1.3,1,6]}/><meshStandardMaterial color="#7f7258"/>
-    </instancedMesh>
-    <instancedMesh ref={leaves} args={[undefined,undefined,coords.length*3]} castShadow>
+  return <group dispose={null}>
+    <instancedMesh ref={broad} args={[woodlandBarkGeometries[0],bark,Math.ceil(coords.length/2)]} castShadow/>
+    <instancedMesh ref={upright} args={[woodlandBarkGeometries[1],bark,Math.floor(coords.length/2)]} castShadow/>
+    <instancedMesh ref={leaves} args={[undefined,undefined,coords.length*5]} castShadow>
       <icosahedronGeometry args={[1,1]}/><meshStandardMaterial roughness={1}/>
     </instancedMesh>
-  </>;
-}
-function Bamboo(){
-  const stalks=useRef<THREE.InstancedMesh>(null);
-  useLayoutEffect(()=>{
-    const mesh=stalks.current;
-    if(!mesh)return;
-    const pose=new THREE.Object3D();
-    for(let i=0;i<80;i++){
-      const angle=i*2.399,radius=6+(i%9)*.9;
-      pose.position.set(-38+Math.sin(angle)*radius,2.4+(i%3)*.3,12+Math.cos(angle)*radius);
-      pose.scale.set(.06,4.8+(i%3)*.6,.06);
-      pose.rotation.set(Math.sin(i)*.04,0,Math.cos(i)*.05);
-      pose.updateMatrix();
-      mesh.setMatrixAt(i,pose.matrix);
-    }
-    finishInstanceLayout(mesh);
-  },[]);
-  return <group>
-    <instancedMesh ref={stalks} args={[undefined,undefined,80]}>
-      <cylinderGeometry args={[1,1,1,6]}/><meshStandardMaterial color="#72885b"/>
-    </instancedMesh>
-    {Array.from({length:15},(_,i)=>{
-      const angle=i*2.4;
-      return <mesh key={i} position={[-38+Math.sin(angle)*8,5.5,12+Math.cos(angle)*8]} scale={[2,.3,2]}>
-        <icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#71945f"/>
-      </mesh>;
-    })}
   </group>;
 }
-function LanternPaths(){return <>{Array.from({length:14},(_,i)=>[-1,1].filter(s=>s<0||i!==11).map(s=><group key={`${i}-${s}`} position={[s*14.7,0,-22+i*4]}><Box position={[0,.3,0]} scale={[.6,.6,.6]} color="#a5ac8e"/><Box position={[0,1.2,0]} scale={[.16,1.4,.16]} color="#879678"/><Lantern position={[0,1.95,0]}/><Box position={[0,2.25,0]} scale={[.8,.12,.8]} color="#6d8369"/></group>))}</>}
-function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
+function Bamboo(){const ref=useRef<THREE.InstancedMesh>(null);useEffect(()=>{if(!ref.current)return;const m=new THREE.Object3D();for(let i=0;i<80;i++){const a=i*2.399,r=6+(i%9)*.9;m.position.set(bambooGrove.x+Math.sin(a)*r,2.4+(i%3)*.3,bambooGrove.z+Math.cos(a)*r);m.scale.set(.06,4.8+(i%3)*.6,.06);m.rotation.set(Math.sin(i)*.04,0,Math.cos(i)*.05);m.updateMatrix();ref.current.setMatrixAt(i,m.matrix);}ref.current.instanceMatrix.needsUpdate=true},[]);return <group><instancedMesh ref={ref} args={[undefined,undefined,80]}><cylinderGeometry args={[1,1,1,6]}/><meshStandardMaterial color="#72885b"/></instancedMesh>{Array.from({length:15},(_,i)=>{const a=i*2.4;return <mesh key={i} position={[bambooGrove.x+Math.sin(a)*8,5.5,bambooGrove.z+Math.cos(a)*8]} scale={[2,.3,2]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#71945f"/></mesh>})}</group>}
+function Decorations(){return <><Forest/><Bamboo/><PathLamps/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
   <CourtyardTrees/>
+  {gateAvenueTrees.map(({x,z,scale})=><Tree key={`${x}-${z}`} position={[x,.06,z]} scale={scale}/>)}
   {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/><CourtyardZoneDecor/></>}
 export default memo(Architecture);

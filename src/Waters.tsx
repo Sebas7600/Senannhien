@@ -10,6 +10,7 @@ import {useReducedMotion} from './useReducedMotion';
 import {WorldLabel} from './Environment';
 import {FlyingLanterns,FloatingLotuses,WishStation} from './Lanterns';
 import {FISH_FEED_LIFETIME,koiTarget} from './fishFeeding';
+import {fullMoonOffset} from './CourtyardSky';
 
 const waterVertex=`
   #include <fog_pars_vertex>
@@ -27,6 +28,7 @@ const waterFragment=`
   varying vec3 vPoint;
   uniform float uTime;
   uniform float uNight;
+  uniform vec3 uMoonDirection;
   void main(){
     vec2 p=vPoint.xz;
     float a=sin(dot(p,vec2(1.6,1.1))+uTime*.85);
@@ -40,6 +42,9 @@ const waterFragment=`
     float flecks=pow(max(0.0,a*b),7.0);
     color+=vec3(.13,.20,.13)*flecks*(.42+glancing*.45);
     color=mix(color,color*vec3(.30,.43,.56),uNight);
+    vec3 halfVector=normalize(uMoonDirection+eye);
+    float glint=pow(max(0.,dot(normal,halfVector)),94.);
+    color+=vec3(.35,.48,.68)*glint*.43*uNight;
     gl_FragColor=vec4(color,.75+.22*glancing);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -51,7 +56,7 @@ const waterGeometry=new T.CircleGeometry(1,POND.segments).scale(POND.rx,POND.rz,
 
 function LakeWater(){
   const reduced=useReducedMotion();
-  const uniforms=useMemo(()=>T.UniformsUtils.merge([T.UniformsLib.fog,{uTime:{value:0},uNight:{value:0}}]),[]);
+  const uniforms=useMemo(()=>T.UniformsUtils.merge([T.UniformsLib.fog,{uTime:{value:0},uNight:{value:0},uMoonDirection:{value:fullMoonOffset.clone().normalize()}}]),[]);
   useFrame(({clock})=>{
     uniforms.uTime.value=reduced?0:clock.elapsedTime;
     uniforms.uNight.value=useGame.getState().night?1:0;

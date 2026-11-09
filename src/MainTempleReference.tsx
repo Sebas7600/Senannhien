@@ -1,10 +1,11 @@
 import TempleDonationChest from './TempleDonationChest';
-import {removeNavePosts,strayFacadeOrnament} from './templeLayout';
+import {extendPorticoColumn,isPorticoColumn,removeNavePosts,strayFacadeOrnament} from './templeLayout';
 import TempleCeiling from './TempleCeiling';
 import TempleCollision from './TempleCollision';
 import {templeParts} from './templeGeometry';
 import TempleNiches from './TempleNiches';
 import TempleOfferingStations from './TempleOfferingStations';
+import {detailTempleRoof,TempleRoofDetail} from './TempleRoofDetail';
 /** Complete user-provided temple, at uniform scale. Other buildings remain independent. */
 import {useMemo,useRef,useLayoutEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
@@ -14,12 +15,36 @@ import * as THREE from 'three';
 const asset=(name:string)=>'/assets/main-temple/'+name+'?v=complete-20261103-4';
 function prepare(scene:THREE.Group){const model=scene.clone(true);model.traverse(o=>{if(o instanceof THREE.Mesh){o.material=(o.material as THREE.MeshStandardMaterial).clone();o.material.side=THREE.DoubleSide;o.material.envMapIntensity=.85;o.castShadow=true;o.receiveShadow=true;}});return model;}
 function TempleExterior(){
- const {scene}=useGLTF(asset('tam-the-complete.glb')),roof=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null);
- const parts=useMemo(()=>{const full=removeNavePosts(prepare(scene),templeParts),body=new THREE.Group(),top=new THREE.Group(),entrance=new THREE.Group();full.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.attributes.position,ix=o.geometry.index;if(!ix)return;const buckets:[number[],THREE.Group][]=[[[],body],[[],top],[[],entrance]];
- for(const part of templeParts(o.geometry)){const size=part.box.getSize(new THREE.Vector3()),name=(o.material as THREE.Material).name;const column=size.y>5&&size.x<1.8&&size.z<1.8;const c=part.box.getCenter(new THREE.Vector3()).multiplyScalar(.5);if(strayFacadeOrnament(name,c,size.clone().multiplyScalar(.5)))continue;const high=!column&&(name.startsWith('roof')||part.box.min.y>10.8);const nearFront=false;buckets[high?1:nearFront?2:0][0].push(...part.indices)}
- for(const [indices,parent]of buckets)if(indices.length){const mesh=o.clone();mesh.geometry=o.geometry.clone();mesh.geometry.setIndex(indices);parent.add(mesh)}});return {body,top,entrance}},[scene]);
-
- return <group scale={.5}><primitive object={parts.body}/><group ref={roof} position={[0,3,0]}><primitive object={parts.top}/></group><group ref={front}><primitive object={parts.entrance}/></group></group>;
+ const {scene}=useGLTF(asset('tam-the-complete.glb'));
+ const parts=useMemo(()=>{
+  const full=removeNavePosts(prepare(scene),templeParts),body=new THREE.Group(),top=new THREE.Group();
+  full.traverse(o=>{
+   if(!(o instanceof THREE.Mesh)||!o.geometry.index)return;
+   const geometry=o.geometry.clone(),position=geometry.getAttribute('position');
+   const material=o.material as THREE.MeshStandardMaterial,name=material.name;
+   const buckets:[number[],THREE.Group][]=[[[],body],[[],top]];
+   for(const part of templeParts(geometry)){
+    const size=part.box.getSize(new THREE.Vector3()).multiplyScalar(.5);
+    const c=part.box.getCenter(new THREE.Vector3()).multiplyScalar(.5);
+    if(strayFacadeOrnament(name,c,size))continue;
+    const column=size.y>2.5&&size.x<.9&&size.z<.9;
+    if(column&&name==='wood'&&isPorticoColumn(c.x,c.z))extendPorticoColumn(position,part.box,part.indices);
+    const high=!column&&(name.startsWith('roof')||part.box.min.y>10.8);
+    buckets[Number(high)][0].push(...part.indices);
+   }
+   for(const [indices,parent] of buckets)if(indices.length){
+    const mesh=o.clone();
+    mesh.geometry=geometry.clone();
+    mesh.geometry.setIndex(indices);
+    mesh.geometry.computeBoundingSphere();
+    if(name==='roof_tile')detailTempleRoof(material);
+    parent.add(mesh);
+   }
+   geometry.dispose();
+  });
+  return {body,top};
+ },[scene]);
+ return <group scale={.5}><primitive object={parts.body}/><group position={[0,3,0]}><primitive object={parts.top}/><TempleRoofDetail/></group></group>;
 }
 function KsitigarbhaStatue() {
  const low = useGame(s => s.quality === 'low');
@@ -72,7 +97,8 @@ function Halo(){const low=useGame(s=>s.quality==='low');return <group position={
 
 export default function MainTempleReference(){
  const low=useGame(s=>s.quality==='low');
- const {scene}=useGLTF(asset('tam-the-complete-interior.glb'));const interior=useMemo(()=>removeNavePosts(prepare(scene),templeParts),[scene]);
+ const night=useGame(s=>s.night);
+ const {scene}=useGLTF(asset('tam-the-complete-interior.glb'));const interior=useMemo(()=>removeNavePosts(prepare(scene),templeParts,true),[scene]);
  return <group position={[0,.08,-27]}>
   <TempleExterior/>
   <TempleCeiling/>
@@ -82,6 +108,6 @@ export default function MainTempleReference(){
   <TempleDonationChest/>
   <group scale={.5}><primitive object={interior}/></group>
   {[-4.7,0,4.7].map(x=><group key={x} position={[x,2.48,-5.35]}>{x<0?<TempleReferenceStatue kind='quan-am'/>:x===0?<TempleReferenceStatue kind='buddha'/>:<KsitigarbhaStatue/>}<Halo/></group>)}
-  {(low?[0]:[-4.7,0,4.7]).map(x=><pointLight key={x} position={[x,5,-2.8]} color="#ffdfab" intensity={12} distance={9} decay={2}/>)}
+  {(low||night?[0]:[-4.7,0,4.7]).map(x=><pointLight key={x} position={[x,5,-2.8]} color={night?'#fff3e6':'#ffdfab'} intensity={night?5:12} distance={9} decay={2}/>)}
  </group>;
 }

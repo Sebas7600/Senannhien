@@ -10,6 +10,7 @@ import {CUSHION} from './cushionData';
 import {courtyardTrees,COURTYARD_TREE} from './courtyardData';
 import {GATE,gateMasonry} from './courtyardPropsData';
 import {gateBlocked} from './gateState';
+import {zoneObstacles} from './courtyardZoneData';
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 export const CHARACTER_RADIUS=.28;
@@ -104,7 +105,7 @@ export const scriptures = [
   {id:'walking',title:'Từng bước an nhiên',source:'Thực tập thiền hành',paragraphs:['Đi chậm hơn một chút so với thường ngày. Cảm nhận bàn chân chạm đất.','Có thể bước một bước khi hít vào, một bước khi thở ra. Không bắt buộc nhịp thở phải giống ai.','Đích đến của bước chân này chính là nơi bàn chân đang đặt xuống.']},
 ];
 export const npcs = [
-  {id:'guide',name:'Chú tiểu Minh',role:'Người đón khách',x:-3,z:24,robe:'#859786',lines:['Chào bạn! Qua cổng tam quan là sân bồ đề. Đi thẳng sẽ tới chánh điện.','Bạn có thể bấm vào từng bồ đoàn để ngồi. Khi muốn đứng dậy, nhấn E hoặc phím di chuyển.','Nhà ăn Hương Thiền nằm phía đông bắc. Cô Tâm có bốn món chay đợi bạn đấy.']},
+  {id:'guide',name:'Chú tiểu Minh',role:'Người đón khách',x:-3,z:GATE.z-5,robe:'#859786',lines:['Chào bạn! Qua cổng tam quan là sân bồ đề. Đi thẳng sẽ tới chánh điện.','Bạn có thể bấm vào từng bồ đoàn để ngồi. Khi muốn đứng dậy, nhấn E hoặc phím di chuyển.','Nhà ăn Hương Thiền nằm phía đông bắc. Cô Tâm có bốn món chay đợi bạn đấy.']},
   {id:'master',name:'Thầy Thiện Tâm',role:'Trông tàng kinh các',x:-26.8,z:-46.6,robe:'#a2794d',lines:['Cứ thong thả. Tu tập trong game bắt đầu từ sự chú ý với những điều nhỏ quanh mình.','Mời bạn chọn một bàn đọc. Một trang tĩnh lặng gồm bốn bài thực tập ngắn.','Hành trình có nhiều dấu mốc: ghé các khu vực, chăm cây và ngồi thiền mỗi ngày.']},
   {id:'cook',name:'Cô Tâm',role:'Đón khách · Bếp chay Hương Thiền',x:43,z:-20.15,robe:'#9b8067',lines:['Mời bạn vào dùng một bữa chay. Hôm nay có mì, cơm, hủ tiếu và bánh mì chay.','Chọn một bồ đoàn bên bàn, mở thực đơn rồi gọi món. Cô sẽ mang phần ăn tới đúng bàn của bạn.','Bữa ăn ở đây được tặng miễn phí. Cứ ăn chậm, đủ no rồi cùng chăm lại sân chùa nhé.']},
   {id:'chef',name:'Cô An',role:'Phụ trách bếp · Nhà ăn Hương Thiền',x:CHEF_HOME[0],z:CHEF_HOME[1],robe:'#bdab87',lines:['Chào bạn, cô An phụ trách bếp Hương Thiền. Mỗi phần ăn được nấu mới khi bạn gọi món.','Cô nấu trong ba giây rồi mang khay sang bên phải quầy. Cô Tâm sẽ nhận món tại đó và mang đến bàn.','Mời bạn chọn một chỗ ngồi, dùng bữa chậm rãi và trân trọng từng hương vị.']},
@@ -117,6 +118,7 @@ export const gardenPlots=Array.from({length:12},(_,i)=>({id:`plot-${i}`,x:31+(i%
 
 export interface Obstacle { x:number; z:number; w:number; d:number; height?:number; base?:number; navigationOnly?:boolean }
 export const obstacles:Obstacle[]=[
+  ...zoneObstacles,
   ...quanAmObstacles,
   ...POND_BRIDGES.flatMap(bridge=>[-1,1].map(side=>({
     x:(bridge.start+bridge.end)/2,z:bridge.z+side*bridge.halfWidth,

@@ -1,22 +1,36 @@
 import * as THREE from 'three';
 import {RoundedBoxGeometry} from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import {coloredGeometry,batchGeometry,taperTube} from './geometryBatch';
+import {coloredGeometry,batchGeometry,barkTube} from './geometryBatch';
 import {BODHI} from './bodhiData';
 import {treeBasinParts} from './treeBasinGeometry';
+import {forkedLimb} from './treeBranches';
 const bark:THREE.BufferGeometry[]=[],stone:THREE.BufferGeometry[]=[],metal:THREE.BufferGeometry[]=[],offerings:THREE.BufferGeometry[]=[];
-const trunk=taperTube([[0,.12,0],[.06,.55,0],[-.08,1.4,.04],[.05,2.7,-.05],[.1,3.9,.03],[.1,4.8,0]],[.98,.87,.66,.56,.42,.23],10);
-export const bodhiTrunkShadowGeometry=trunk;
-bark.push(coloredGeometry(trunk,'#70583d'));
+const trunk=barkTube([[0,.12,0],[-.08,.65,.05],[.15,1.48,-.08],[-.06,2.52,.08],[-.28,3.83,.13],[-.51,5.31,.09],[-.88,6.43,-.26]],[1.15,.98,.83,.76,.60,.37,.1],11);
+export const bodhiTrunkShadowGeometry=trunk.clone().setIndex(Array.from({length:trunk.attributes.position.count},(_,i)=>i));
+bark.push(trunk);
+bark.push(barkTube([[1.17,.09,-.81],[.82,.86,-.50],[.64,1.83,-.35],[.38,2.94,-.17],[.28,4.30,-.52]],[.5,.47,.38,.32,.13],8));
+const scaffold=[
+  [.26,2.36,3.80,3.74,.64],[1.62,2.77,3.94,3.76,.59],[2.93,3.21,3.31,3.36,.53],
+  [4.39,2.82,4.02,3.56,.66],[5.45,3.96,2.88,3.34,.48],
+].map(([angle,height,reach,rise,radius])=>forkedLimb([
+  Math.sin(angle)*.26,height,Math.cos(angle)*.26,
+],angle,reach,rise,radius,9));
+scaffold.forEach(limb=>bark.push(...limb.geometry));
 for(let i=0;i<8;i++){const a=i*Math.PI/4+.15,dx=Math.sin(a),dz=Math.cos(a),length=2.1+(i%3)*.2;
-  bark.push(coloredGeometry(taperTube([[dx*.3,1.6,dz*.3],[dx*.75,.65,dz*.75],[dx*1.5,.22,dz*1.5],[dx*length,.1,dz*length]],[.35,.32,.19,.045],7),i%2?'#71593e':'#66513b'));
-  bark.push(coloredGeometry(taperTube([[dx*.16,3.3,dz*.16],[dx*.9,4.25+(i%2)*.3,dz*.9],[dx*2.1,5.0+(i%3)*.3,dz*2.1],[dx*3.0,5.5+(i%2)*.5,dz*3]],[.31,.27,.16,.055],7),'#756044'));
+  const width=.31+(i%3)*.07;
+  bark.push(barkTube([[dx*.33,1.45+(i%3)*.39,dz*.33],[dx*.8,.66,dz*.8],[dx*1.58+dz*.16,.27,dz*1.58-dx*.16],[dx*length,.10,dz*length]],[width,width*.81,width*.48,.032],7));
+  if(i%2===0)bark.push(barkTube([[dx*.78,.68,dz*.78],[dx*1.28+dz*.35,.28,dz*1.28-dx*.35],[dx*1.94+dz*.6,.1,dz*1.94-dx*.6]],[width*.53,width*.33,.025],5));
 }
-for(let i=0;i<18;i++){const a=i*2.399,r=2.5+(i%4)*.25,x=Math.sin(a)*r,z=Math.cos(a)*r;
-  if(z>1.8&&Math.abs(x)<1.15)continue;
-  bark.push(coloredGeometry(taperTube([[x,5.7+(i%3)*.32,z],[x+.08*Math.sin(i),2.8,z+.05],[x+.10,.14,z]],[.022,.026,.043],4),'#806448'));
-  if(i%3===0)bark.push(coloredGeometry(new THREE.CylinderGeometry(.035,.036,.17,4),i%2?'#9a4430':'#b3974e',[x+.05,1.6+(i%2)*.5,z]));
-}
-bark.push(coloredGeometry(new THREE.CylinderGeometry(2.94,2.94,.075,28),'#594a34',[0,.05,0]));
+scaffold.forEach(({fork,tip},branch)=>{
+  for(let i=0;i<3;i++){
+    const t=.045+i*.078,x=THREE.MathUtils.lerp(fork[0],tip[0],t),y=THREE.MathUtils.lerp(fork[1],tip[1],t),z=THREE.MathUtils.lerp(fork[2],tip[2],t);
+    if(z>1.8&&Math.abs(x)<1.15)continue;
+    const lean=.14*Math.sin(branch*2.3+i),radius=.025+i*.018;
+    bark.push(barkTube([[x,y,z],[x+lean,y*.57,z+.06],[x*.93,.64,z*.94],[x*.88,.12,z*.9]],[radius*.76,radius*.92,radius,radius*.88],5));
+    if(i===0)offerings.push(coloredGeometry(new THREE.CylinderGeometry(.04,.04,.17,4),branch%2?'#9a4430':'#b3974e',[x*.97+lean*.6,1.8,z*.97]));
+  }
+});
+stone.push(coloredGeometry(new THREE.CylinderGeometry(2.94,2.94,.075,28),'#594a34',[0,.05,0]));
 stone.push(...treeBasinParts(BODHI.radius,BODHI.wallHeight,32));
 function block(size:[number,number,number],position:[number,number,number],color:string){stone.push(coloredGeometry(new RoundedBoxGeometry(...size,1,.02),color,position));}
 block([1.62,.13,.76],[0,.775,BODHI.altarZ],'#c1c0ae');

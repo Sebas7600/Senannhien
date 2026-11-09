@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import {coloredGeometry,batchGeometry} from './geometryBatch';
 import {foliageTexture} from './foliageTexture';
-// Nine opaque crown masses; leaf details are baked into the same shared mesh.
+// Crown and leaf details share a single opaque mesh.
 const lobes=[
 [0,4.25,0,1.3,1,1.2],[-1.2,3.6,.25,1.45,.93,1.1],[1.25,3.65,.3,1.4,.95,1.1],
 [0,3.55,1.15,1.55,.92,1.1],[-.7,4.0,-.95,1.4,1,1.2],[1.0,3.95,-.8,1.35,1,1.15],
-[-1.9,3.2,-.45,1.08,.8,1.0],[1.9,3.25,-.35,1.08,.85,1.1],[0,3.4,-1.65,1.15,.85,1.1]];
+[-1.9,3.2,-.45,1.08,.8,1.0],[1.9,3.25,-.35,1.08,.85,1.1],[0,3.4,-1.65,1.15,.85,1.1],
+[-2.26,3.22,.92,1.08,.68,1.0],[2.12,3.84,-.78,1.12,.78,1.02],[.48,4.79,-.45,1.0,.89,1.02]];
 const masses=lobes.map(([x,y,z,sx,sy,sz],i)=>{
-  const g=coloredGeometry(new THREE.IcosahedronGeometry(1,1),['#5c7739','#648042','#718a45','#5d7b3d'][i%4],[x,y,z],[sx,sy,sz],[0,i*.8,.1*Math.sin(i)]);
+  const g=coloredGeometry(new THREE.IcosahedronGeometry(1,i<9?1:0),['#526e40','#5c7747','#64804b','#567345'][i%4],[x,y,z],[sx,sy,sz],[0,i*.8,.1*Math.sin(i)]);
   // Baked sunlit tops and cooler shaded undersides: no extra texture or shader cost.
   const p=g.attributes.position,c=g.attributes.color;
   for(let v=0;v<p.count;v++){const top=THREE.MathUtils.clamp((p.getY(v)-(y-sy))/(2*sy),0,1),shade=.78+top*.28;c.setXYZ(v,c.getX(v)*shade,c.getY(v)*shade,c.getZ(v)*(.92+top*.09));}
