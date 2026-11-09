@@ -1,3 +1,4 @@
+import PlayerAvatar from './PlayerAvatar';
 import {QUAN_AM,nearQuanAm} from './quanAmData';
 import {nearWaterWell,nearWaterJar,nearestWaterJar} from './waterTaskData';
 import {nearGate} from './courtyardPropsData';
@@ -102,19 +103,22 @@ function CameraRig(){const controls=useRef<OrbitControlsType>(null);const mode=u
   return <OrbitControls ref={controls} target={[0,1.2,22]} enablePan={false} minDistance={mode==='overview'?35:2.2} maxDistance={mode==='overview'?170:35} minPolarAngle={.25} maxPolarAngle={Math.PI/2.12} enableDamping dampingFactor={.08} mouseButtons={{LEFT:undefined as unknown as THREE.MOUSE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE}} touches={{ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN}}/>;
 }
 function RemoteAvatar({peer}:{peer:Peer}){
+  const [moving,setMoving]=useState(false),movingRef=useRef(false);
   const [safeX,safeZ]=outsideIncenseBurner(peer.x,peer.z);
   const relocated=Math.hypot(safeX-peer.x,safeZ-peer.z)>.001;
   const safeY=relocated?floorAt(safeX,safeZ):peer.y;
   const ref=useRef<THREE.Group>(null),initial=useRef<[number,number,number]>([safeX,safeY,safeZ]),target=useRef(new THREE.Vector3());
   useFrame((_,dt)=>{
     if(!ref.current)return;
+    const inMotion=!peer.seat&&Math.hypot(safeX-ref.current.position.x,safeZ-ref.current.position.z)>.12;
+    if(inMotion!==movingRef.current){movingRef.current=inMotion;setMoving(inMotion);}
     ref.current.position.lerp(target.current.set(safeX,safeY,safeZ),1-Math.exp(-dt*11));
     // Interpolation can also cross the burner, even with safe endpoints.
     const [x,z]=outsideIncenseBurner(ref.current.position.x,ref.current.position.z);
     if(Math.hypot(x-ref.current.position.x,z-ref.current.position.z)>.001){ref.current.position.set(x,floorAt(x,z),z);}
     const d=THREE.MathUtils.euclideanModulo(peer.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;ref.current.rotation.y+=d*Math.min(1,dt*12);
   });
-  return <group ref={ref} position={initial.current}><Character robe={peer.robe} pose={relocated?'walk':peer.action} gender={peer.gender} skin={peer.skin} robeStyle={peer.robeStyle} seated={!relocated&&!!peer.seat} dish={peer.meal?.dish} chair={!relocated&&!!peer.seat&&!usesFloorSeat(seats.find(s=>s.id===peer.seat))}/><Html position={[0,1.8,0]} center zIndexRange={[3,0]}><span className="nametag remote"><i/>{peer.name}</span></Html></group>;
+  return <group ref={ref} position={initial.current}><PlayerAvatar moving={moving} robe={peer.robe} pose={relocated?'walk':peer.action} bowStartedAt={peer.bow?.at} bowMode={peer.bow?.mode} gender={peer.gender} skin={peer.skin} robeStyle={peer.robeStyle} seated={!relocated&&!!peer.seat} dish={peer.meal?.dish} chair={!relocated&&!!peer.seat&&!usesFloorSeat(seats.find(s=>s.id===peer.seat))}/><Html position={[0,1.8,0]} center zIndexRange={[3,0]}><span className="nametag remote"><i/>{peer.name}</span></Html></group>;
 }
 
 function Others(){const peers=useGame(s=>s.peers);return <>{peers.map(p=><RemoteAvatar key={p.id} peer={p}/>)}</>}
@@ -150,7 +154,7 @@ function Villager({n}:{n:typeof npcs[number]}){
 function Villagers(){return <>{npcs.map(n=><Villager key={n.id} n={n}/>)}</>}
 
 function OfferingEffects(){const allBurning=useGame(s=>s.burningIncense),slots=useGame(s=>s.offeringSlots),burning=allBurning.filter(at=>slots[at]!==QUAN_AM.incenseId);useGame(s=>s.sessionSeconds);const active=burning.filter(at=>Date.now()-at<INCENSE_BURN_MS);const ref=useRef<THREE.Group>(null);useFrame(({clock})=>ref.current?.children.forEach((m,i)=>{const t=(clock.elapsedTime*.2+i*.17)%1;m.position.set(Math.sin(t*8+i)*.18,.4+t*1.5,0);m.scale.setScalar(.03+t*.07)}));return <group>
-  {burning.length>0&&<IncenseSticks times={burning}/>}
+  {burning.length>0&&<IncenseSticks times={burning} heightScale={.85} thicknessScale={.75}/>}
   {active.length>0&&<group position={[incenseSpot[0],INCENSE_ASH_Y,incenseSpot[1]]} ref={ref}>{Array.from({length:8},(_,i)=><mesh key={i}><sphereGeometry args={[1,6,6]}/><meshBasicMaterial transparent opacity={.15} color="#ede8d0" depthWrite={false}/></mesh>)}</group>}
   <FishFood/>
 </group>}

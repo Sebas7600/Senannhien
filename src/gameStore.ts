@@ -53,11 +53,11 @@ export interface MealOrder {dish:DishId;seatId:string;status:'preparing'|'ready'
 export interface PlotState {revision?:number;by?:string;plantedAt:number;wateredAt:number|null;harvested:boolean}
 
 export interface Wish {text:string;at:number}
-export interface Peer {id:string;name:string;robe:string;gender?:'male'|'female';skin?:string;robeStyle?:'traditional'|'cross';x:number;y:number;z:number;heading:number;action:Action;seat:string|null;meal?:MealOrder|null}
+export interface Peer {id:string;name:string;robe:string;gender?:'male'|'female';skin?:string;robeStyle?:'traditional'|'cross';x:number;y:number;z:number;heading:number;action:Action;seat:string|null;bow?:BowSession|null;meal?:MealOrder|null}
 export interface ChatMessage {id:string;name:string;text:string;at:number;system?:boolean}
 export interface GameState {
   waterQuest:WaterQuest|null;waterJars:WaterJarState[];lastWaterDeliveryAt:number;waterTask:(jar?:number)=>void;cancelWaterTask:()=>void;tickWaterTask:()=>void;
-  bow:BowSession|null;finishBow:()=>void;
+  meditationBow:boolean;bow:BowSession|null;finishBow:()=>void;
   name:string;robe:string;gender:'male'|'female';skin:string;robeStyle:'traditional'|'cross';characterConfigured:boolean;merit:number;peace:number;experience:number;energy:number;day:string;started:boolean;
   progress:Record<Activity,number>;lifetime:Record<Activity,number>;sweepRemainder:number;inventory:Record<Item,number>;claimed:string[];badges:string[];
   beadStepAt:number;advanceBead:()=>void;
@@ -66,7 +66,7 @@ export interface GameState {
 
   position:Vec2;height:number;heading:number;destination:Vec2|null;seated:string|null;pendingSeat:string|null;pendingAction:Action;
   teleport:{position:Vec3;heading:number;at:number}|null;event:{type:Activity;at:number;x:number;z:number;target?:string}|null;toast:{text:string;id:number}|null;
-  meal:MealOrder|null;npc:string|null;scripture:string;sessionSeconds:number;bodhiIncense:number;
+  meal:MealOrder|null;npc:string|null;scripture:string;sessionSeconds:number;meditationSeconds:number;bodhiIncense:number;
   pendingActivity:Activity|null;ceremony:{type:'bell'|'lantern';at:number;text?:string}|null;flights:Wish[];reflectionWish:string;
   connection:'connecting'|'online'|'offline';room:string;peers:Peer[];messages:ChatMessage[];chatUnread:number;playerId:string;
   set:(v:Partial<GameState>)=>void;notify:(text:string)=>void;record:(activity:Activity,amount?:number)=>void;checkDay:()=>void;
@@ -74,6 +74,7 @@ export interface GameState {
   orderMeal:(id:DishId)=>void;eat:()=>void;tick:()=>void;garden:(id:string)=>void;buy:(item:Item)=>void;claim:(id:string)=>void;claimBadge:(id:string)=>void;
   read:(id:string)=>void;releaseWish:(text:string)=>void;arriveSeat:(id:string)=>void;closePanel:()=>void;
 }
+export const MEDITATION_GOAL_SECONDS = 60;
 const timed:Action[]=['meditate','beads','chant','mok','pray'];
 export function achievementValue(s:Pick<GameState,'visited'|'tasted'|'readBooks'|'lifetime'>,metric:string){return metric==='visits'?s.visited.length:metric==='dishes'?s.tasted.length:metric==='books'?s.readBooks.length:s.lifetime[metric as Activity]||0;}
 export const floorAt=surfaceHeight;
@@ -83,7 +84,7 @@ export const useGame=create<GameState>()(persist((set,get)=>({
   progress:emptyProgress(),lifetime:emptyProgress(),sweepRemainder:0,inventory:{feed:20,lantern:5,incense:10,candle:8,flower:8,seed:12,vegetable:0},claimed:[],badges:[],visited:[],readBooks:[],tasted:[],gardenPending:null,plots:{},wishes:[],
   lastFishFedAt:0,fishFeedAt:0,fishFeeds:[],offeringSlots:{},offeringFocus:null,offerings:{flower:[],candle:[]},burningIncense:[],action:'walk',panel:null,night:false,sound:false,chantMusic:true,quality:typeof window!=='undefined'&&window.matchMedia?.('(pointer: coarse)').matches?'low':'high',camera:'follow',cameraYaw:0,cameraReset:0,
 
-  position:[0,22],height:.06,heading:Math.PI,destination:null,seated:null,pendingSeat:null,pendingAction:'sit',teleport:null,event:null,toast:null,meal:null,npc:null,scripture:'breath',sessionSeconds:0,bodhiIncense:0,bow:null,
+  position:[0,22],height:.06,heading:Math.PI,destination:null,seated:null,pendingSeat:null,pendingAction:'sit',teleport:null,event:null,toast:null,meal:null,npc:null,scripture:'breath',sessionSeconds:0,meditationSeconds:0,meditationBow:false,bodhiIncense:0,bow:null,
   pendingActivity:null,ceremony:null,flights:[],reflectionWish:'',
   connection:'connecting',room:'an-nhien',peers:[],messages:[],chatUnread:0,playerId:'',
   set,notify:text=>set({toast:{text,id:Date.now()}}),
@@ -104,6 +105,7 @@ export const useGame=create<GameState>()(persist((set,get)=>({
         :['meditate','chant','walk','pray','beads','mok'].includes(activity)?0
         :amount*(activity==='carryWater'?WATER_TASK.reward:2);
       return {
+        ...(activity==='meditate'&&s.action==='meditate'&&s.seated ? {meditationSeconds:Math.min(MEDITATION_GOAL_SECONDS,s.meditationSeconds+amount),...(s.meditationSeconds+amount>=MEDITATION_GOAL_SECONDS?{action:'bow' as Action,bow:{at:Date.now(),mode:'cushion' as const},meditationBow:true}:{})} : {}),
         progress:{...s.progress,[activity]:(s.progress[activity]||0)+amount},
         lifetime:{...s.lifetime,[activity]:(s.lifetime[activity]||0)+amount},
         ...(activity==='sweep'?{sweepRemainder:leaves%LEAVES_PER_MERIT}:{}),
@@ -115,7 +117,7 @@ export const useGame=create<GameState>()(persist((set,get)=>({
   },
   go:id=>{get().stand();const p=place(id);set({destination:[p.x,p.z],pendingSeat:null,action:get().waterQuest?'carryWater':'walk',panel:null});get().notify(`Đang đi đến ${p.name.toLowerCase()}${get().waterQuest?' · Đang gánh nước':' · Giữ Shift để bước nhanh'}`);},
   stand:()=>{const s=get();if(s.seated){const seat=seats.find(c=>c.id===s.seated);if(seat){const [x,z]=seatExit(seat);set({teleport:{position:[x,floorAt(x,z)+.08,z],heading:seat.rotation,at:Date.now()}});}}const water=s.waterQuest,resume=water?.phase==='carrying'||water?.phase==='pouring';set({waterQuest:water?.phase==='drawing'?null:water?.phase==='pouring'?{...water,phase:'carrying',phaseAt:Date.now(),jar:null}:water,seated:null,pendingSeat:null,pendingActivity:null,action:resume?'carryWater':'walk',destination:null,bow:null});if(s.meal?.status==='eating')set({meal:{...s.meal,status:'ready',eatUntil:undefined}});},
-  finishBow:()=>{const s=get();if(s.action==='bow'&&s.bow&&Date.now()-s.bow.at>=bowDuration(s.bow.mode)*1000)set({action:s.seated?'sit':'walk',bow:null});},
+  finishBow:()=>{const s=get();if(s.action==='bow'&&s.bow&&Date.now()-s.bow.at>=bowDuration(s.bow.mode)*1000)set({action:s.seated?(s.meditationBow?'meditate':'sit'):'walk',bow:null,...(s.meditationBow?{meditationBow:false,meditationSeconds:0}:{})});},
   sit:(id,action='sit')=>{const s=get();if(s.waterQuest){s.notify('Bạn đang gánh nước. Giao nước hoặc đặt gánh xuống trước khi ngồi nhé.');return;}if(s.seated&&!id){if(action==='sit'){s.stand();return;}set({action,bow:null});return;}const seat=id?seats.find(c=>c.id===id):nearestSeat(s.position,action==='meditate'||action==='chant'||action==='mok'?['cushion']:['cushion','bench','tea']);if(!seat)return;
     if(s.peers.some(p=>p.seat===seat.id)){s.notify('Chỗ này đang có người ngồi. Bạn chọn chỗ bên cạnh nhé.');return;}
     if(s.seated===seat.id){set({action,bow:null});return;}s.stand();set({pendingSeat:seat.id,pendingAction:seat.kind==='reading'?'read':action,destination:[seat.position[0],seat.position[2]],panel:null});s.notify(`Đến ${seat.label.toLowerCase()} · Nhấn E để đứng dậy`);
@@ -207,6 +209,12 @@ if(s.flights.some(f=>Date.now()-f.at>=LANTERN_LIFETIME))set({flights:s.flights.f
   partialize:s=>({waterJars:s.waterJars,lastWaterDeliveryAt:s.lastWaterDeliveryAt,offeringSlots:s.offeringSlots,bodhiIncense:s.bodhiIncense,offerings:s.offerings,burningIncense:s.burningIncense,name:s.name,robe:s.robe,gender:s.gender,skin:s.skin,robeStyle:s.robeStyle,characterConfigured:s.characterConfigured,merit:s.merit,peace:s.peace,experience:s.experience,energy:s.energy,day:s.day,started:s.started,progress:s.progress,lifetime:s.lifetime,sweepRemainder:s.sweepRemainder,inventory:s.inventory,claimed:s.claimed,badges:s.badges,visited:s.visited,readBooks:s.readBooks,tasted:s.tasted,plots:s.plots,wishes:s.wishes,night:s.night,sound:s.sound,chantMusic:s.chantMusic,quality:s.quality,camera:s.camera}),
 
 }));
+
+useGame.subscribe((current, previous) => {
+  if ((current.meditationSeconds || current.meditationBow) && ((!current.seated || current.seated !== previous.seated) || (current.action !== 'meditate' && !(current.action === 'bow' && current.meditationBow)))) {
+    useGame.setState({meditationSeconds:0,meditationBow:false});
+  }
+});
 
 export function visitDonationChest(){const s=useGame.getState();s.stand();if(!nearDonationChest(s.position)){s.set({destination:[donationChest.spot[0],donationChest.spot[1]+1.3],panel:null});s.notify('Đến gần hòm công đức để mở bảng ủng hộ.');return;}s.set({panel:'donate'})}
 

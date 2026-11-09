@@ -120,3 +120,26 @@ test('shared garden: room isolation, late join, stale actions, one harvest and r
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 
 });
+
+test('two players share meditation heading, chibi appearance and bow phase, including late joins',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const base=`http://127.0.0.1:${server.address().port}`,all=[];
+ const post=async(data)=>{const res=await fetch(base+'/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'meditation_player_a',room:'an-nhien',...data})});assert.equal(res.status,200);return res.json()};
+ try{
+  const a=stream(base,'meditation_player_a'),b=stream(base,'meditation_player_b');all.push(a,b);await Promise.all(all.map(s=>s.opened));
+  const seated={seat:'temple-8',x:-10.1,y:2.5,z:-26.1,heading:2.12,gender:'male',robe:'#829795',skin:'#c99c79',robeStyle:'cross'};
+  await post({...seated,action:'meditate'});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='meditate'));
+  let peer=b.state.peers.find(p=>p.id==='meditation_player_a');assert.equal(peer.heading,2.12);assert.equal(peer.gender,'male');assert.equal(peer.robe,'#829795');assert.equal(peer.seat,'temple-8');
+  const token=12345;await post({...seated,action:'bow',bow:{at:token,elapsed:700}});
+  await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.bow));peer=b.state.peers.find(p=>p.id==='meditation_player_a');
+  assert.equal(peer.bow.mode,'cushion');assert.equal(b.state.serverTime-peer.bow.at,700);assert.equal(peer.heading,2.12);assert.equal(peer.y,2.5);
+  const original=peer.bow.at;clock+=400;
+  await post({...seated,action:'bow',bow:{at:token,elapsed:1100}});
+  const late=stream(base,'meditation_player_late');all.push(late);await late.opened;
+  peer=late.state.peers.find(p=>p.id==='meditation_player_a');assert.equal(peer.bow.at,original);assert.equal(late.state.serverTime-peer.bow.at,1100);
+  const conflict=await fetch(base+'/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'meditation_player_b',room:'an-nhien',action:'sit',seat:'temple-8'})});assert.equal((await conflict.json()).seat,null);
+  await post({...seated,action:'meditate',bow:null});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='meditate'&&!p.bow));
+  clock+=60000;await post({...seated,action:'bow',bow:{at:token+60000,elapsed:0}});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.bow?.at===clock));
+  await post({...seated,seat:null,action:'walk',bow:null});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='walk'&&!p.bow&&!p.seat));
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});

@@ -7,12 +7,12 @@ import {incensePlacement,INCENSE_ASH_Y} from './IncenseBurner';
 import {incenseLife} from './incenseLifecycle';
 
 /** Fixed red bamboo feet, shrinking incense, embers and cooled ash: four shared batches. */
-export default function IncenseSticks({times,origin=incenseSpot,ashY=INCENSE_ASH_Y,radiusScale=1,heightScale=1}:{times:number[];origin?:[number,number];ashY?:number;radiusScale?:number;heightScale?:number}){
+export default function IncenseSticks({times,origin=incenseSpot,ashY=INCENSE_ASH_Y,radiusScale=1,heightScale=1,thicknessScale=1}:{times:number[];origin?:[number,number];ashY?:number;radiusScale?:number;heightScale?:number;thicknessScale?:number}){
  const low=useGame(s=>s.quality==='low'),base=useRef<THREE.InstancedMesh>(null),body=useRef<THREE.InstancedMesh>(null),tip=useRef<THREE.InstancedMesh>(null),ash=useRef<THREE.InstancedMesh>(null),last=useRef(-1);
  const scratch=useMemo(()=>({root:new THREE.Object3D(),part:new THREE.Object3D(),matrix:new THREE.Matrix4()}),[]);
  const placements=useMemo(()=>times.map(at=>incensePlacement(at)),[times]);
  const update=(now:number,includeBase=false)=>{if(!base.current||!body.current||!tip.current||!ash.current)return;const {root,part,matrix}=scratch;
-  times.forEach((at,i)=>{const p=placements[i],life=incenseLife(at,now);root.position.set(origin[0]+p.x*radiusScale,ashY,origin[1]+p.z*radiusScale);root.rotation.set(p.leanX,0,p.leanZ);root.scale.set(1,heightScale,1);root.updateMatrix();
+  times.forEach((at,i)=>{const p=placements[i],life=incenseLife(at,now);root.position.set(origin[0]+p.x*radiusScale,ashY,origin[1]+p.z*radiusScale);root.rotation.set(p.leanX,0,p.leanZ);root.scale.set(thicknessScale,heightScale,thicknessScale);root.updateMatrix();
    const put=(mesh:THREE.InstancedMesh,y:number,xs:number,ys:number,zs:number)=>{part.position.set(0,y,0);part.scale.set(xs,ys,zs);part.updateMatrix();matrix.multiplyMatrices(root.matrix,part.matrix);mesh.setMatrixAt(i,matrix)};
    // 7 cm buried in the sand; 16 cm of red bamboo remains above it after burning.
    if(includeBase)put(base.current!,.045,1,1,1);
@@ -22,7 +22,7 @@ export default function IncenseSticks({times,origin=incenseSpot,ashY=INCENSE_ASH
    put(ash.current!,.165,life.burning?0:1,life.burning?0:1,life.burning?0:1);
   });for(const m of [body.current,tip.current,ash.current])m.instanceMatrix.needsUpdate=true;if(includeBase){base.current.instanceMatrix.needsUpdate=true;for(const m of [base.current,body.current,tip.current,ash.current])m.computeBoundingSphere()}
  };
- useLayoutEffect(()=>{last.current=-1;update(Date.now(),true)},[times,placements,origin[0],origin[1],ashY,radiusScale,heightScale]);
+ useLayoutEffect(()=>{last.current=-1;update(Date.now(),true)},[times,placements,origin[0],origin[1],ashY,radiusScale,heightScale,thicknessScale]);
  useFrame(({clock})=>{if(clock.elapsedTime-last.current<1/(low?15:30))return;last.current=clock.elapsedTime;update(Date.now())});
  return <group>
   <instancedMesh ref={base} args={[undefined,undefined,times.length]}><cylinderGeometry args={[.011,.012,.23,6]}/><meshStandardMaterial color="#a52d24" roughness={.85}/></instancedMesh>
