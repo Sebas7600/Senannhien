@@ -85,7 +85,10 @@ test('room offerings: all kinds, late join, isolation, deduplication, capacity a
   const late=stream(base,'offer_player_late');all.push(late);await late.opened;assert.deepEqual(late.state.offerings.map(o=>o.kind),['incense','flower','candle']);
   for(let i=2;i<=8;i++){clock+=3000;assert.equal(await post('/api/offerings',{kind:'candle',station:'candle-table-2',operation:'candle_0000'+i}),200)}
   clock+=3000;assert.equal(await post('/api/offerings',{kind:'candle',station:'candle-table-2',operation:'candle_full1'}),409);
-  clock+=3000;await post('/api/state',{x:23.6,z:9});assert.equal(await post('/api/offerings',{kind:'feed',station:'shore-6',operation:'feeding_0001'}),200);await b.wait(s=>s.offerings.some(o=>o.kind==='feed'));assert.equal(other.state.offerings.length,0);
+  clock+=3000;await post('/api/state',{x:23.6,z:9});assert.equal(await post('/api/offerings',{kind:'feed',station:'shore-6',operation:'feeding_badshore'}),400);
+  await post('/api/state',{x:28,z:9});assert.equal(await post('/api/offerings',{kind:'feed',station:'bridge-0-0',operation:'feeding_badcenter'}),409);
+  await post('/api/state',{x:28,z:9.85});assert.equal(await post('/api/offerings',{kind:'feed',station:'bridge-0-0',operation:'feeding_badside'}),409);
+  await post('/api/state',{x:28,z:8.15});assert.equal(await post('/api/offerings',{kind:'feed',station:'bridge-0-0',operation:'feeding_0001'}),200);await b.wait(s=>s.offerings.some(o=>o.kind==='feed'));assert.equal(other.state.offerings.length,0);
   clock+=12001;await b.wait(s=>!s.offerings.some(o=>o.kind==='feed'));
   clock+=480001;await b.wait(s=>s.offerings.length===1);assert.equal(b.state.offerings[0].kind,'incense');
   clock+=170000;await b.wait(s=>s.offerings.length===0);

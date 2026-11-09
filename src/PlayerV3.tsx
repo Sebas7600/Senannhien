@@ -38,6 +38,7 @@ export default function PlayerV3(){
     if(s.action==='flower'||s.action==='candle'){const station=offeringStation(s.action,s.event?.target);playerMotion.heading=Math.atan2(station.spot[0]-p.x,station.spot[1]-p.z);}
     if(s.action==='drawWater')playerMotion.heading=Math.atan2(WATER_WELL.x-p.x,WATER_WELL.z-p.z);
     if(s.action==='pourWater'&&s.waterQuest?.jar!==null&&s.waterQuest?.jar!==undefined){const j=WATER_JARS[s.waterQuest.jar];playerMotion.heading=Math.atan2(j.x-p.x,j.z-p.z);}
+    if(s.action==='feed'&&s.event)playerMotion.heading=Math.atan2(s.event.x-p.x,s.event.z-p.z);
     if(s.action==='incense'){const spot=s.event?.target===QUAN_AM.incenseId?[QUAN_AM.tableX,QUAN_AM.tableZ]:incenseSpot;playerMotion.heading=Math.atan2(spot[0]-p.x,spot[1]-p.z);}
     if(['drawWater','pourWater','plant','water','harvest','feed','incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
     let walking=false,stairStep:-1|0|1=0;
@@ -46,7 +47,7 @@ export default function PlayerV3(){
       let vx=0,vz=0;
       if(dx||dz){camera.getWorldDirection(forward.current);forward.current.y=0;forward.current.normalize();const f=forward.current;vx=-f.z*dx-f.x*dz;vz=f.x*dx-f.z*dz;if(s.destination||s.pendingSeat||s.pendingActivity)s.set({destination:null,pendingSeat:null,pendingActivity:null});if(s.action!=='walk'&&s.action!=='sweep'&&s.action!=='carryWater')s.set({action:'walk',bow:null});path.current=[];destinationKey.current='';}
       else if(s.destination&&!s.panel&&s.characterConfigured){const key=s.destination.join(',');if(key!==destinationKey.current){destinationKey.current=key;path.current=findPath([p.x,p.z],s.destination);if(!path.current.length){s.set({destination:null,pendingSeat:null,pendingActivity:null});s.notify('Chọn một điểm có lối đi nhé.')}}
-        const next=path.current[0];if(next){vx=next[0]-p.x;vz=next[1]-p.z;if(Math.hypot(vx,vz)<.23){path.current.shift();if(!path.current.length){s.set({destination:null});destinationKey.current='';if(s.pendingSeat){s.arriveSeat(s.pendingSeat);}else if(s.pendingActivity){const activity=s.pendingActivity;s.set({pendingActivity:null});s.perform(activity);}return;}}}
+        const next=path.current[0];if(next){vx=next[0]-p.x;vz=next[1]-p.z;if(Math.hypot(vx,vz)<(path.current.length===1&&s.pendingSeat?.startsWith('bench-')?1.05:.23)){path.current.shift();if(!path.current.length){s.set({destination:null});destinationKey.current='';if(s.pendingSeat){s.arriveSeat(s.pendingSeat);}else if(s.pendingActivity){const activity=s.pendingActivity;s.set({pendingActivity:null});s.perform(activity);}return;}}}
       }
       const length=Math.hypot(vx,vz);walking=length>.05;
       const stairs=templeFixtures.stairs;

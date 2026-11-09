@@ -1,3 +1,5 @@
+import {followAfterObstruction,DEFAULT_FOLLOW_DISTANCE} from './cameraFollow';
+import {cameraSafeDistance} from './cameraCollision';
 import PlayerAvatar from './PlayerAvatar';
 import {QUAN_AM,nearQuanAm} from './quanAmData';
 import {nearWaterWell,nearWaterJar,nearestWaterJar} from './waterTaskData';
@@ -37,7 +39,7 @@ function Keyboard(){useEffect(()=>{const down=(e:KeyboardEvent)=>{if((e.target a
   if(e.repeat)return;if(k==='e')interact();if(k==='m')s.set({panel:'map'});if(k==='b')s.set({panel:'bag'});if(k==='v')s.set({camera:s.camera==='follow'?'overview':'follow'});if(k==='f')s.set({cameraReset:s.cameraReset+1});if(k==='h')s.set({panel:'help'});
 };const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());const clear=()=>{keys.clear();joy.x=0;joy.y=0};const joystick=(e:Event)=>{Object.assign(joy,(e as CustomEvent).detail)};window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);window.addEventListener('sen-joystick',joystick);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);window.removeEventListener('sen-joystick',joystick)}},[]);return null;}
 const malaCameraAngles=[.72,-.72,1.38,-1.38];
-function CameraRig(){const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1);const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(11.56),lastDistance=useRef(11.56);
+function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>new rapier.Ball(.23),[rapier]);const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1);const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(DEFAULT_FOLLOW_DISTANCE),lastDistance=useRef(DEFAULT_FOLLOW_DISTANCE);
   const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3());
   useFrame(({camera},dt)=>{
     if(!controls.current)return;
@@ -57,7 +59,7 @@ function CameraRig(){const controls=useRef<OrbitControlsType>(null);const mode=u
     if(cameraReset||lastMalaFocus.current!==malaFocus){
       const heading=playerMotion.object?playerMotion.heading:s.heading;
       const direction=heading+Math.PI;
-      offset.current.set(Math.sin(direction)*10,5.8,Math.cos(direction)*10);
+      offset.current.set(Math.sin(direction)*6.15,2.10,Math.cos(direction)*6.15).setLength(DEFAULT_FOLLOW_DISTANCE);
       if(mode==='overview')offset.current.set(52,88,100);
       if(lanternFocus)offset.current.set(-11,5.5,13);
       if(malaFocus){
@@ -70,7 +72,7 @@ function CameraRig(){const controls=useRef<OrbitControlsType>(null);const mode=u
           ray.current.set(target,viewDirection.current.copy(offset.current).normalize());
           ray.current.near=.35;ray.current.far=offset.current.length()+.24;
           hits.current.length=0;
-          ray.current.intersectObjects(cameraOccluders,false,hits.current);
+          // Non-wall scenery does not constrain the camera.
           if(hits.current.length===0)break;
         }
       }else if(lastMalaFocus.current&&!cameraReset){
@@ -82,22 +84,20 @@ function CameraRig(){const controls=useRef<OrbitControlsType>(null);const mode=u
       lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;lastMalaFocus.current=malaFocus;
       requestedDistance.current=lastDistance.current=offset.current.length();
     }
-    const delta=deltaTarget.current.copy(target).sub(lastTarget.current);camera.position.add(delta);controls.current.target.copy(target);lastTarget.current.copy(target);
+    const delta=deltaTarget.current.copy(target).sub(lastTarget.current);if(mode==='follow'&&!lanternFocus&&!malaFocus)followAfterObstruction(camera.position,lastTarget.current,target,requestedDistance.current);else camera.position.add(delta);controls.current.target.copy(target);lastTarget.current.copy(target);
     if(keys.has('q')||keys.has('c')){offset.current.copy(camera.position).sub(target).applyAxisAngle(new THREE.Vector3(0,1,0),(keys.has('q')?1:-1)*dt);camera.position.copy(target).add(offset.current)}
-    if(mode==='follow'&&Math.abs(s.position[0])<12.2&&s.position[1]<-19.8&&s.position[1]>-34.3){
-      offset.current.copy(camera.position).sub(target);const length=offset.current.length();if(length>6)camera.position.copy(target).add(offset.current.multiplyScalar(6/length));camera.position.y=Math.min(camera.position.y,6.0);
-    }
+    const beforeInputDistance=camera.position.distanceTo(target);
     controls.current.update();
     if(mode!=='overview'&&!lanternFocus){
       const direction=viewDirection.current.copy(camera.position).sub(target),distance=direction.length();direction.normalize();
-      requestedDistance.current=THREE.MathUtils.clamp(requestedDistance.current*distance/Math.max(lastDistance.current,.1),2.2,35);
-      ray.current.set(target,direction);ray.current.near=.35;ray.current.far=requestedDistance.current;hits.current.length=0;ray.current.intersectObjects(cameraOccluders,false,hits.current);
-      const hit=hits.current[0],safe=hit?Math.max(2.2,hit.distance-.32):requestedDistance.current;
-      const visible=safe<distance?safe:THREE.MathUtils.damp(distance,safe,5,dt);
-      camera.position.copy(target).addScaledVector(direction,visible);lastDistance.current=visible;
+      requestedDistance.current=THREE.MathUtils.clamp(requestedDistance.current*distance/Math.max(beforeInputDistance,.05),2.2,35);
+      const safe=cameraSafeDistance(world,target,direction,requestedDistance.current,cameraShape);
+      const visible=Math.min(distance,safe);
+      camera.position.copy(target).addScaledVector(direction,visible);
+      lastDistance.current=camera.position.distanceTo(target);
     }
   },0);
-  return <OrbitControls ref={controls} target={[0,1.2,22]} enablePan={false} minDistance={mode==='overview'?35:2.2} maxDistance={mode==='overview'?170:35} minPolarAngle={.25} maxPolarAngle={Math.PI/2.12} enableDamping dampingFactor={.08} mouseButtons={{LEFT:undefined as unknown as THREE.MOUSE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE}} touches={{ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN}}/>;
+  return <OrbitControls ref={controls} target={[0,1.2,22]} enablePan={false} minDistance={mode==='overview'?35:.05} maxDistance={mode==='overview'?170:35} minPolarAngle={.25} maxPolarAngle={Math.PI/2.12} enableDamping dampingFactor={.08} mouseButtons={{LEFT:undefined as unknown as THREE.MOUSE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE}} touches={{ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN}}/>;
 }
 function RemoteAvatar({peer}:{peer:Peer}){
   const [moving,setMoving]=useState(false),movingRef=useRef(false);
@@ -159,9 +159,9 @@ function Lighting(){const night=useGame(s=>s.night),overview=useGame(s=>s.camera
 function FrameMetrics(){const samples=useRef<number[]>([]),elapsed=useRef(0);useFrame((_,dt)=>{samples.current.push(dt*1000);elapsed.current+=dt;if(elapsed.current>=2){const sorted=samples.current.slice().sort((a,b)=>a-b);performanceStats.fps=Math.round(samples.current.length/elapsed.current);performanceStats.p95=Math.round(sorted[Math.floor(sorted.length*.95)]||0);performanceStats.frames+=samples.current.length;document.documentElement.dataset.performance=JSON.stringify(performanceStats);samples.current=[];elapsed.current=0}});return null;}
 function SceneReady(){useEffect(()=>{document.documentElement.dataset.scene='ready';return()=>{delete document.documentElement.dataset.scene}},[]);return null;}
 function WorldV2(){const quality=useGame(s=>s.quality);return <Canvas shadows={quality==='high'} dpr={quality==='high'?[1,1.3]:1} gl={{antialias:quality==='high',powerPreference:quality==='low'?'low-power':'high-performance'}} camera={{position:[0,6.8,36],fov:48}}>
-  <Environment frames={1} resolution={quality==='low'?64:128}><Lightformer intensity={1.2} position={[0,10,0]} rotation={[Math.PI/2,0,0]} scale={[30,30,1]}/><Lightformer intensity={.7} color="#e2ebd3" position={[10,4,0]} rotation={[0,Math.PI/2,0]} scale={[20,20,1]}/></Environment><FrameMetrics/><Lighting/><PerspectiveCamera makeDefault position={[0,6.8,36]} fov={48} near={.1} far={280}/><CameraRig/><Keyboard/>
+  <Environment frames={1} resolution={quality==='low'?64:128}><Lightformer intensity={1.2} position={[0,10,0]} rotation={[Math.PI/2,0,0]} scale={[30,30,1]}/><Lightformer intensity={.7} color="#e2ebd3" position={[10,4,0]} rotation={[0,Math.PI/2,0]} scale={[20,20,1]}/></Environment><FrameMetrics/><Lighting/><PerspectiveCamera makeDefault position={[0,6.8,36]} fov={48} near={.1} far={280}/><Keyboard/>
   <Suspense fallback={<Html center><div className="scene-loading"><span className="loading-lotus">❋</span>Đang mở khuôn viên an nhiên…</div></Html>}>
-    <Physics gravity={[0,-9.81,0]} timeStep={1/60} interpolate updatePriority={-50}><Ground/><Architecture/><Waters/><Seats/><Garden/><PlayerV3/><Others/><Villagers/><TreeLeaves/><MealPlates/><OfferingEffects/><SceneReady/></Physics>
+    <Physics gravity={[0,-9.81,0]} timeStep={1/60} interpolate updatePriority={-50}><CameraRig/><Ground/><Architecture/><Waters/><Seats/><Garden/><PlayerV3/><Others/><Villagers/><TreeLeaves/><MealPlates/><OfferingEffects/><SceneReady/></Physics>
   </Suspense>
 </Canvas>}
 export default memo(WorldV2);

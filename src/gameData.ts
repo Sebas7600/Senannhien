@@ -1,3 +1,5 @@
+import {templeVaseSolids} from './templeDetailCollision';
+import {courtyardSolids} from './courtyardCollisionData';
 import {quanAmObstacles} from './quanAmData';
 import {WATER_WELL,WATER_JARS} from './waterTaskData';
 import {templeSurfaceHeight} from './templeFixtures';
@@ -116,8 +118,11 @@ export const npcs = [
 export const flowerSpots:Vec3[]=[[-4,.3,-30],[4,.3,-30]];
 export const gardenPlots=Array.from({length:12},(_,i)=>({id:`plot-${i}`,x:31+(i%4)*3.1,z:-53+Math.floor(i/4)*3.1}));
 
-export interface Obstacle { x:number; z:number; w:number; d:number; height?:number; base?:number; navigationOnly?:boolean }
+export interface Obstacle { x:number; z:number; w:number; d:number; height?:number; base?:number; navigationOnly?:boolean;cameraWall?:boolean }
 export const obstacles:Obstacle[]=[
+ ...templeVaseSolids.filter(v=>!v.id.includes('table')).map(v=>({x:v.x,z:v.z-27,w:v.radius*2,d:v.radius*2,height:v.height,base:v.y-v.height/2+.08,navigationOnly:true})),
+ ...[-1,1].map(side=>({x:side*1.715,z:12.9-27,w:.3,d:6.806,navigationOnly:true})),
+  ...courtyardSolids.map(s=>({x:s.x,z:s.z,w:s.w,d:s.d,height:s.height,navigationOnly:true})),
   ...quanAmObstacles,
   {x:WATER_WELL.x,z:WATER_WELL.z,w:2.4,d:2.4,height:WATER_WELL.height+.06},
   ...WATER_JARS.map(j=>({x:j.x,z:j.z,w:j.radius*2,d:j.radius*2,height:j.height+.06})),
@@ -133,7 +138,7 @@ export const obstacles:Obstacle[]=[
   ...[-1,1].flatMap(side=>[{x:side*14,z:-27,w:.24,d:19.55,navigationOnly:true},{x:side*10.8,z:-17.35,w:6.24,d:.24,navigationOnly:true},{x:side*7.325,z:-14.035,w:.24,d:6.806,navigationOnly:true}]),
   // Only the visible back walls and the six visible posts block an open pavilion.
   ...pavilionLayouts.flatMap(p=>[
-    {x:p.x,z:p.z-p.d/2+.15,w:p.w,d:.2,height:4.3},
+    {x:p.x,z:p.z-p.d/2+.15,w:p.w,d:.2,height:4.3,cameraWall:true},
     ...[-1,1].flatMap(side=>[-1,0,1].map(row=>({x:p.x+side*(p.w/2-.4),z:p.z+row*(p.d/2-.5),w:.3,d:.3,height:4.4}))),
   ]),
   ...[-19,19].flatMap(x=>[-1,1].flatMap(side=>[-1,1].map(row=>({x:x+side*1.8,z:-13+row*1.8,w:.25,d:.25,height:4.2})))),

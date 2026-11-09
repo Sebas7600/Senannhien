@@ -1,3 +1,4 @@
+import CourtyardCollision from './CourtyardCollision';
 import {LOTUS_POND} from './lotusLayout';
 import {outerGroundGeometry,courtyardGroundGeometry,lotusBankGeometry} from './lotusGeometry';
 import {LotusBridgeCollision} from './LotusBridge';
@@ -50,10 +51,12 @@ export function Ground(){return <group><IncenseBurner/>
   <Pavers/><WalkSurface/>
   {[-1,1].map(s=><group key={s}><Box position={[s*60,.8,-2]} scale={[.35,1.6,128]} color="#b7b89c"/>{Array.from({length:33},(_,i)=><Box key={i} position={[s*60,1.35,-64+i*4]} scale={[.65,2.7,.65]} color="#acb095"/>)}</group>)}
   {[-66,62].map(z=><Box key={z} position={[0,.8,z]} scale={[120,1.6,.35]} color="#b7b89c"/>)}
-  <RigidBody type="fixed" colliders={false}>
-    <CuboidCollider position={[0,-.24,-2]} args={[62,.3,66]}/>
+  <CourtyardCollision/><RigidBody type="fixed" colliders={false} userData={{cameraWall:true}}>
     <CuboidCollider position={[-60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[60,1,-2]} args={[.3,3,65]}/><CuboidCollider position={[0,1,-66]} args={[60,3,.3]}/><CuboidCollider position={[0,1,62]} args={[60,3,.3]}/>
-    {obstacles.filter(o=>!o.navigationOnly).map((o,i)=>{const h=o.height??1.4;return <CuboidCollider key={i} position={[o.x,(o.base??0)+h/2,o.z]} args={[o.w/2,h/2,o.d/2]}/>})}
+{obstacles.filter(o=>o.cameraWall&&!o.navigationOnly).map((o,i)=>{const h=o.height??4.3;return <CuboidCollider key={i} position={[o.x,(o.base??0)+h/2,o.z]} args={[o.w/2,h/2,o.d/2]}/>})}</RigidBody><RigidBody type="fixed" colliders={false}>
+    <CuboidCollider position={[0,-.24,-2]} args={[62,.3,66]}/>
+
+    {obstacles.filter(o=>!o.navigationOnly&&!o.cameraWall).map((o,i)=>{const h=o.height??1.4;return <CuboidCollider key={i} position={[o.x,(o.base??0)+h/2,o.z]} args={[o.w/2,h/2,o.d/2]}/>})}
     {floorSurfaces.map((f,i)=><CuboidCollider key={`floor-${i}`} position={[f.x,f.height/2,f.z]} args={[f.w/2,f.height/2,f.d/2]}/>)}
     <CuboidCollider position={[33,.37,9]} args={[9,.07,1.5]}/>{[-1,1].map(side=><CuboidCollider key={'ramp'+side} position={[33+side*10,.18,9]} rotation={[0,0,-side*Math.atan(.19)]} args={[1.02,.07,1.5]}/>)}{[-1,1].map(side=><CuboidCollider key={'rail'+side} position={[33,.8,9+side*1.5]} args={[11,.6,.07]}/>)}
 

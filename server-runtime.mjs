@@ -63,8 +63,8 @@ export function createGameServer({now=Date.now}={}){
           if(room.operations.has(key)){json(res,200,{ok:true});return;}
           let spot=[0,-8.7],target=[22,6];if(b.kind==='incense'&&b.station){if(b.station!=='quan-am'){json(res,400,{error:'invalid station'});return;}spot=[39.35,25.25];}
           if(b.kind==='feed'){
-            const stations=[...Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return {id:'shore-'+i,spot:[33+Math.cos(a)*9.4,9+Math.sin(a)*11.9],target:[33+Math.cos(a)*7.1,9+Math.sin(a)*9.3]}}),...[-5,0,5].flatMap((x,i)=>[-1,1].map(side=>({id:'bridge-'+i+'-'+(side+1),spot:[33+x,9+side*.85],target:[33+x,9+side*3]})))];
-            const station=stations.find(s=>s.id===b.station);if(!station){json(res,400,{error:'invalid station'});return;}spot=station.spot;target=station.target;
+            const stations=[...Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return {id:'shore-'+i,spot:[33+Math.cos(a)*9.4,9+Math.sin(a)*11.9],target:[33+Math.cos(a)*7.1,9+Math.sin(a)*9.3]}}).filter(s=>Math.abs(s.target[1]-9)>2.2),...[-5,0,5].flatMap((x,i)=>[-1,1].map(side=>({id:'bridge-'+i+'-'+(side+1),spot:[33+x,9+side*.85],target:[33+x,9+side*3]})))];
+            const station=stations.find(s=>s.id===b.station);if(!station){json(res,400,{error:'invalid station'});return;}if(station.id.startsWith('bridge-')&&(Math.abs(peer.z-9)<.55||(peer.z-9)*(station.target[1]-9)<=0)){json(res,409,{error:'approach the same bridge edge'});return;}spot=station.spot;target=station.target;
           }
           const xs={flower:{table:[-5.7,-3.7,-1,1,3.7,5.7],floor:[-6.575,-2.825,-1.875,1.875,2.825,6.575],low:[-.76,.76]},candle:{table:[-4.7,0,4.7]}};
           if(b.kind!=='incense'&&b.kind!=='feed'){

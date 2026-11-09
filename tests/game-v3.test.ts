@@ -143,7 +143,7 @@ test('online offering waits for acknowledgement, consumes once and never creates
 test('fish feeding requires shore proximity, supplies and cooldown',()=>{
  useGame.setState({connection:'offline',position:[0,22]});const before=useGame.getState().inventory.feed;
  useGame.getState().perform('feed');assert.ok(useGame.getState().destination);assert.equal(useGame.getState().inventory.feed,before);
- useGame.setState({position:[23.6,9]});useGame.getState().perform('feed');assert.equal(useGame.getState().inventory.feed,before-1);assert.equal(useGame.getState().progress.feed,1);
+ useGame.setState({position:[28,8.15]});useGame.getState().perform('feed');assert.equal(useGame.getState().inventory.feed,before-1);assert.equal(useGame.getState().progress.feed,1);
  useGame.getState().perform('feed');assert.equal(useGame.getState().inventory.feed,before-1);
  useGame.setState({fishFeedAt:0,lastFishFedAt:0,inventory:{...defaults.inventory,feed:0}});useGame.getState().perform('feed');assert.equal(useGame.getState().panel,'bag');assert.equal(useGame.getState().progress.feed,1);
 });
@@ -155,7 +155,7 @@ test('elliptical koi bank blocks water but leaves bridge and bank corners open',
  const {pondBlocked,bridgeHeight,feedStations}=await import('../src/pondLayout.ts');
  assert.equal(pondBlocked(33,15),true);assert.equal(pondBlocked(33,9),false);assert.equal(pondBlocked(25,-1),false);
  assert.ok(Math.abs(bridgeHeight(22)-.06)<.001);assert.ok(Math.abs(bridgeHeight(24)-.44)<.001);assert.equal(bridgeHeight(17),bridgeHeight(44));
- assert.equal(feedStations.length,18);for(const f of feedStations){assert.equal(pondBlocked(...f.spot),false);assert.ok(((f.target[0]-33)/8.5)**2+((f.target[1]-9)/11)**2<1)}
+ assert.equal(feedStations.length,16);for(const f of feedStations){assert.equal(pondBlocked(...f.spot),false);assert.ok(((f.target[0]-33)/8.5)**2+((f.target[1]-9)/11)**2<1)}
 });
 
 test('online garden does not consume supplies before acknowledgement or award rejected harvests',async()=>{

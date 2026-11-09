@@ -2,7 +2,7 @@ import {QUAN_AM,nearQuanAm} from './quanAmData';
 import {createWaterQuestActions} from './waterQuestActions';
 import {emptyWaterJars,WATER_TASK,type WaterQuest,type WaterJarState} from './waterTaskData';
 import {submitGarden,type GardenAction} from './gardenTransport';
-import {nearestFeedStation,bridgeHeight} from './pondLayout';
+import {canFeedFrom,feedStations,nearestFeedStation,bridgeHeight} from './pondLayout';
 import {offeringPending,submitOffering,type SharedOfferingKind} from './offeringTransport';
 import {donationChest,nearDonationChest,nearestOfferingStation,offeringStation,offeringCount,templeSurfaceHeight} from './templeFixtures';
 import { create } from 'zustand';
@@ -128,7 +128,7 @@ export const useGame=create<GameState>()(persist((set,get)=>({
   },
   perform:(activity,stationId)=>{const s=get();if(activity==='carryWater'){s.waterTask();return;}if(s.waterQuest){s.notify('Giao nước vào lu hoặc đặt gánh xuống trước khi thực tập nhé.');return;}if(activity==='bow'&&s.action==='bow'&&s.bow&&Date.now()-s.bow.at<bowDuration(s.bow.mode)*1000)return;if(['incense','flower','candle'].includes(s.action)||offeringPending())return;
     if(activity==='feed'){const station=nearestFeedStation(s.position);
-      if(distance(s.position,station.spot)>1.8){s.stand();set({destination:station.spot,panel:null});s.notify('Đến gần mép hồ rồi bấm Cho cá ăn nhé.');return;}
+      if(!canFeedFrom(s.position,station)){s.stand();set({destination:station.spot,panel:null});s.notify('Đến gần mép hồ rồi bấm Cho cá ăn nhé.');return;}
       if(Date.now()-s.lastFishFedAt<3000){s.notify('Đợi cá ăn một chút rồi cho thêm nhé.');return;}
       if(s.inventory.feed<1){set({panel:'bag'});s.notify('Thức ăn đã hết. Mở túi vải để đổi thêm.');return;}
       if(s.connection==='connecting'){s.notify('Đang kết nối phòng, bạn đợi một chút nhé.');return;}
@@ -219,7 +219,7 @@ useGame.subscribe((current, previous) => {
 export function visitDonationChest(){const s=useGame.getState();s.stand();if(!nearDonationChest(s.position)){s.set({destination:[donationChest.spot[0],donationChest.spot[1]+1.3],panel:null});s.notify('Đến gần hòm công đức để mở bảng ủng hộ.');return;}s.set({panel:'donate'})}
 
 async function completeSharedOffering(kind:SharedOfferingKind,station?:string){
- const room=useGame.getState().room;if(kind==='feed'){const s=useGame.getState();s.stand();s.set({action:'feed',event:{type:'feed',at:Date.now(),x:s.position[0],z:s.position[1]}});}
+ const room=useGame.getState().room;if(kind==='feed'){const s=useGame.getState();s.stand();s.set({action:'feed',event:{type:'feed',at:Date.now(),x:feedStations.find(f=>f.id===station)?.target[0]??s.position[0],z:feedStations.find(f=>f.id===station)?.target[1]??s.position[1]}});}
  try{await submitOffering({kind,station,operation:crypto.randomUUID()});const s=useGame.getState();s.set({...(kind==='feed'?{lastFishFedAt:Date.now()}:{}),inventory:{...s.inventory,[kind]:Math.max(0,s.inventory[kind]-1)}});s.record(kind);if(s.room===room)s.notify(kind==='feed'?'Đàn koi đang bơi đến ăn. Mọi người trong phòng đều nhìn thấy.':'Đã dâng lễ vật. Mọi người trong phòng đều nhìn thấy. +2 công đức');}
  catch{useGame.getState().notify('Chưa gửi được lễ vật. Vật phẩm vẫn còn trong túi, bạn thử lại nhé.');}
 }
