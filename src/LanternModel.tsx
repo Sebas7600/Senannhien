@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,type ComponentType} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {SacredFlame} from './FireEffects';
+import {SacredCandle} from './FireEffects';
 import {flameFlicker} from './fireMotion';
 import {useReducedMotion} from './useReducedMotion';
 import type {Vec3} from './gameData';
@@ -49,7 +49,6 @@ export function LanternPresentation({variant=0,skin=defaultLanternSkin}:{variant
   const root=useRef<THREE.Group>(null);
   return <group ref={root}>
     <Model variant={variant}/>
-    <mesh position={[flamePosition[0],flamePosition[1]-candleHeight/2,flamePosition[2]]}><cylinderGeometry args={[.042,.046,candleHeight,10]}/><meshStandardMaterial color="#f0d8a8"/></mesh>
-    <SacredFlame position={flamePosition} scale={flameScale} seed={variant+2}/>
+    <SacredCandle position={[flamePosition[0],flamePosition[1]-candleHeight-.009,flamePosition[2]]} height={candleHeight} radius={.044} flameScale={flameScale} seed={variant+2}/>
   </group>;
 }

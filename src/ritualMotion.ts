@@ -18,7 +18,7 @@ export function lanternPose(age: number, seed: number, reduced = false,out:{posi
   const radius = spread * (4 + (seed % 4) * .7);
   const fade = Math.max(0, Math.min(1, (LANTERN_LIFETIME - age) / 10000));
   out.position[0]=28+Math.cos(angle)*radius;
-  out.position[1]=.35+7*(1-(1-rise)**2)+(reduced?0:Math.sin(drift*.6)*.25*spread);
+  out.position[1]=POND.waterY+.265+(7.35-(POND.waterY+.265))*(1-(1-rise)**2)+(reduced?0:Math.sin(drift*.6)*.25*spread);
   out.position[2]=35.5+Math.sin(angle)*radius*.48;
   out.rotation=reduced?0:Math.sin(seconds*.6+phase)*.12;
   out.scale=age<0||age>=LANTERN_LIFETIME?0:fade;

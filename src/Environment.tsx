@@ -1,13 +1,15 @@
-import QuanAmShrine from './QuanAmShrine';
-import WaterTaskWorld from './WaterTaskWorld';
-import {TeaGallery} from './TeaGallery';
-import {ImportedGate,ImportedBell,ImportedDrum} from './ImportedCourtyardProps';
-import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
-import {counterHasMeal} from './mealService';
 import TempleGarden from './TempleGarden';
 import MainTempleReference from './MainTempleReference';
 import IncenseBurner from './IncenseBurner';
-
+import {TeaGallery} from './TeaGallery';
+import {TemplePlaque} from './TemplePlaque';
+import {KitchenStove} from './KitchenStove';
+import {TempleBell, BellFrame} from './TempleBell';
+import {TableAccessories,AltarOfferings,ReceptionDesk} from './TempleDecor';
+import {mealPlan,MEAL_SCALE} from './mealService';
+import QuanAmShrine from './QuanAmShrine';
+import WaterTaskWorld from './WaterTaskWorld';
+import {ImportedGate,ImportedBell,ImportedDrum} from './ImportedCourtyardProps';
 import GardenDetails from './GardenDetails';
 import BodhiTree from './BodhiTree';
 import CourtyardTrees from './CourtyardTrees';
@@ -18,17 +20,15 @@ import {finishInstanceLayout} from './geometryBatch';
 import {BODHI} from './bodhiData';
 import BenchBatches from './BenchBatches';
 import CushionBatches from './CushionBatches';
-import {useSurface} from './materials';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { Box, Buddha, Lantern, Roof, Tree } from './models';
-import { Food, Steam } from './Food';
+import { ServingMeal, Steam } from './Food';
 import { Character } from './Character';
-import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, usesFloorSeat, floorSurfaces, PICKUP_PLATE, WORLD, type Vec3 } from './gameData';
-
+import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, floorSurfaces, KITCHEN_COUNTER_TOP, WORLD, type Vec3 } from './gameData';
 import { useGame } from './gameStore';
 
 export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string;subtitle?:string}){
@@ -66,23 +66,21 @@ function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;
   <WorldLabel position={[0,4.1,d/2+.3]} title={title} subtitle={subtitle}/>
   {children}
 </group>}
-function KitchenMeal(){
-  const meal=useGame(s=>s.meal),ref=useRef<THREE.Group>(null);
-  useFrame(()=>{if(ref.current)ref.current.visible=counterHasMeal(meal,Date.now())});
-  return meal?<group ref={ref} visible={false} position={PICKUP_PLATE} scale={.75}><Food dish={meal.dish}/></group>:null;
-}
 function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} title="NHÀ ĂN HƯƠNG THIỀN" subtitle="Bữa chay thanh đạm · Mời bạn ngồi">
-  <Box position={[0,.75,-6.1]} scale={[17,1.25,1.5]} color="#aa9471"/><Box position={[0,1.41,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
-  {[-5,-1,3].map(x=><group key={x} position={[x,1.45,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh><group position={[0,.25,0]}><Steam/></group></group>)}
+  <TemplePlaque kind="dining" position={[0,3.82,-8.7]}/>
+  <Box position={[0,(.16+KITCHEN_COUNTER_TOP-.08)/2,-6.1]} scale={[17,KITCHEN_COUNTER_TOP-.24,1.5]} color="#aa9471"/><Box position={[0,KITCHEN_COUNTER_TOP-.06,-6.1]} scale={[17.3,.12,1.8]} color="#d3c8a5"/>
+  <KitchenStove/>
+  {[-5,5].map(x=><group key={x} position={[x,KITCHEN_COUNTER_TOP+.19,-6]}><mesh><cylinderGeometry args={[.5,.43,.38,20]}/><meshStandardMaterial color="#7c8981" metalness={.25}/></mesh><mesh position={[0,.22,0]}><cylinderGeometry args={[.5,.5,.05,20]}/><meshStandardMaterial color="#b7bba4"/></mesh></group>)}
 
-  {[-8.5,8.5].map(x=><group key={x}><Box position={[x,1,-7.6]} scale={[1,1.6,1]} color="#82906c"/><mesh position={[x,2.2,-7.6]} scale={[.6,.8,.6]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#7a975e"/></mesh></group>)}
+  {[-9.8,9.8].map(x=><group key={x}><Box position={[x,1,-7.6]} scale={[1,1.6,1]} color="#82906c"/><mesh position={[x,2.2,-7.6]} scale={[.6,.8,.6]}><icosahedronGeometry args={[1,1]}/><meshStandardMaterial color="#7a975e"/></mesh></group>)}
   {diningTables.map((table,i)=><group key={i} position={[table[0]-34,0,table[2]+27]}>
     <Box position={[0,.58,0]} scale={[2.5,.12,2.8]} color="#a38d65"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*.95,.36,t*1.05]} scale={[.13,.4,.13]} color="#7d6747"/>))}
   </group>)}
-  <WorldLabel position={[0,1.9,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
+  <WorldLabel position={[-5,2,-6]} title="BẾP CHAY" subtitle="Mì · Cơm · Hủ tiếu · Bánh mì"/>
 </Pavilion>}
 function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
+  <TemplePlaque kind="library" position={[0,3.82,-6.7]}/>
   {[-6,-2,2,6].map((x,i)=><group key={x} position={[x,0,-5.3]} onClick={e=>{e.stopPropagation();useGame.getState().perform('read')}}>
     <Box position={[0,1.6,0]} scale={[2.7,2.5,.7]} color="#8b6d49"/>{[.7,1.5,2.3].flatMap(y=>Array.from({length:9},(_,j)=><Box key={`${y}-${j}`} position={[-1.05+j*.26,y+.2,.41]} scale={[.18,.53,.2]} color={['#7d8e6c','#ac9570','#7b8f8b','#b99e7d'][(i+j)%4]}/>))}
   </group>)}
@@ -108,23 +106,19 @@ function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
   </group>
 }
 function Stupa(){return <group position={[-35,0,42]}><Box position={[0,.3,0]} scale={[9,.6,9]} color="#b8b297"/>{Array.from({length:7},(_,i)=><group key={i} position={[0,i*1.85+.6,0]}><Box position={[0,.65,0]} scale={[5.7-i*.5,1.4,5.7-i*.5]} color="#c1ac82"/>{[-1,1].map(s=><Box key={s} position={[0,.73,s*(2.9-i*.25)]} scale={[.55,.85,.05]} color="#726348"/>)}<Roof y={1.3} width={7.4-i*.65} depth={7.4-i*.65} height={.75}/></group>)}<mesh position={[0,14.2,0]}><coneGeometry args={[.35,2,8]}/><meshStandardMaterial color="#c2a268"/></mesh><WorldLabel position={[0,2,5]} title="BẢO THÁP AN LẠC" subtitle="Bảy tầng tĩnh lặng"/></group>}
-function TeaTerrace(){return <Pavilion x={0} z={-56} w={20} d={13} floor={.3} title="TRÀ ĐÌNH VỌNG SƠN" subtitle="10 bàn đôi · Hai ghế đối diện · Một tách trà an nhiên">
+function TeaTerrace(){return <Pavilion x={0} z={-56} w={20} d={13} floor={.3} title="TRÀ ĐÌNH VỌNG SƠN" subtitle="10 bàn đôi · Hai bồ đoàn đối diện · Một tách trà an nhiên">
   <TeaGallery/>
   {teaTables.map((t,i)=><group key={i} position={[t[0],0,t[2]+56]}>
-    <Box position={[0,.92,0]} scale={[1.6,.12,1.2]} color="#9f8861"/>
-    {[-.6,.6].flatMap(x=>[-.4,.4].map(z=><Box key={`${x}-${z}`} position={[x,.6,z]} scale={[.1,.6,.1]} color="#816c4e"/>))}
+    <Box position={[0,t[1]-.06,0]} scale={[1.6,.12,1.2]} color="#9f8861"/>
+    {[-.6,.6].flatMap(x=>[-.4,.4].map(z=><Box key={`${x}-${z}`} position={[x,(.3+t[1]-.12)/2,z]} scale={[.1,t[1]-.42,.1]} color="#816c4e"/>))}
 
-    {[-.35,.35].map(z=><group key={z} position={[.32,1.05,z]}><mesh><cylinderGeometry args={[.07,.05,.1,10]}/><meshStandardMaterial color="#c6c8ac"/></mesh><Steam/></group>)}
+    {[-.35,.35].map(z=><group key={z} position={[.32,t[1]+.07,z]}><mesh><cylinderGeometry args={[.07,.05,.1,10]}/><meshStandardMaterial color="#c6c8ac"/></mesh><Steam/></group>)}
   </group>)}
 </Pavilion>}
 
-export function Seats(){const seated=useGame(s=>s.seated);return <><BenchBatches/><CushionBatches/>{seats.filter(s=>s.kind!=='bench'&&!usesFloorSeat(s)).map(s=><group key={s.id} position={s.position} rotation={[0,s.rotation,0]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().sit(s.id)}}>
-    <Box position={[0,-.06,0]} scale={[.85,.14,.85]} color="#a49370"/>
-    <Box position={[0,.35,-.4]} scale={[.85,.7,.09]} color="#9c8b66"/>
-    {[-1,1].flatMap(a=>[-1,1].map(b=><Box key={`${a}-${b}`} position={[a*.3,-.28,b*.3]} scale={[.08,.5,.08]} color="#7d7156"/>))}
-  {seated===s.id&&<mesh position={[0,.03,0]}><cylinderGeometry args={[.73,.73,.08,16]}/><meshBasicMaterial color="#e0c98a" transparent opacity={.2} depthWrite={false}/></mesh>}
-</group>)}</>}
-export function MealPlates(){const meal=useGame(s=>s.meal),peers=useGame(s=>s.peers);const all=[...(meal?[{meal,key:'self'}]:[]),...peers.filter(p=>p.meal).map(p=>({meal:p.meal!,key:p.id}))];return <>{all.filter(o=>o.meal.status==='ready'||o.meal.status==='eating').map(o=>{const seat=seats.find(s=>s.id===o.meal.seatId);if(!seat?.table)return null;const x=seat.position[0]<seat.table[0]?-.65:.65,z=seat.position[2]<seat.table[2]?-.8:.8;return <group key={o.key} position={[seat.table[0]+x,seat.table[1]+.06,seat.table[2]+z]} scale={.85}><Food dish={o.meal.dish} eating={o.meal.status==='eating'}/></group>})}</>}
+export function Seats(){return <><BenchBatches/><CushionBatches/></>}
+// The local plate is animated by Cô Tâm and stays the same mesh after placement.
+export function MealPlates(){const peers=useGame(s=>s.peers);return <>{peers.filter(p=>p.meal&&(p.meal.status==='ready'||p.meal.status==='eating')).map(p=>{const meal=p.meal!,seat=seats.find(s=>s.id===meal.seatId);if(!seat?.table)return null;const plan=mealPlan(seat.id);return <group key={p.id} position={plan.plate} rotation={[0,plan.heading,0]} scale={MEAL_SCALE}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>})}</>}
 export function Garden(){return <><TempleGarden/><WorldLabel position={[36,2.3,-42]} title="VƯỜN RAU TỪ TÂM" subtitle="Vườn chung · Gieo · Tưới · Thu hoạch sau 60 giây"/></>}
 function Forest(){
   const trunks=useRef<THREE.InstancedMesh>(null),leaves=useRef<THREE.InstancedMesh>(null);
@@ -202,5 +196,5 @@ function Decorations(){return <><Forest/><Bamboo/><LanternPaths/><GardenDetails/
   {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
-function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><KitchenMeal/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
+function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={-19}/><BellPavilion x={19} drum/><TeaTerrace/><Stupa/><Decorations/></>}
 export default memo(Architecture);

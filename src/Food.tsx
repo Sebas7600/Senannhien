@@ -2,6 +2,11 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { dishes, type DishId } from './gameData';
+/** A single carried tray supports the entire meal, including the cup beside the plate. */
+export function ServingMeal({dish,eating=false}:{dish:DishId;eating?:boolean}){return <group>
+  <mesh position={[.04,-.055,0]} castShadow receiveShadow><boxGeometry args={[1.16,.025,1]}/><meshStandardMaterial color="#96754c" roughness={.75}/></mesh>
+  <Food dish={dish} eating={eating}/>
+</group>}
 export function Steam(){const ref=useRef<THREE.Group>(null);useFrame(({clock})=>ref.current?.children.forEach((m,i)=>{const t=(clock.elapsedTime*.25+i*.25)%1;m.position.set(Math.sin(t*5+i)*.1,.12+t*.65,Math.cos(t*5+i)*.07);m.scale.setScalar(.025+t*.045);(m as THREE.Mesh<THREE.SphereGeometry,THREE.MeshBasicMaterial>).material.opacity=(1-t)*.18}));return <group ref={ref}>{[0,1,2].map(i=><mesh key={i}><sphereGeometry args={[1,6,6]}/><meshBasicMaterial color="#fff8e5" transparent depthWrite={false}/></mesh>)}</group>}
 export function Food({dish,eating=false}:{dish:DishId;eating?:boolean}){
   const config=dishes.find(d=>d.id===dish)!;
