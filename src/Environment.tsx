@@ -6,7 +6,8 @@ import HallIncense from './HallIncense';
 import CourtyardCollision from './CourtyardCollision';
 import BambooGrove from './BambooGrove';
 import GravelPaths from './GravelPaths';
-import {bambooEntrances} from './mayaPaths';
+import {bambooEntrances,templeBackRoad} from './mayaPaths';
+import {ornamentalTrees} from './courtyardCollisionData';
 import {BAMBOO_PAVILION,BAMBOO_PAVILION_STEP,BAMBOO_BENCH_HEIGHT,bambooPavilionBenches} from './bambooPavilionLayout';
 import {bambooZoneBounds} from './courtyardZoneData';
 import ChanhDienRoof from './ChanhDienRoof';
@@ -69,12 +70,12 @@ paveStrip(-3,3,-17,GATE.z+10);
 paveStrip(-47,BRIDGE_ROAD.x+1,-7,-4);
 paveStrip(BRIDGE_ROAD.x-1,BRIDGE_ROAD.x+1,BRIDGE_ROAD.northZ,BRIDGE_ROAD.southZ);
 paveStrip(-18,18,26,27);
-// Rear cross-lane belongs to the same paving union, so its junction edges stay continuous.
-paveStrip(-18,18,-43,-40);
 paveStrip(-47,-15,-33,-32);
 paveStrip(15,47,-33,-32);
 paveStrip(-18,-17,-57,47);
 paveStrip(17,18,-57,47);
+paveStrip(templeBackRoad.x-templeBackRoad.length/2+.5,templeBackRoad.x+templeBackRoad.length/2-.5,
+  templeBackRoad.z-templeBackRoad.width/2+.5,templeBackRoad.z+templeBackRoad.width/2-.5);
 const paverGeometry=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2);
 const borderGeometry=paverGeometry.clone();
 const borderUV=borderGeometry.getAttribute('uv');
@@ -129,8 +130,11 @@ function Pavers(){
   </group>;
 }
 function WalkSurface(){const click=(e:ThreeEvent<MouseEvent>)=>{if(e.delta>5)return;e.stopPropagation();const s=useGame.getState();s.stand();s.set({destination:[e.point.x,e.point.z],pendingSeat:null});};return <mesh position={[0,.065,0]} rotation={[-Math.PI/2,0,0]} onClick={click}><planeGeometry args={[124,132]}/><meshBasicMaterial transparent opacity={0} depthWrite={false}/></mesh>}
+const exteriorDayTint=new THREE.Color('#e8f2ff').multiplyScalar(1.24);
 export function Ground(){const night=useGame(s=>s.night),soil=useOutdoorSurface('bamboo-soil'),stone=useOutdoorSurface('flagstone');return <group><OuterLandscape/><IncenseBurner/>
-  <mesh position={[0,-.15,0]} geometry={outerGroundGeometry} receiveShadow dispose={null}><meshStandardMaterial color={night?'#4b596a':'#a6b18a'}/></mesh>
+  <mesh position={[0,-.15,0]} geometry={outerGroundGeometry} dispose={null}>
+    <meshBasicMaterial map={soil.map} color={night?'#7c96b1':exteriorDayTint} fog={false} toneMapped={false}/>
+  </mesh>
   <mesh position={[0,.01,0]} geometry={courtyardGroundGeometry} material={stone} receiveShadow dispose={null}/>
   <mesh position={[0,.01,0]} geometry={bambooGroundGeometry} material={soil} receiveShadow dispose={null}/>
   <CourtyardZoneGround/>
@@ -276,7 +280,7 @@ function Decorations(){return <><Forest/><BambooGrove/><AvenueFlags/><PathLamps/
   <group position={[MAYA_LEVEL.extraBodhi.x,BODHI.ground,MAYA_LEVEL.extraBodhi.z]}><BodhiTree interactive={false}/></group>
   <CourtyardTrees/>
   {gateAvenueTrees.map(({x,z,scale})=><Tree key={`${x}-${z}`} position={[x,.06,z]} scale={scale}/>)}
-  {[[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
+  {ornamentalTrees.map(({x,z})=><Tree key={`${x},${z}`} position={[x,0,z]} scale={1.1}/>)}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
 function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><HallIncense/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={MAYA_LEVEL.bellX}/><BellPavilion x={MAYA_LEVEL.drumX} drum/><TeaTerrace/><Stupa/><BambooPavilion/><Decorations/><CourtyardZoneDecor/></>}

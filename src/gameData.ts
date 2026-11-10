@@ -14,6 +14,7 @@ import {courtyardTrees,COURTYARD_TREE} from './courtyardData';
 import {GATE,gateMasonry} from './courtyardPropsData';
 import {gateBlocked} from './gateState';
 import {zoneObstacles} from './courtyardZoneData';
+import {MAIN_INCENSE} from './ritualStations.mjs';
 import {BAMBOO_PAVILION,BAMBOO_PAVILION_STEP,BAMBOO_BENCH_HEIGHT,bambooPavilionBenches} from './bambooPavilionLayout';
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
@@ -22,8 +23,8 @@ export const CHARACTER_HALF_SEGMENT=.54;
 export const CHARACTER_OFFSET=CHARACTER_RADIUS+CHARACTER_HALF_SEGMENT;
 export const WISH_STATION:Vec2=[16.7+MAYA_LEVEL.pondOffsetX,37+MAYA_LEVEL.pondOffsetZ];
 export const WISH_APPROACH:Vec2=[16.4+MAYA_LEVEL.pondOffsetX,38.5+MAYA_LEVEL.pondOffsetZ];
-export const incenseSpot:Vec2=[0,-8.7];
-export const incenseApproach:Vec2=[0,-7.1];
+export const incenseSpot:Vec2=MAIN_INCENSE.spot;
+export const incenseApproach:Vec2=MAIN_INCENSE.approach;
 export const INCENSE_CLEARANCE=1.1;
 export function outsideIncenseBurner(x:number,z:number):Vec2{
   const dx=x-incenseSpot[0],dz=z-incenseSpot[1],length=Math.hypot(dx,dz);

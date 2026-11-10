@@ -1,6 +1,6 @@
 import {createSharedWorld,sharedWorldSnapshot,worldAction,sweepLeaves,trackWorldPlayer} from './src/sharedWorld.mjs';
 import {createFishSchool,advanceFishSchool,fishSnapshot} from './src/fishSimulation.mjs';
-import {BODHI_INCENSE,HALL_INCENSE} from './src/ritualStations.mjs';
+import {BODHI_INCENSE,HALL_INCENSE,MAIN_INCENSE} from './src/ritualStations.mjs';
 import {allowedBrowserOrigin} from './server-origin.mjs';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -72,7 +72,7 @@ export function createGameServer({now=Date.now}={}){
           if(!validId(b.operation)||!['incense','flower','candle','feed'].includes(b.kind)){json(res,400,{error:'invalid offering'});return;}
           const key=b.id+':'+b.operation;
           if(room.operations.has(key)){json(res,200,{ok:true});return;}
-          let spot=[0,-8.7],target;if(b.kind==='incense'&&b.station){if(!['quan-am',HALL_INCENSE.id,BODHI_INCENSE.id].includes(b.station)){json(res,400,{error:'invalid station'});return;}spot=b.station===BODHI_INCENSE.id?BODHI_INCENSE.spot:b.station===HALL_INCENSE.id?HALL_INCENSE.spot:QUAN_AM_SPOT;}
+          let spot=MAIN_INCENSE.spot,target;if(b.kind==='incense'&&b.station){if(!['quan-am',HALL_INCENSE.id,BODHI_INCENSE.id].includes(b.station)){json(res,400,{error:'invalid station'});return;}spot=b.station===BODHI_INCENSE.id?BODHI_INCENSE.spot:b.station===HALL_INCENSE.id?HALL_INCENSE.spot:QUAN_AM_SPOT;}
           if(b.kind==='feed'){
             const station=feedStations.find(s=>s.id===b.station);if(!station){json(res,400,{error:'invalid station'});return;}if(!canFeedFrom([peer.x,peer.z],station)){json(res,409,{error:'approach an unobstructed pond edge'});return;}spot=station.spot;target=station.target;
           }

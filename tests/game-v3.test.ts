@@ -5,6 +5,7 @@ import {webcrypto} from 'node:crypto';
 import * as THREE from 'three';
 import {POND,ISLAND,POND_BRIDGES,feedStations,bridgeHeight,pondContains,pondBlocked,pondSurface} from '../src/pondLayout';
 import {pondTerrain,pavementGeometry} from '../src/pondGeometry';
+import {incenseApproach} from '../src/gameData';
 // Node 18 ESM does not expose the browser Web Crypto global by default.
 if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});
 const values=new Map<string,string>();let writes=0;
@@ -48,14 +49,14 @@ test('incense requires proximity and completes once after three seconds',()=>{
   let now=100000;const original=Date.now;Date.now=()=>now;
   try{
     useGame.setState({position:[0,-24],inventory:{...defaults.inventory},progress:{...defaults.progress},lifetime:{...defaults.lifetime}});
-    useGame.getState().perform('incense');assert.equal(useGame.getState().inventory.incense,10);assert.equal(useGame.getState().action,'walk');assert.deepEqual(useGame.getState().destination,[0,-7.1]);
-    useGame.setState({position:[0,-7.1]});useGame.getState().perform('incense');assert.equal(useGame.getState().action,'incense');assert.equal(useGame.getState().inventory.incense,10);
+    useGame.getState().perform('incense');assert.equal(useGame.getState().inventory.incense,10);assert.equal(useGame.getState().action,'walk');assert.deepEqual(useGame.getState().destination,incenseApproach);
+    useGame.setState({position:[...incenseApproach]});useGame.getState().perform('incense');assert.equal(useGame.getState().action,'incense');assert.equal(useGame.getState().inventory.incense,10);
     now+=1000;useGame.getState().perform('incense');useGame.getState().tick();assert.equal(useGame.getState().progress.incense,0);
     now+=2000;useGame.getState().tick();assert.equal(useGame.getState().inventory.incense,9);assert.equal(useGame.getState().progress.incense,1);useGame.getState().tick();assert.equal(useGame.getState().inventory.incense,9);
   }finally{Date.now=original}
 });
 test('incense can be cancelled and cannot start without supplies',()=>{
-  useGame.setState({position:[0,-7.1],inventory:{...defaults.inventory}});useGame.getState().perform('incense');useGame.getState().stand();useGame.getState().tick();assert.equal(useGame.getState().inventory.incense,10);
+  useGame.setState({position:[...incenseApproach],inventory:{...defaults.inventory}});useGame.getState().perform('incense');useGame.getState().stand();useGame.getState().tick();assert.equal(useGame.getState().inventory.incense,10);
   useGame.setState({inventory:{...defaults.inventory,incense:0}});useGame.getState().perform('incense');assert.equal(useGame.getState().action,'walk');assert.equal(useGame.getState().panel,'bag');
 });
 
@@ -133,12 +134,13 @@ test('online offering waits for acknowledgement, consumes once and never creates
  let accept!:()=>void,requests=0;
  setOfferingTransport(async()=>{requests++;await new Promise<void>(resolve=>{accept=resolve})});
  try{
-  useGame.setState({connection:'online',position:[0,-7.1],inventory:{...defaults.inventory,incense:3},action:'incense',event:{type:'incense',at:Date.now()-4000,x:0,z:-7.1}});
+  const [x,z]=incenseApproach;
+  useGame.setState({connection:'online',position:[x,z],inventory:{...defaults.inventory,incense:3},action:'incense',event:{type:'incense',at:Date.now()-4000,x,z}});
   useGame.getState().tick();assert.equal(requests,1);assert.equal(useGame.getState().inventory.incense,3);
   useGame.getState().perform('incense');useGame.getState().tick();assert.equal(requests,1);
   accept();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(useGame.getState().inventory.incense,2);assert.equal(useGame.getState().burningIncense.length,0);assert.equal(useGame.getState().progress.incense,1);
   setOfferingTransport(async()=>{throw new Error('offline')});
-  useGame.setState({action:'incense',event:{type:'incense',at:Date.now()-4000,x:0,z:-7.1}});useGame.getState().tick();await new Promise(resolve=>setTimeout(resolve,0));
+  useGame.setState({action:'incense',event:{type:'incense',at:Date.now()-4000,x,z}});useGame.getState().tick();await new Promise(resolve=>setTimeout(resolve,0));
   assert.equal(useGame.getState().inventory.incense,2);assert.equal(useGame.getState().progress.incense,1);
  }finally{setOfferingTransport(null)}
 });

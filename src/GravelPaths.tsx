@@ -24,6 +24,6 @@ export default function MayaPaths(){const border=useRef<T.InstancedMesh>(null);
   varyGroundTiles(material,'bamboo-soil');
   return material;
  },[]);
- useLayoutEffect(()=>{const pose=new T.Object3D();edges.forEach((edge,i)=>{const rearLane=Math.abs(edge.z+41.40024)<2.2;pose.position.set(edge.x,rearLane?.073:.125,edge.z);pose.rotation.set(0,edge.rotation,0);pose.scale.set(edge.length,rearLane?.004:.13,.18);pose.updateMatrix();border.current!.setMatrixAt(i,pose.matrix)});border.current!.instanceMatrix.needsUpdate=true;border.current!.computeBoundingSphere();},[]);
+ useLayoutEffect(()=>{const pose=new T.Object3D();edges.forEach((edge,i)=>{pose.position.set(edge.x,.125,edge.z);pose.rotation.set(0,edge.rotation,0);pose.scale.set(edge.length,.13,.18);pose.updateMatrix();border.current!.setMatrixAt(i,pose.matrix)});border.current!.instanceMatrix.needsUpdate=true;border.current!.computeBoundingSphere();},[]);
  return <group name="Duong-soi-theo-pCube-Maya"><mesh geometry={earthSurface} material={earth} receiveShadow/><instancedMesh ref={border} args={[undefined,undefined,edges.length]} receiveShadow castShadow><boxGeometry/><meshStandardMaterial color="#b8b0a0" roughness={.92}/></instancedMesh></group>;
 }
