@@ -7,7 +7,8 @@ import {templeFixtures} from './templeFixtures';
 import {centerStatueOnBase} from './statuePlacement';
 import TempleDonationChest from './TempleDonationChest';
 
-import {extendPorticoColumn,isPorticoColumn,isTempleDoorPart,removeLegacyStatueHalos,removeNavePosts,strayFacadeOrnament} from './templeLayout';
+import {extendPorticoColumn,isPorticoColumnPart,isTempleDoorPart,removeLegacyStatueHalos,removeNavePosts,strayFacadeOrnament} from './templeLayout';
+import {porticoSupportTop} from './templeEave';
 import TempleCeiling from './TempleCeiling';
 import TempleCollision from './TempleCollision';
 import {templeParts} from './templeGeometry';
@@ -35,11 +36,17 @@ function TempleExterior(){
     const size=part.box.getSize(new THREE.Vector3()).multiplyScalar(.5);
     const c=part.box.getCenter(new THREE.Vector3()).multiplyScalar(.5);
     if(isTempleDoorPart(name,c,size)||strayFacadeOrnament(name,c,size))continue;
-    // Old capitals would otherwise be lifted with the roof and left hanging above the gallery.
-    if(name.startsWith('wood')&&isPorticoColumn(c.x,c.z)&&size.x<.9&&size.z<.9&&size.y<.4&&c.y>5.4&&c.y<5.8)continue;
     const column=size.y>2.5&&size.x<.9&&size.z<.9;
-    if(column&&name==='wood'&&isPorticoColumn(c.x,c.z))extendPorticoColumn(position,part.box,part.indices);
-    const high=!column&&(name.startsWith('roof')||part.box.min.y>10.8);
+    const portico=isPorticoColumnPart(name,c,size);
+    if(portico){
+     if(column)extendPorticoColumn(position,part.box,part.indices);
+     else if(c.y>5.3){
+      // Keep the carved capitals attached to the same posts at the new eave height.
+      const lift=2*(porticoSupportTop(c.x,c.z)-5.725);
+      for(const i of new Set(part.indices))position.setY(i,position.getY(i)+lift);
+     }
+    }
+    const high=!column&&!portico&&(name.startsWith('roof')||part.box.min.y>10.8);
     buckets[Number(high)][0].push(...part.indices);
    }
    for(const [indices,parent] of buckets)if(indices.length){

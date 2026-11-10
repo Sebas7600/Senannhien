@@ -1,6 +1,11 @@
 import {porticoSupportTop} from './templeEave';
 import * as THREE from 'three';
-export function removedTemplePost(x:number,z:number){return Math.abs(x)<9&&[1,4.9].some(row=>Math.abs(z-row)<.65)}
+export function removedTemplePost(x:number,z:number){
+ const inNave=Math.abs(x)<9&&[1,4.9].some(row=>Math.abs(z-row)<.65);
+ const redundantPortico=isPorticoColumn(x,z)&&(closeTo(Math.abs(x),10.5)||(
+  closeTo(Math.abs(x),13)&&[3,6].some(row=>closeTo(Math.abs(z),row))));
+ return inNave||redundantPortico;
+}
 export const templeFrontWall={innerX:5.9,outerX:12.6,z:7.45,depth:.36};
 
 export function isTempleDoorCollider({kind,position}:{kind:string;position:readonly number[]}){
@@ -22,6 +27,11 @@ export function isPorticoColumn(x:number,z:number){
  const onFrontOrBack=closeTo(Math.abs(z),8.725)&&[2.35,7,10.5,13].some(at=>closeTo(Math.abs(x),at));
  const onSide=closeTo(Math.abs(x),13)&&[0,3,6].some(at=>closeTo(Math.abs(z),at));
  return onFrontOrBack||onSide;
+}
+
+export function isPorticoColumnPart(material:string,center:THREE.Vector3,size:THREE.Vector3){
+ return ['wood','wood_dark','wood_warm','stone_dark'].includes(material)&&
+  isPorticoColumn(center.x,center.z)&&center.y>2.18&&center.y<5.73&&size.x<1.05&&size.z<1.05;
 }
 
 export function extendPorticoColumn(positions:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,box:THREE.Box3,indices:number[]){

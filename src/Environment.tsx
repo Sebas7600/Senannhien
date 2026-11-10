@@ -50,16 +50,16 @@ import { Character } from './Character';
 import { gardenPlots, obstacles, places, seats, readingTables, teaTables, diningTables, floorSurfaces, KITCHEN_COUNTER_TOP, WORLD, type Vec3 } from './gameData';
 import { useGame } from './gameStore';
 
-export function WorldLabel({position,title,subtitle}:{position:Vec3;title:string;subtitle?:string}){
+export function WorldLabel({position,title,subtitle,maxDistance=43}:{position:Vec3;title:string;subtitle?:string;maxDistance?:number}){
   const ref=useRef<THREE.Group>(null),worldPoint=useRef(new THREE.Vector3()),previous=useRef(true);const [shown,show]=useState(true);
-  useFrame(({camera})=>{if(!ref.current)return;const p=useGame.getState().position;ref.current.getWorldPosition(worldPoint.current);const distance=Math.hypot(p[0]-worldPoint.current.x,p[1]-worldPoint.current.z),visible=distance<43&&camera.position.distanceTo(worldPoint.current)>10;if(previous.current!==visible){previous.current=visible;show(visible)}});
+  useFrame(({camera})=>{if(!ref.current)return;const p=useGame.getState().position;ref.current.getWorldPosition(worldPoint.current);const distance=Math.hypot(p[0]-worldPoint.current.x,p[1]-worldPoint.current.z),visible=distance<maxDistance&&camera.position.distanceTo(worldPoint.current)>10;if(previous.current!==visible){previous.current=visible;show(visible)}});
   return <group ref={ref} position={position}>{shown&&<Html center distanceFactor={9} zIndexRange={[3,0]}><div className="world-label"><strong>{title}</strong>{subtitle&&<span>{subtitle}</span>}</div></Html>}</group>;
 }export function NearbyOverlay({position,children,distanceFactor=12,maxDistance=24}:{position:Vec3;children:React.ReactNode;distanceFactor?:number;maxDistance?:number}){
   const ref=useRef<THREE.Group>(null),point=useRef(new THREE.Vector3()),previous=useRef(false);const[shown,show]=useState(false);
   useFrame(()=>{if(!ref.current)return;ref.current.getWorldPosition(point.current);const p=useGame.getState().position,visible=Math.hypot(p[0]-point.current.x,p[1]-point.current.z)<maxDistance;if(visible!==previous.current){previous.current=visible;show(visible)}});
   const screenLabel=typeof window!=='undefined'&&(window.matchMedia?.('(pointer:coarse)')?.matches||window.innerWidth<=760);
   return <group ref={ref} position={position}>{shown&&<Html center distanceFactor={screenLabel?undefined:distanceFactor} zIndexRange={[3,0]}>{children}</Html>}</group>;
-}function RoofSection({x,z,w,d,children}:{x:number;z:number;w:number;d:number;children:React.ReactNode}){const ref=useRef<THREE.Group>(null);useFrame(()=>{if(!ref.current)return;const s=useGame.getState();ref.current.visible=!(Math.abs(s.position[0]-x)<w/2+1&&Math.abs(s.position[1]-z)<d/2+2)});return <group ref={ref}>{children}</group>}
+}
 const pavedCells=new Map<string,[number,number]>();
 function paveStrip(minX:number,maxX:number,minZ:number,maxZ:number){
   for(let x=minX;x<=maxX;x++)for(let z=minZ;z<=maxZ;z++){
@@ -70,8 +70,8 @@ paveStrip(-3,3,-17,GATE.z+10);
 paveStrip(-47,BRIDGE_ROAD.x+1,-7,-4);
 paveStrip(BRIDGE_ROAD.x-1,BRIDGE_ROAD.x+1,BRIDGE_ROAD.northZ,BRIDGE_ROAD.southZ);
 paveStrip(-18,18,26,27);
-paveStrip(-47,-15,-33,-32);
-paveStrip(15,47,-33,-32);
+paveStrip(-47,-17,-33,-32);
+paveStrip(17,47,-33,-32);
 paveStrip(-18,-17,-57,47);
 paveStrip(17,18,-57,47);
 paveStrip(templeBackRoad.x-templeBackRoad.length/2+.5,templeBackRoad.x+templeBackRoad.length/2-.5,
@@ -153,13 +153,13 @@ export function Ground(){const night=useGame(s=>s.night),soil=useOutdoorSurface(
 </group>}
 function MainTemple(){return <MainTempleReference/>}
 
-function Pavilion({x,z,w,d,title,subtitle,children,floor=.4}:{x:number;z:number;w:number;d:number;title:string;subtitle:string;children:React.ReactNode;floor?:number}){return <group position={[x,0,z]}>
+function Pavilion({x,z,w,d,title,subtitle,children,floor=.4,labelRange}:{x:number;z:number;w:number;d:number;title:string;subtitle:string;children:React.ReactNode;floor?:number;labelRange?:number}){return <group position={[x,0,z]}>
   <Box position={[0,floor/2,0]} scale={[w,floor,d]} color="#b3aa8b"/>
   <Box position={[0,2.3,-d/2+.15]} scale={[w,4,.2]} color="#ceba94"/>
   {[-1,1].flatMap(s=>[-1,0,1].map(i=><Box key={`${s}-${i}`} position={[s*(w/2-.4),2.3,i*(d/2-.5)]} scale={[.3,4.2,.3]} color="#81583b"/>))}
-  <RoofSection x={x} z={z} w={w} d={d}><ChanhDienRoof y={4.45} width={w+3} depth={d+3}/><Box position={[0,4.3,d/2-.2]} scale={[w,.32,.3]} color="#7a5238"/></RoofSection>
+  <ChanhDienRoof y={4.45} width={w+3} depth={d+3}/><Box position={[0,4.3,d/2-.2]} scale={[w,.32,.3]} color="#7a5238"/>
   {[-1,1].map(s=><Lantern key={s} position={[s*(w/2-1.7),3.7,d/2]}/>)}
-  <WorldLabel position={[0,4.1,d/2+.3]} title={title} subtitle={subtitle}/>
+  <WorldLabel position={[0,4.1,d/2+.3]} title={title} subtitle={subtitle} maxDistance={labelRange}/>
   {children}
 </group>}
 function DiningHall(){return <Pavilion x={34} z={-27} w={23} d={18} floor={.16} title="NHÀ ĂN HƯƠNG THIỀN" subtitle="Bữa chay thanh đạm · Mời bạn ngồi">
@@ -195,7 +195,7 @@ function BambooPavilion(){
     </Pavilion>
   </>;
 }
-function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
+function Library(){return <Pavilion x={-34} z={-43} w={17} d={14} floor={.35} labelRange={10.5} title="TÀNG KINH CÁC" subtitle="20 bàn đọc đơn · Một trang tĩnh lặng">
   <TemplePlaque kind="library" position={[0,3.82,-6.7]}/>
   {[-6,-2,2,6].map((x,i)=><group key={x} position={[x,0,-5.3]} onClick={e=>{e.stopPropagation();useGame.getState().perform('read')}}>
     <Box position={[0,1.6,0]} scale={[2.7,2.5,.7]} color="#8b6d49"/>{[.7,1.5,2.3].flatMap(y=>Array.from({length:9},(_,j)=><Box key={`${y}-${j}`} position={[-1.05+j*.26,y+.2,.41]} scale={[.18,.53,.2]} color={['#7d8e6c','#ac9570','#7b8f8b','#b99e7d'][(i+j)%4]}/>))}
@@ -216,7 +216,7 @@ function BellPavilion({x,drum=false}:{x:number;drum?:boolean}){
   return <group position={[x,0,-13]} onClick={e=>{if(e.delta>5)return;e.stopPropagation();useGame.getState().perform(drum?'drum':'bell')}}>
     <Box position={[0,.2,0]} scale={[5,.4,5]} color="#b4b598"/>
     {[-1,1].flatMap(s=>[-1,1].map(t=><Box key={`${s}-${t}`} position={[s*1.8,2.2,t*1.8]} scale={[.25,4,.25]} color="#815538"/>))}
-    <RoofSection x={x} z={-13} w={5} d={5}><ChanhDienRoof y={4.15} width={6.7} depth={6.5}/></RoofSection>
+    <ChanhDienRoof y={4.15} width={6.7} depth={6.5}/>
     {drum?<ImportedDrum/>:<ImportedBell/>}
     <WorldLabel position={[0,3,2.5]} title={drum?'LẦU TRỐNG':'LẦU CHUÔNG'} subtitle={drum?'E · Đánh ba tiếng trống':'E · Thỉnh một tiếng chuông'}/>
   </group>

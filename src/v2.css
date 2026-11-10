@@ -22,3 +22,10 @@
   .sweep-meter progress { height: 4px; margin-top: 4px; }
   .v2-game .sweep-card .text-btn { margin-top: 7px; font-size: 8px; }
 }
+
+.npc-tag.hall-incense-tag {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+}

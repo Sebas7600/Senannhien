@@ -1,11 +1,14 @@
 import {useMemo} from 'react';
 import {useGLTF} from '@react-three/drei';
-import {Mesh} from 'three';
+import {Box3,Mesh,MathUtils} from 'three';
 
 export default function ScannedBuddha(){
   const {scene}=useGLTF('/assets/models/truc-lam-buddha.glb',false,true);
   const statue=useMemo(()=>{
     const model=scene.clone(true);
+    // The scan's head leans right of the altar axis in the original orientation.
+    model.rotation.z=MathUtils.degToRad(5.7);
+    model.position.y=-new Box3().setFromObject(model,true).min.y-.02;
     model.traverse(object=>{
       if(object instanceof Mesh){
         object.castShadow=true;
