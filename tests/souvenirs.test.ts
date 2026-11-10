@@ -75,7 +75,7 @@ test('all eight ATT900 terminals sit on the counter left with clear space for go
 test('checkout screens use the restaurant images on the correct faces with two batches and valid click mapping',()=>{
  const screens=buildCheckoutScreens(),positions=screens.getAttribute('position'),normals=screens.getAttribute('normal'),uv=screens.getAttribute('uv');
  assert.equal(positions.count,souvenirStalls.length*8);assert.equal(screens.index!.count/3,32);
- assert.deepEqual(CHECKOUT_SCREEN_IMAGES,{staff:'/art/pos/staff.jpg',guest:'/art/pos/guest.jpg'});
+ assert.deepEqual(CHECKOUT_SCREEN_IMAGES,{staff:'/art/pos/receptionist-screen.png',guest:'/art/pos/customer-checkin-screen.png'});
  assert.deepEqual(screens.groups,[{start:0,count:48,materialIndex:0},{start:48,count:48,materialIndex:1}]);
  souvenirStalls.forEach((stall,index)=>{
   for(let face=0;face<2;face++){

@@ -4,7 +4,7 @@ import {batchGeometry,coloredGeometry} from './geometryBatch';
 import {COUNTER_LAYOUT,souvenirStalls,stallPoint,type SouvenirStall} from './souvenirData';
 
 // Same URL order as ReceptionDesk so drei reuses its cached pair of textures.
-export const CHECKOUT_SCREEN_IMAGES={staff:'/art/pos/staff.jpg',guest:'/art/pos/guest.jpg'} as const;
+export const CHECKOUT_SCREEN_IMAGES={staff:'/art/pos/receptionist-screen.png',guest:'/art/pos/customer-checkin-screen.png'} as const;
 export const CHECKOUT_SCREEN={width:.73,height:.40,y:.468,z:.143} as const;
 export function checkoutScreenStall(faceIndex:number,count=souvenirStalls.length){
  return Number.isInteger(faceIndex)&&faceIndex>=0&&faceIndex<count*4?Math.floor(faceIndex/2)%count:-1;
