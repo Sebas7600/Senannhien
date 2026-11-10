@@ -1,11 +1,14 @@
 import {OFFERING_DURATION} from './gameData';
 import {Euler, Quaternion, Vector3, type Object3D} from 'three';
-import {sampleBow, type BowFrame, type BowMode} from './bowTimeline';
+import {type BowFrame, type BowMode} from './bowTimeline';
 import {createQuietActivityFrame,sampleQuietActivity} from './quietActivityMotion';
 import {drumStroke} from './drumMotion';
 import type {ServeFrame} from './mealService';
+import {chibiSweepGrip,type SweepPose} from './sweepMotion';
+import {CHIBI_PRAYER,createChibiBowFrame,sampleChibiBow} from './chibiPracticeMotion';
+import type {ChibiWaterFrame} from './chibiWaterMotion';
 
-const joints = ['Hong','Than','Dau','Vai_L','Vai_R','Khuyu_L','Khuyu_R','Dui_L','Dui_R','Goi_L','Goi_R','Co_Chan_L','Co_Chan_R'] as const;
+const joints = ['Hong','Than','Dau','Vai_L','Vai_R','Khuyu_L','Khuyu_R','Co_Tay_L','Co_Tay_R','Dui_L','Dui_R','Goi_L','Goi_R','Co_Chan_L','Co_Chan_R'] as const;
 type Joint = typeof joints[number];
 const euler = new Euler();
 const target = new Quaternion();
@@ -16,9 +19,13 @@ export function createChibiPose(model: Object3D) {
   const rotations = new Map(joints.map(name => [name, bones.get(name)!.quaternion.clone()]));
   const hip = bones.get('Hong')!;
   const hipY = hip.position.y;
+  const torso=bones.get('Than')!,torsoRest=torso.position.clone(),torsoBefore=torso.position.clone(),torsoRendered=torso.position.clone();
+  const headBone=bones.get('Dau')!,headRest=headBone.position.clone(),headBefore=headBone.position.clone();
+  const scales=new Map(joints.map(name=>[name,bones.get(name)!.scale.clone()]));
+  const chibiBow=createChibiBowFrame();
   const bow: BowFrame = {kneel:0, bend:0, reach:0, done:false};
   const quiet=createQuietActivityFrame();
-  let mealLift = 0, seatedElapsed = 0, wasSeated = false;
+  let mealLift = 0, seatedElapsed = 0, wasSeated = false,holdBlend=0;
   const rendered = new Map(joints.map(name => [name, bones.get(name)!.quaternion.clone()]));
   let action = 'walk', elapsed = 0, weight = 0, hipBeforePose = hipY,hipBeforeZ=hip.position.z;
   const previous = new Map(joints.map(name => [name, new Quaternion()]));
@@ -65,6 +72,14 @@ export function createChibiPose(model: Object3D) {
     aim(lowerName,wrist,hand);
   }
   const serviceFeet={L:new Vector3(),R:new Vector3()};
+  function worldAligned(name:Joint,pitch=0,yaw=0,roll=0){
+    const bone=bones.get(name)!;footParent.identity();
+    // Work inside the avatar: extracting world quaternions from its nonuniform
+    // X/Z scale introduces a sideways ankle twist during deep knee bends.
+    for(let parent=bone.parent;parent&&parent!==model;parent=parent.parent)footParent.premultiply(parent.quaternion);
+    target.copy(footParent.invert()).multiply(offset.setFromEuler(euler.set(pitch,yaw,roll)));
+    bone.quaternion.slerp(target,weight);
+  }
 
 
   let stairBlend = 0;
@@ -89,13 +104,16 @@ export function createChibiPose(model: Object3D) {
     get mealLift() { return mealLift; },
     restore() {
       if (!weight) return;
-      for (const name of joints) bones.get(name)!.quaternion.copy(previous.get(name)!);
+      for (const name of joints){bones.get(name)!.quaternion.copy(previous.get(name)!);bones.get(name)!.scale.copy(scales.get(name)!);}
+      torso.position.copy(torsoBefore);
+      headBone.position.copy(headBefore);
       hip.position.y = hipBeforePose;
       hip.position.z = hipBeforeZ;
     },
-    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false, reduced = false,service?:ServeFrame) {
+    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false, reduced = false,service?:ServeFrame,holding=false,sweepFrame?:SweepPose,waterFrame?:ChibiWaterFrame) {
       if (action !== pose) { action = pose; elapsed = 0; }
       elapsed += dt;
+      holdBlend+=((holding?1:0)-holdBlend)*(1-Math.exp(-dt*12));
       mealLift = 0;
       sampleQuietActivity(pose,elapsed,quiet,reduced);
       // Changing a seated activity must not blend the pelvis back from standing height.
@@ -108,14 +126,37 @@ export function createChibiPose(model: Object3D) {
       const blend = 1-Math.exp(-dt*12);
       stairBlend += ((onStairs ? 1 : 0)-stairBlend)*blend;
       stairLean += ((onStairs ? (stairs === 1 ? .065 : -.025) : 0)-stairLean)*blend;
-      if (walking && stairBlend < .001) { weight = 0; return; }
+      if (walking && stairBlend < .001&&holdBlend<.001) { weight = 0; return; }
 
       for (const name of joints) previous.get(name)!.copy(bones.get(name)!.quaternion);
       hipBeforePose = hip.position.y;
       hipBeforeZ=hip.position.z;
+      torsoBefore.copy(torso.position);
+      headBefore.copy(headBone.position);
       try {
       const cycle = Math.sin(elapsed * 6);
-      if (walking) { applyStairGait(); return; }
+      if (walking) { applyStairGait();if(holdBlend>.001){weight*=holdBlend;reachHand('L',point.set(.085,.65,.24));reachHand('R',point.set(-.085,.65,.24));}return; }
+      if(pose==='sweep'&&sweepFrame){
+        turn('Than',.045);turn('Dau',.12);
+        reachHand('L',chibiSweepGrip(sweepFrame,'L',point));
+        reachHand('R',chibiSweepGrip(sweepFrame,'R',point));return;
+      }
+      if((pose==='drawWater'||pose==='pourWater')&&waterFrame){
+        headBone.position.z=headRest.z-waterFrame.headBack;
+        turn('Than',waterFrame.bend);turn('Dau',waterFrame.headPitch);
+        point.copy(waterFrame.rightGrip);point.x/=1.08;point.z/=1.10;reachHand('R',point);
+        point.copy(waterFrame.leftGrip);point.x/=1.08;point.z/=1.10;reachHand('L',point);return;
+      }
+      if(pose==='vendor'){
+        // Sellers keep the original standing legs and flat ankles. The serving pose
+        // pushes the pelvis forward and is unsuitable for a permanent shop stance.
+        hip.position.y=hipY;hip.position.z=0;
+        for(const name of ['Dui_L','Dui_R','Goi_L','Goi_R','Co_Chan_L','Co_Chan_R'] as const)turn(name,0);
+        turn('Than',.015);turn('Dau',.035);
+        reachHand('L',point.set(.18/(1.3*1.08),.85/1.3+.025,.22/(1.3*1.10)));
+        reachHand('R',point.set(-.20/(1.3*1.08),.93/1.3+.025,.43/(1.3*1.10)));
+        return;
+      }
       if(pose==='serve'&&service){
         for(const side of ['L','R'] as const){bones.get(side==='L'?'Co_Chan_L':'Co_Chan_R')!.getWorldPosition(serviceFeet[side]);model.worldToLocal(serviceFeet[side]);}
         hip.position.y=hipY-.018-service.bend*.31;
@@ -130,8 +171,35 @@ export function createChibiPose(model: Object3D) {
         const stir=reduced?0:elapsed*4;turn('Than',.12);turn('Dau',.16);
         reachHand('L',point.set(.14,.72,.25));reachHand('R',point.set(-.08+Math.sin(stir)*.035,.78,.29+Math.cos(stir)*.035));return;
       }
-      if (pose === 'bow') sampleBow(bowElapsed ?? elapsed,bowMode ?? (seated?'cushion':'standing'),bow);
-      const kneel = seated ? 1 : pose === 'bow' ? bow.kneel : 0;
+      if(pose==='bow'){
+        const mode=bowMode??(seated?'cushion':'standing'),frame=sampleChibiBow(bowElapsed??elapsed,mode,chibiBow,bow,hipBeforePose);
+        hip.position.y=frame.hipY;hip.position.z=frame.hipZ;
+        // Bend at the waist, moving the chest pivot too; rotating only the chest
+        // leaves the large chibi head sitting upright over a crouched pelvis.
+        torso.position.set(torsoRest.x,torsoRest.y*Math.cos(frame.pitch),torsoRest.y*Math.sin(frame.pitch));
+        turn('Than',frame.pitch);turn('Dau',frame.headPitch);
+        if(!seated){
+          // The pelvis already follows the timed trajectory. Its leg constraints
+          // must be solved fully, even while the upper body blends into prayer.
+          const upperBodyWeight=weight;weight=1;
+          for(const side of ['L','R'] as const){const sign=side==='L'?1:-1;
+            reachHand(side,point.set(sign*.08,frame.footY,frame.footZ),true);
+            worldAligned(side==='L'?'Co_Chan_L':'Co_Chan_R',frame.footPitch);
+          }
+          weight=upperBodyWeight;
+        }else{
+          for(const side of ['L','R'] as const){const sign=side==='L'?1:-1;
+            turn(side==='L'?'Dui_L':'Dui_R',-1.39,sign*.78);
+            aim(side==='L'?'Goi_L':'Goi_R',bones.get(side==='L'?'Co_Chan_L':'Co_Chan_R')!,point.set(sign*.105,.07,side==='L'?.19:.16));
+            worldAligned(side==='L'?'Co_Chan_L':'Co_Chan_R',0,-sign*1.12);
+          }
+        }
+        for(const side of ['L','R'] as const){const sign=side==='L'?1:-1,name=side==='L'?'Co_Tay_L':'Co_Tay_R';
+          reachHand(side,point.set(sign*frame.palmX,frame.palmY,frame.palmZ));
+          worldAligned(name,-Math.PI/2*frame.contact,0,Math.PI*(1-frame.contact));bones.get(name)!.scale.z=1-frame.contact*.55;
+        }return;
+      }
+      const kneel = seated ? 1 : 0;
       if (kneel) {
         hip.position.y += ((chair ? .13 : seated ? .078 : .11) - hip.position.y) * kneel * weight;
         for (const side of ['L','R'] as const) {
@@ -192,6 +260,11 @@ export function createChibiPose(model: Object3D) {
         reachHand('R',point.set(-.018,.365,.225));
         return;
       }
+      if(pose==='pray'||pose==='chant'){
+        turn('Than',.02);turn('Dau',.06);
+        for(const side of ['L','R'] as const){const sign=side==='L'?1:-1;reachHand(side,point.set(sign*CHIBI_PRAYER.spread,hip.position.y+CHIBI_PRAYER.height,CHIBI_PRAYER.forward));worldAligned(side==='L'?'Co_Tay_L':'Co_Tay_R',0,0,Math.PI);}
+        return;
+      }
       if (pose === 'eat' && seated) {
         const phase = elapsed % 2.6;
         const lift = Math.sin(Math.PI*Math.min(1,Math.max(0,(phase-.35)/1.85)));
@@ -210,15 +283,6 @@ export function createChibiPose(model: Object3D) {
         turn('Dau',.07+place*.12);
         reachHand('L',point.set(.025,.75+.095*lift-.075*place,.285+.09*place));
         reachHand('R',point.set(-.025,.76+.095*lift-.075*place,.285+.09*place));
-        return;
-      }
-      if (pose === 'bow') {
-        const lean = bow.bend * (seated ? .39 : .49);
-        turn('Than',lean);
-        turn('Dau',.12*bow.reach);
-        const palmHeight = hip.position.y + .27 - .22*bow.reach;
-        reachHand('L',point.set(.04+.08*bow.reach,palmHeight,.22+.19*bow.reach));
-        reachHand('R',point.set(-.04-.08*bow.reach,palmHeight,.22+.19*bow.reach));
         return;
       }
       if (pose === 'water') {
@@ -274,6 +338,7 @@ export function createChibiPose(model: Object3D) {
           if (continuingSeat) bone.quaternion.copy(last.slerp(bone.quaternion,alpha));
           else last.copy(bone.quaternion);
         }
+        if(continuingSeat)torso.position.lerpVectors(torsoRendered,torso.position,alpha);torsoRendered.copy(torso.position);
       }
     },
   };

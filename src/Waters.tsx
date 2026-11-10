@@ -9,7 +9,7 @@ import {useGame} from './gameStore';
 import {useReducedMotion} from './useReducedMotion';
 import {WorldLabel} from './Environment';
 import {FlyingLanterns,FloatingLotuses,WishStation} from './Lanterns';
-import {FISH_FEED_LIFETIME,koiTarget} from './fishFeeding';
+import {FISH_FEED_LIFETIME,advanceKoi,createKoiSwimmer} from './fishFeeding';
 import {fullMoonOffset} from './CourtyardSky';
 
 const waterVertex=`
@@ -235,10 +235,8 @@ const koiCount=15;
 function KoiSchool(){
   const bodies=useRef<T.InstancedMesh>(null),tails=useRef<T.InstancedMesh>(null);
   const work=useRef(new T.Object3D());
-  const target=useRef<[number,number]>([0,0]);
-  const swimming=useRef(new Float32Array(koiCount*3).fill(Number.NaN));
-  const normalTarget=useRef<[number,number]>([0,0]);
-  const feedingState=useRef(Array.from({length:koiCount},()=>({x:0,z:0,at:0,blend:0,speed:.65})));
+  const swimming=useMemo(()=>Array.from({length:koiCount},(_,index)=>createKoiSwimmer(index)),[]);
+  const elapsed=useRef(0);
   const reduced=useReducedMotion(),quality=useGame(s=>s.quality);
   useLayoutEffect(()=>{
     for(const mesh of [bodies.current!,tails.current!]){
@@ -247,33 +245,28 @@ function KoiSchool(){
     }
   },[]);
   useFrame(({clock},dt)=>{
-    dt=Math.min(dt,.05);
-    const body=bodies.current!,tail=tails.current!,object=work.current,poses=swimming.current;
+    const body=bodies.current!,tail=tails.current!,object=work.current;
+    elapsed.current+=dt;
+    if(quality==='low'&&elapsed.current+1e-6<1/30&&body.count===9)return;
+    const step=Math.min(elapsed.current,.1);
+    const feedBlend=1-Math.exp(-2*step),turnBlend=1-Math.exp(-6*step);
+    elapsed.current=0;
     const now=Date.now(),feeds=useGame.getState().fishFeeds;
-    const firstActive=feeds.findIndex(item=>now-item.at<FISH_FEED_LIFETIME);
+    let firstActive=0;
+    while(firstActive<feeds.length&&now-feeds[firstActive].at>=FISH_FEED_LIFETIME)firstActive++;
+    const activeCount=feeds.length-firstActive;
     const count=quality==='low'?9:koiCount,time=reduced?0:clock.elapsedTime;
     body.count=tail.count=count;
     for(let i=0;i<count;i++){
-      const feed=firstActive<0?null:feeds[firstActive+i%(feeds.length-firstActive)];
-      const a=feedingState.current[i];if(feed){a.x=feed.x;a.z=feed.z;a.at=feed.at;}
-      a.blend=T.MathUtils.damp(a.blend,feed?1:0,feed?1.2:.22,dt);a.speed=T.MathUtils.damp(a.speed,feed?1.05:.65,feed?1.5:.3,dt);
-      const normal=koiTarget(i,time,null,normalTarget.current),eating=koiTarget(i,time,a,target.current);
-      const tx=T.MathUtils.lerp(normal[0],eating[0],a.blend),tz=T.MathUtils.lerp(normal[1],eating[1],a.blend);
-      const index=i*3,x0=poses[index]||tx,z0=poses[index+1]||tz;
-      const dx=tx-x0,dz=tz-z0,distance=Math.hypot(dx,dz),step=Math.min(distance,a.speed*dt);
-      let x=x0+(distance>0?dx/distance*step:0),z=z0+(distance>0?dz/distance*step:0);
-      if(islandContains(x,z,-.55)){
-        const dx=x-ISLAND.x,dz=z-ISLAND.z,factor=(ISLAND.radius+.55)/(Math.hypot(dx,dz)||1);
-        x=ISLAND.x+dx*factor;z=ISLAND.z+dz*factor;
-      }
-      const oldYaw=poses[index+2]||i,targetYaw=Math.hypot(x-x0,z-z0)>.001?Math.atan2(x-x0,z-z0):oldYaw;
-      const yaw=oldYaw+(T.MathUtils.euclideanModulo(targetYaw-oldYaw+Math.PI,Math.PI*2)-Math.PI)*Math.min(1,dt*3);
-      poses[index]=x;poses[index+1]=z;poses[index+2]=yaw;
+      const feed=activeCount===0?null:feeds[firstActive+i%activeCount];
+      const fish=swimming[i];
+      advanceKoi(fish,time,step,feed,reduced,feedBlend,turnBlend);
+      const {x,z,yaw}=fish;
       const y=POND.waterY-.041+Math.sin(time*.20+i*2.399)*.019;
       object.position.set(x,y,z);object.rotation.set(0,yaw,0);object.scale.setScalar(1+(i%4)*.10);object.updateMatrix();
       body.setMatrixAt(i,object.matrix);
       object.position.set(x-Math.sin(yaw)*.40,y,z-Math.cos(yaw)*.40);
-      object.rotation.y=yaw+Math.sin(time*(4+a.speed*2)+i)*.3;object.updateMatrix();tail.setMatrixAt(i,object.matrix);
+      object.rotation.y=yaw+Math.sin(time*(feed?6.1:5.3)+i)*.3;object.updateMatrix();tail.setMatrixAt(i,object.matrix);
     }
     body.instanceMatrix.needsUpdate=tail.instanceMatrix.needsUpdate=true;
   });

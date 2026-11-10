@@ -1,0 +1,39 @@
+{
+  "revision": 2,
+  "source": "public/assets/characters/thay-chua-chibi.glb",
+  "sourceSha256": "9fede72610dacb8a3d567c8a7eda6470f69f54c74e8d5afb2f12bf0c5c75b18f",
+  "sourceTriangles": 16864,
+  "npcScale": 1.3,
+  "headPivot": [
+    0,
+    1.1270711903265827,
+    0.004225491539907686
+  ],
+  "rightElbow": [
+    -0.2502000141388542,
+    0.9538898539798102,
+    0.2280510603904863
+  ],
+  "leftElbow": [
+    0.333931996466188,
+    0.8638053377596119,
+    0.08346325250870787
+  ],
+  "standingFloor": 0,
+  "assets": [
+    {
+      "file": "market-vendors.glb",
+      "bytes": 155392,
+      "triangles": 11636,
+      "draws": 3,
+      "decodedGeometryBytes": 359340
+    },
+    {
+      "file": "market-vendors-low.glb",
+      "bytes": 94052,
+      "triangles": 6270,
+      "draws": 3,
+      "decodedGeometryBytes": 206928
+    }
+  ]
+}

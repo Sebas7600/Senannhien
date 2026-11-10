@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {webcrypto} from 'node:crypto';
 import * as THREE from 'three';
-import {POND,ISLAND,POND_BRIDGES,feedStations,bridgeHeight,pondContains,pondBlocked,pondSurface} from '../src/pondLayout';
+import {POND,ISLAND,POND_BRIDGES,feedStations,bridgeHeight,islandContains,pondContains,pondBlocked,pondSurface} from '../src/pondLayout';
 import {pondTerrain,pavementGeometry} from '../src/pondGeometry';
 // Node 18 ESM does not expose the browser Web Crypto global by default.
 if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto,configurable:true});
@@ -151,13 +151,49 @@ test('fish feeding requires shore proximity, supplies and cooldown',()=>{
  useGame.setState({fishFeedAt:0,lastFishFedAt:0,inventory:{...defaults.inventory,feed:0}});useGame.getState().perform('feed');assert.equal(useGame.getState().panel,'bag');assert.equal(useGame.getState().progress.feed,1);
 });
 test('feeding koi targets stay inside the pond near the food',async()=>{
- const {koiTarget}=await import('../src/fishFeeding.ts');
+ const {koiFeedTarget}=await import('../src/fishFeeding.ts');
  for(const station of feedStations){
   const [foodX,foodZ]=station.target;
   for(let i=0;i<15;i++)for(let t=0;t<12;t++){
-   const [x,z]=koiTarget(i,t,{x:foodX,z:foodZ});
+   const [x,z]=koiFeedTarget(i,t,{x:foodX,z:foodZ});
    assert.ok(Math.hypot(x-foodX,z-foodZ)<2);
    assert.ok(pondContains(x,z),station.id);
+  }
+ }
+});
+
+test('idle koi wander independently with turns in both directions across the lake',async()=>{
+ const {createKoiSwimmer,advanceKoi}=await import('../src/fishFeeding.ts');
+ const dt=1/30,feedBlend=1-Math.exp(-2*dt),turnBlend=1-Math.exp(-6*dt);
+ const fish=Array.from({length:15},(_,i)=>createKoiSwimmer(i));
+ const coverage=fish.map(()=>new Set<number>()),turns=fish.map(()=>new Set<number>());
+ const quadrant=(x:number,z:number)=>(x>POND.x?1:0)+(z>POND.z?2:0);
+ assert.equal(new Set(fish.slice(0,9).map(({x,z})=>quadrant(x,z))).size,4);
+ for(let frame=0;frame<5400;frame++){
+  for(const swimmer of fish){
+   const {x,z,yaw,index}=swimmer;
+   advanceKoi(swimmer,frame*dt,dt,null,false,feedBlend,turnBlend);
+   assert.ok(pondContains(swimmer.x,swimmer.z)&&!islandContains(swimmer.x,swimmer.z,-.54));
+   assert.ok(Math.hypot(swimmer.x-x,swimmer.z-z)<=1.95*dt+1e-8);
+   coverage[index].add(quadrant(swimmer.x,swimmer.z));
+   if(Math.abs(swimmer.yaw-yaw)>.05)turns[index].add(Math.sign(swimmer.yaw-yaw));
+  }
+ }
+ assert.ok(coverage.filter(sections=>sections.size>=3).length>=8);
+ assert.ok(turns.every(direction=>direction.size===2));
+});
+
+test('koi reach food across the island and return to their route without crossing dry land',async()=>{
+ const {createKoiSwimmer,advanceKoi}=await import('../src/fishFeeding.ts');
+ const dt=1/30,feedBlend=1-Math.exp(-2*dt),turnBlend=1-Math.exp(-6*dt);
+ for(const station of feedStations)for(let i=0;i<15;i++){
+  const food={x:station.target[0],z:station.target[1]};
+  const fish=createKoiSwimmer(i);
+  for(let frame=0;frame<330;frame++){
+   advanceKoi(fish,frame*dt,dt,frame<150?food:null,false,feedBlend,turnBlend);
+   const {x,z}=fish;
+   assert.ok(pondContains(x,z)&&!islandContains(x,z,-.54),`${station.id}, fish ${i}, frame ${frame}`);
+   if(frame===149)assert.ok(Math.hypot(x-food.x,z-food.z)<2,`${station.id}, fish ${i} reached the food`);
   }
  }
 });

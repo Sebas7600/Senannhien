@@ -9,8 +9,26 @@ export const sweepContact={at:0,side:1,strength:0,ready:false};
 /** One shared pose drives the prop, the two hand targets and ground contact. No allocations per frame. */
 export function sampleSweepPose(now:number,reduced:boolean,out:SweepPose,contact:typeof sweepContact|null=null){
  const phase=now/SWEEP.periodMs*Math.PI*2,stroke=Math.sin(phase),x=.20+stroke*SWEEP.sideReach;out.axis.set(-x*.64,.95,-.27).normalize();out.base.set(x,.015+.055*Math.abs(out.axis.x)+.16*Math.abs(out.axis.z),SWEEP.headForward+.025*Math.cos(phase*2));out.rotation.setFromUnitVectors(up,out.axis).multiply(broomYaw);out.lowerGrip.copy(out.axis).multiplyScalar(SWEEP.lowerGrip).add(out.base);out.upperGrip.copy(out.axis).multiplyScalar(SWEEP.upperGrip).add(out.base);out.side=Math.cos(phase)>=0?1:-1;
+ applyHeadFlex(now,reduced,stroke,out,contact);return out;
+}
+function applyHeadFlex(now:number,reduced:boolean,stroke:number,out:SweepPose,contact:typeof sweepContact|null){
  const age=contact?(now-contact.at)/1000:10,pulse=contact&&age>=0&&age<.65?Math.sin(age*32)*Math.exp(-age*8)*contact.strength*contact.side:0;
- out.headFlexX=reduced?0:stroke*.018+pulse*.055;out.headFlexZ=reduced?0:-stroke*.035+pulse*.15;return out;
+ out.headFlexX=reduced?0:stroke*.018+pulse*.055;out.headFlexZ=reduced?0:-stroke*.035+pulse*.15;
+}
+export const CHIBI_SWEEP={headForward:.43,sideReach:.17,baseHeight:-.011,lowerGrip:.66,upperGrip:.82,modelScaleX:1.08,modelScaleZ:1.10} as const;
+/** The short chibi forearms need a lower, closer grip than the original adult rig. */
+export function sampleChibiSweepPose(now:number,reduced:boolean,out:SweepPose,contact:typeof sweepContact|null=null,visualOffset=.025){
+ const phase=now/SWEEP.periodMs*Math.PI*2,stroke=Math.sin(phase),x=.08+stroke*CHIBI_SWEEP.sideReach,z=CHIBI_SWEEP.headForward+.02*Math.cos(phase*2);
+ // Aim the shaft through the space between both shoulders, not out past the right arm.
+ out.axis.set(-x,.72,.22-z).normalize();
+ out.base.set(x,CHIBI_SWEEP.baseHeight+.055*Math.abs(out.axis.x)+.16*Math.abs(out.axis.z)+visualOffset,z);
+ out.rotation.setFromUnitVectors(up,out.axis).multiply(broomYaw);
+ out.lowerGrip.copy(out.axis).multiplyScalar(CHIBI_SWEEP.lowerGrip).add(out.base);
+ out.upperGrip.copy(out.axis).multiplyScalar(CHIBI_SWEEP.upperGrip).add(out.base);out.side=Math.cos(phase)>=0?1:-1;applyHeadFlex(now,reduced,stroke,out,contact);return out;
+}
+/** Prop space is outside the scaled GLB; convert its grip into the rig's model space. */
+export function chibiSweepGrip(frame:SweepPose,side:'L'|'R',out:Vector3){
+ out.copy(side==='L'?frame.upperGrip:frame.lowerGrip);out.x/=CHIBI_SWEEP.modelScaleX;out.z/=CHIBI_SWEEP.modelScaleZ;return out;
 }
 /** Two fixed-length links, with an outward elbow pole. Targets stay inside the reachable envelope. */
 export function sweepElbow(shoulder:Vector3,wrist:Vector3,side:number,out:Vector3,direction:Vector3,pole:Vector3){
