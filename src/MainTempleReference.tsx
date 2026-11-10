@@ -16,13 +16,14 @@ import TempleNiches from './TempleNiches';
 import TempleOfferingStations from './TempleOfferingStations';
 import {detailTempleRoof,TempleRoofDetail} from './TempleRoofDetail';
 /** Complete user-provided temple, at uniform scale. Other buildings remain independent. */
-import {useMemo,useRef} from 'react';
+import {useMemo,useRef,useLayoutEffect,useState,useCallback} from 'react';
 import {useGLTF} from '@react-three/drei';
 import {useGame} from './gameStore';
 import * as THREE from 'three';
+import {CompanyPresentation} from './FireworksShow';
 const asset=(name:string)=>'/assets/main-temple/'+name+'?v=complete-20261103-4';
 function prepare(scene:THREE.Group){const model=scene.clone(true);model.traverse(o=>{if(o instanceof THREE.Mesh){o.material=(o.material as THREE.MeshStandardMaterial).clone();o.material.side=THREE.DoubleSide;o.material.envMapIntensity=.85;o.castShadow=true;o.receiveShadow=true;}});return model;}
-function TempleExterior(){
+function TempleExterior({onRoofBounds}:{onRoofBounds:(bounds:THREE.Box3)=>void}){
  const {scene}=useGLTF(asset('tam-the-complete.glb'));
  const parts=useMemo(()=>{
   const full=removeNavePosts(prepare(scene),templeParts),body=new THREE.Group(),top=new THREE.Group();
@@ -61,6 +62,7 @@ function TempleExterior(){
   });
   return {body,top};
  },[scene]);
+ useLayoutEffect(()=>{parts.top.updateMatrixWorld(true);onRoofBounds(new THREE.Box3().setFromObject(parts.top));},[parts,onRoofBounds]);
  return <group scale={.5}><primitive object={parts.body}/><group position={[0,templeFixtures.ceiling.roofLift,0]}><primitive object={parts.top}/><TempleRoofDetail/><TempleRoofLights/></group></group>;
 }
 function KsitigarbhaStatue() {
@@ -118,9 +120,12 @@ function TempleReferenceStatue({kind}: {kind:'quan-am'|'buddha'}) {
 export default function MainTempleReference(){
  const low=useGame(s=>s.quality==='low');
  const night=useGame(s=>s.night);const root=useRef<THREE.Group>(null);
+ const show=useGame(s=>s.fireworksShow),[presentationAnchor,setPresentationAnchor]=useState<THREE.Vector3|null>(null);
+ const placePresentationAnchor=useCallback((bounds:THREE.Box3)=>{const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());setPresentationAnchor(new THREE.Vector3(center.x*.5,(templeFixtures.ceiling.roofLift+bounds.max.y)*.5+Math.max(size.y*.15,1),center.z*.5));},[]);
  const {scene}=useGLTF(asset('tam-the-complete-interior.glb'));const interior=useMemo(()=>removeLegacyStatueHalos(removeNavePosts(prepare(scene),templeParts,true),templeParts),[scene]);
  return <group ref={root} position={[0,.08,-27]}><TempleNightFill root={root}/><BuddhistFlags/>
-  <TempleExterior/><TempleExteriorDecor/>
+  <TempleExterior onRoofBounds={placePresentationAnchor}/><TempleExteriorDecor/>
+  {show?.companyPresentationEnabled&&presentationAnchor&&<CompanyPresentation position={presentationAnchor} startAt={show.startAt}/>}
   <TempleCeiling/>
   <TempleCollision/>
   <group scale={.5}><TempleNiches/></group>

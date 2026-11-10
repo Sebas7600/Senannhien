@@ -68,7 +68,7 @@ export const KITCHEN_COUNTER_TOP=1.16;
 export const PICKUP_PLATE:Vec3=[42.4,KITCHEN_COUNTER_TOP,-33.85];
 export const CHEF_HOME:Vec2=[34,-34.85];
 export const CHEF_PASS:Vec2=[42.15,-34.85];
-export const RECEPTION:Vec2=[43,-19];
+export const RECEPTION:Vec2=[34,-19];
 export const RECEPTION_HEADING=0;
 export function usesFloorSeat(seat:Seat|undefined){return !!seat&&(seat.floorSeat===true||seat.kind==='cushion'||seat.kind==='reading');}
 export const pavilionLayouts=[{x:-33,z:-17,w:20,d:16,height:.4},{x:-34,z:-43,w:17,d:14,height:.35},{x:34,z:-27,w:23,d:18,height:.16},{x:0,z:-56,w:20,d:13,height:.3},BAMBOO_PAVILION];
@@ -117,7 +117,7 @@ export const scriptures = [
 export const npcs = [
   {id:'guide',gender:'male',name:'Chú tiểu Minh',role:'Người đón khách',x:-3,z:GATE.z-5,robe:'#859786',lines:['Chào bạn! Qua cổng tam quan là sân bồ đề. Đi thẳng sẽ tới chánh điện.','Bạn có thể bấm vào từng bồ đoàn để ngồi. Khi muốn đứng dậy, nhấn E hoặc phím di chuyển.','Nhà ăn Hương Thiền nằm phía đông bắc. Cô Tâm có bốn món chay đợi bạn đấy.']},
   {id:'master',gender:'male',name:'Thầy Thiện Tâm',role:'Trông tàng kinh các',x:-26.8,z:-46.6,robe:'#a2794d',lines:['Cứ thong thả. Tu tập trong game bắt đầu từ sự chú ý với những điều nhỏ quanh mình.','Mời bạn chọn một bàn đọc. Một trang tĩnh lặng gồm bốn bài thực tập ngắn.','Hành trình có nhiều dấu mốc: ghé các khu vực, chăm cây và ngồi thiền mỗi ngày.']},
-  {id:'cook',gender:'female',name:'Cô Tâm',role:'Đón khách · Bếp chay Hương Thiền',x:43,z:-20.15,robe:'#9b8067',lines:['Mời bạn vào dùng một bữa chay. Hôm nay có mì, cơm, hủ tiếu và bánh mì chay.','Bạn có thể gọi món ngay tại quầy, rồi vào bàn mà không cần gọi lại. Nếu ngồi vào bàn trước, cứ mở thực đơn để chọn món nhé.','Bữa ăn ở đây được tặng miễn phí. Cứ ăn chậm, đủ no rồi cùng chăm lại sân chùa nhé.']},
+  {id:'cook',gender:'female',name:'Cô Tâm',role:'Đón khách · Bếp chay Hương Thiền',x:34,z:-20.15,robe:'#9b8067',lines:['Mời bạn vào dùng một bữa chay. Hôm nay có mì, cơm, hủ tiếu và bánh mì chay.','Bạn có thể gọi món ngay tại quầy, rồi vào bàn mà không cần gọi lại. Nếu ngồi vào bàn trước, cứ mở thực đơn để chọn món nhé.','Bữa ăn ở đây được tặng miễn phí. Cứ ăn chậm, đủ no rồi cùng chăm lại sân chùa nhé.']},
   {id:'chef',gender:'female',name:'Cô An',role:'Phụ trách bếp · Nhà ăn Hương Thiền',x:CHEF_HOME[0],z:CHEF_HOME[1],robe:'#bdab87',lines:['Chào bạn, cô An phụ trách bếp Hương Thiền. Mỗi phần ăn được nấu mới khi bạn gọi món.','Cô nấu trong ba giây rồi mang khay sang bên phải quầy. Cô Tâm sẽ nhận món tại đó và mang đến bàn.','Mời bạn chọn một chỗ ngồi, dùng bữa chậm rãi và trân trọng từng hương vị.']},
   {id:'keeper',gender:'male',name:'Chú tiểu Hương An',role:'Hướng dẫn dâng hương',x:3,z:-8.7,robe:'#a97b44',lines:['Mời bạn đứng trước lư hương để dâng hương. Tôi đứng bên phải để nhường lối vào điện.','Bạn có thể mở túi vải để chuẩn bị hương, hoa và đèn. Bàn dâng hoa ở bên trái trong điện, bàn dâng đèn ở bên phải.']},
 

@@ -6,9 +6,19 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import {CHARACTER_OFFSET,CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS,diningTables,seats,floorSurfaces,obstacles,surfaceHeight,stepAssistHeight,walkable,distance} from '../src/gameData';
 import {clearLine} from '../src/navigation';
 import {mealPlan,serviceTimes,servicePhase,counterHasMeal,sampleRoute,HANDOFF_MS,TURN_MS,WITHDRAW_MS,MEAL_SCALE,PLATE_LIFT,createMealPresentation,sampleMealPresentation} from '../src/mealService';
+import {fireworkVolleySchedule} from '../src/fireworksSchedule';
 import {floatingLotusPose,lanternPose,LANTERN_RISE} from '../src/ritualMotion';
 import {templeSurfaceHeight} from '../src/templeFixtures';
 import {bridgeHeight,POND,POND_BRIDGES,pondContains,islandContains} from '../src/pondLayout';
+
+test('fireworks open with one then three and five shells, salute with all ten at each minute, then resume mixed three/five volleys',()=>{
+  const schedule=fireworkVolleySchedule();assert.deepEqual(schedule.slice(0,3).map(volley=>volley.count),[1,3,5]);
+  assert.equal(schedule[0].at,.7);assert.ok(schedule.every(volley=>volley.at<300));
+  for(const minute of [60,120,180,240]){
+    const salute=schedule.find(volley=>volley.at===minute);assert.equal(salute?.count,10,`Ten tubes salute at ${minute}s`);
+    const after=schedule.filter(volley=>volley.at>minute).slice(0,2).map(volley=>volley.count);assert.deepEqual(after,[3,5],`Three/five pattern resumes after ${minute}s`);
+  }
+});
 
 test('ritual platforms coexist with the new temple and koi bridge without lifting visitors through their sides',()=>{
   assert.equal(surfaceHeight(0,-24),templeSurfaceHeight(0,3)+.08);

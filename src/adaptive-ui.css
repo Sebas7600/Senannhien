@@ -1,0 +1,40 @@
+/* Keep utility panels collapsed until requested. */
+.v2-game:not(.quick-open) .explore-card,
+.v2-game:not(.quick-open) .bottom-center { display:none !important; }
+.v2-game.quick-open .explore-card,
+.v2-game.quick-open .bottom-center { display:block !important; }
+
+/* Desktop: utilities sit in the upper-right corner; the activity toggle stays on the right edge. */
+.v2-game .v2-side-tools { top:92px; right:24px; bottom:auto; left:auto; width:auto; max-height:calc(100dvh - 190px); overflow-y:auto; scrollbar-width:none; gap:8px; justify-content:flex-end; z-index:5; }
+.v2-game .v2-side-tools>button { width:48px; height:56px; }
+.v2-game .time-toggle { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.v2-game .time-toggle span { font-size:11px; }
+.v2-game.hide-character-status .bottom-left { display:none !important; }
+.quick-dock-toggle {
+  position:absolute; z-index:6; right:max(24px,env(safe-area-inset-right)); left:auto; top:50%;
+  transform:translateY(-50%); min-width:70px; min-height:74px; padding:10px 7px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  border:1px solid #f6f2df; border-radius:16px; background:#f8f6e8e8;
+  box-shadow:0 6px 24px #27392730; color:#5b704b; backdrop-filter:blur(10px);
+}
+.quick-dock-toggle span { font-size:9px; white-space:nowrap; }
+.quick-dock-toggle[aria-expanded="true"] { background:#e6ecd9f2; border-color:#bac8a8; }
+.v2-game.quick-open .v2-side-tools { top:calc(50% + 92px); }
+.v2-side-tools>button.active { background:#dfe8d4; color:#435e39; box-shadow:inset 0 0 0 1px #b9c7a4; }
+
+@media (max-width:760px),(max-width:1100px) and (pointer:coarse),(max-width:960px) and (max-height:500px) {
+  .v2-game .v2-side-tools { top:auto; right:12px; bottom:190px; left:auto; width:44px; max-height:calc(100dvh - 230px); overflow-y:auto; scrollbar-width:none; flex-direction:column; gap:8px; }
+  .v2-game .v2-side-tools>button { width:44px; height:48px; }
+  .v2-game .v2-side-tools>button:first-child { display:none !important; }
+  .v2-game .explore-card { display:none !important; }
+  .v2-game .time-toggle span { display:none; }
+  .quick-dock-toggle { right:max(12px,env(safe-area-inset-right)); left:auto; top:auto; bottom:116px; transform:none; min-width:62px; width:62px; min-height:66px; padding:8px 5px; border-radius:14px; }
+  .quick-dock-toggle span { font-size:8px; }
+  .v2-game.quick-open .v2-side-tools { top:auto; bottom:190px; }
+}
+
+@media (max-height:500px) and (max-width:1100px) {
+  .v2-game .v2-side-tools { top:62px; right:70px; bottom:auto; width:auto; max-height:none; overflow:visible; flex-direction:row; }
+  .v2-game.quick-open .v2-side-tools { top:62px; bottom:auto; }
+  .quick-dock-toggle { top:62px; right:8px; bottom:auto; transform:none; }
+}

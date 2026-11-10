@@ -14,7 +14,7 @@ test('dining floor posture clears cushions and low tabletops; local and remote a
   assert.ok(seats.filter(s=>s.kind==='tea').every(s=>usesFloorSeat(s)));
 });
 test('reception staff stands behind the desk facing the open entrance with a reachable guest side',()=>{
-  const cook=npcs.find(n=>n.id==='cook')!;assert.equal(cook.x,RECEPTION[0]);assert.ok(cook.z<RECEPTION[1]-.8);assert.equal(RECEPTION_HEADING,0);
+  const cook=npcs.find(n=>n.id==='cook')!;assert.equal(RECEPTION[0],34,'Reception is centered on the dining hall');assert.equal(cook.x,RECEPTION[0]);assert.ok(cook.z<RECEPTION[1]-.8);assert.equal(RECEPTION_HEADING,0);
   assert.ok(walkable(cook.x,cook.z));assert.ok(walkable(RECEPTION[0],RECEPTION[1]+1.2));
 });
 test('candle flicker stays bounded, continuous and stable with reduced motion',()=>{

@@ -68,7 +68,7 @@ export default function CourtyardLighting(){
   });
   return <>
     <color attach="background" args={[night?nightSky:horizon]}/>
-    <fog attach="fog" args={[night?nightSky:horizon,overview?150:night?45:42,overview?340:night?135:158]}/>
+    <fog attach="fog" args={[night?nightSky:horizon,overview?150:night?45:42,overview?560:night?135:158]}/>
     <ambientLight intensity={night?.3:.20} color={night?'#bdc4d0':'#fff4e5'}/>
     <hemisphereLight args={night?['#e0e7d0','#6e855e',.25]:['#e4f1ff','#a49c86',1.10]}/>
     <directionalLight ref={light} castShadow position={sun} intensity={night?.4:2.55} color={night?'#ffe3b4':'#ffe4b9'}
@@ -87,7 +87,7 @@ export function CourtyardDapple(){
   const material=canopyShadowMaterial??=createTreeShadowMaterial(map);
   useLayoutEffect(()=>{
     material.uniforms.strength.value=night?TREE_SHADOW_STRENGTH.night:TREE_SHADOW_STRENGTH.day;
-    (material.uniforms.fogRange.value as T.Vector2).set(overview?150:night?45:42,overview?340:night?135:158);
+    (material.uniforms.fogRange.value as T.Vector2).set(overview?150:night?45:42,overview?560:night?135:158);
   },[material,night,overview]);
   return <mesh name="Bong-tan-cay-mem" geometry={geometry} material={material} renderOrder={1} dispose={null}/>;
 }
