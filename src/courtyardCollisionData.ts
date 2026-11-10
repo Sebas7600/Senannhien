@@ -2,7 +2,6 @@ import {souvenirSolids} from './souvenirData';
 import {avenueFlagPoles} from './avenueFlagsData';
 import {eveningPosts} from './eveningDecorData';
 import {woodlandSolids} from './woodlandLayout';
-import {souvenirSolids} from './souvenirData';
 /** Lightweight solid proxies for decorations that previously had visuals only. */
 export type CourtyardSolid={id:string;x:number;z:number;w:number;d:number;height:number;base?:number;rotation?:number;round?:boolean;bench?:boolean};
 export const ornamentalTrees=[

@@ -13,7 +13,6 @@ import {courtyardTrees,restingBenches} from './courtyardData';
 import {bambooZoneBounds,zoneFences} from './courtyardZoneData';
 import {GATE,gateAvenueTrees} from './courtyardPropsData';
 import {templeBackRoad} from './mayaPaths';
-import {souvenirStalls} from './souvenirData';
 const entries:Record<PlaceId,Vec2>={gate:GATE_ENTRY,courtyard:[0,6],temple:[0,-18],hall:[-33,-9],bell:[MAYA_LEVEL.bellX,-9],pond:[POND_BRIDGES[0].start,POND_BRIDGES[0].z],dining:[34,-17],library:[-34,-35],garden:[28,-45],terrace:[0,-50],lotus:WISH_APPROACH,stupa:[-35,49],bamboo:[BAMBOO_PAVILION.x,12]};
 export function travel(id:PlaceId){const s=useGame.getState(),p=entries[id];if(s.waterQuest){s.notify('Đang gánh nước: đi bộ tới lu hoặc đặt gánh xuống trước khi đến nhanh nhé.');return;}s.stand();const heading=id==='lotus'?Math.atan2(ISLAND.x-p[0],ISLAND.z-p[1]):id==='pond'?Math.PI/2:Math.PI;s.set({position:p,height:floorAt(...p)+.1,destination:null,panel:null,teleport:{position:[p[0],floorAt(...p)+.1,p[1]],heading,at:Date.now()},cameraReset:s.cameraReset+1});s.notify(`Đã đến ${places.find(v=>v.id===id)!.name}.`);}
 export function MapArtwork({mini=false,onSelect}:{mini?:boolean;onSelect?:(id:PlaceId)=>void}){const position=useGame(s=>s.position),heading=useGame(s=>s.heading),peers=useGame(s=>s.peers),visited=useGame(s=>s.visited);
