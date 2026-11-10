@@ -1,3 +1,5 @@
+import InitialIncense from './InitialIncense';
+import {incenseAtStation} from './incenseStations';
 import AltarSmoke from './AltarSmoke';
 import {HALL_INCENSE} from './ritualStations.mjs';
 import {DRUM_APPROACH} from './drumMotion';
@@ -187,8 +189,8 @@ function Villagers(){return <>{npcs.map(n=><Villager key={n.id} n={n}/>)}</>}
 
 function OfferingEffects(){
   const all=useGame(s=>s.burningIncense),slots=useGame(s=>s.offeringSlots);useGame(s=>s.sessionSeconds);
-  const burning=all.filter(at=>slots[at]!==QUAN_AM.incenseId&&slots[at]!==HALL_INCENSE.id),lit=burning.some(at=>Date.now()-at<INCENSE_BURN_MS);
-  return <group>{burning.length>0&&<IncenseSticks times={burning} heightScale={.85} thicknessScale={.75}/>}<AltarSmoke position={[incenseSpot[0],INCENSE_ASH_Y+.4,incenseSpot[1]]} lit={lit}/><FishFood/></group>;
+  const burning=incenseAtStation(all,slots),lit=burning.some(at=>Date.now()-at<INCENSE_BURN_MS);
+  return <group><InitialIncense station="main" heightScale={.85} thicknessScale={.75}/>{burning.length>0&&<IncenseSticks times={burning} heightScale={.85} thicknessScale={.75}/>}<AltarSmoke position={[incenseSpot[0],INCENSE_ASH_Y+.4,incenseSpot[1]]} lit={lit}/><FishFood/></group>;
 }
 function Lighting(){
   const night=useGame(s=>s.night),overview=useGame(s=>s.camera==='overview');

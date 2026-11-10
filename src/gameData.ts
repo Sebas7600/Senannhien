@@ -42,7 +42,7 @@ export const WORLD = { minX: -60, maxX: 60, minZ: -66, maxZ: 76 };
 export const places = [
   { id:'gate', name:'Cổng tam quan', subtitle:'Bắt đầu một hành trình mới', x:GATE.x, z:GATE.z, icon:'gate' },
   { id:'courtyard', name:'Sân bồ đề', subtitle:'Quét lá · Chắp tay · Đi dạo', x:0, z:6, icon:'tree' },
-  { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 40 bồ đoàn', x:0, z:-24, icon:'temple' },
+  { id:'temple', name:'Đại hùng bảo điện', subtitle:'Lễ Phật · Dâng hương · 32 bồ đoàn', x:0, z:-24, icon:'temple' },
   { id:'hall', name:'Thiền đường Trúc Lâm', subtitle:'Ngồi thiền · Tụng kinh · Gõ mõ', x:-33, z:-17, icon:'meditate' },
   { id:'bell', name:'Lầu chuông', subtitle:'Thỉnh chuông · Lắng nghe', x:MAYA_LEVEL.bellX, z:-9, icon:'bell' },
   { id:'pond', name:'Hồ cá koi', subtitle:'Cho cá ăn · Ghế đá bên hồ', x:POND_BRIDGES[0].start+2, z:POND_BRIDGES[0].z, icon:'fish' },
@@ -88,7 +88,7 @@ export function stepAssistHeight(x:number,z:number,dx:number,dz:number,bodyY:num
 export function seatExit(seat:Seat):Vec2 { const offset=seat.table?-.85:1.1;return [seat.position[0]+Math.sin(seat.rotation)*offset,seat.position[2]+Math.cos(seat.rotation)*offset]; }
 export const seats:Seat[] = [
   // Two mirrored blocks: clear space between cushions, altar access and an open central aisle.
-  ...Array.from({length:40},(_,i)=>({id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.1,-8.2,-6.3,-4.4,4.4,6.3,8.2,10.1][i%8],2.28+CUSHION.seatLift,-27.9+Math.floor(i/8)*1.8] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
+  ...Array.from({length:32},(_,index)=>{const i=index+8;return {id:`temple-${i}`,label:`Bồ đoàn ${i+1} · Chánh điện`,zone:'temple' as const,position:[[-10.1,-8.2,-6.3,-4.4,4.4,6.3,8.2,10.1][i%8],2.28+CUSHION.seatLift,-27.9+Math.floor(i/8)*1.8] as Vec3,rotation:Math.PI,kind:'cushion' as const}}),
   ...Array.from({length:20},(_,i)=>({id:`hall-${i}`,label:`Bồ đoàn ${i+1} · Thiền đường`,zone:'hall' as const,position:[-33+(i%5-2)*2.4,.4+CUSHION.seatLift,-19+Math.floor(i/5)*2.4] as Vec3,rotation:Math.PI,kind:'cushion' as const})),
   ...bambooPavilionBenches.flatMap(({x,z},bench)=>[-1,1].map((side,index)=>({
     id:`bamboo-chòi-${bench}-${index}`,label:`Chòi rừng trúc · Ghế ${bench*2+index+1}`,

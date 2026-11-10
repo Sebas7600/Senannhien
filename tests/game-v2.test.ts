@@ -50,13 +50,13 @@ test('sweeping pays only for completed groups of ten new leaves and keeps the re
   state().claim('sweep');
   assert.equal(state().merit,23);
 });
-test('146 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
-  assert.equal(seats.length,146);assert.equal(new Set(seats.map(s=>s.id)).size,146);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
+test('138 unique seats, including 20 dining cushions, are placed outside navigation obstacles',()=>{
+  assert.equal(seats.length,138);assert.equal(new Set(seats.map(s=>s.id)).size,138);assert.equal(seats.filter(s=>s.kind==='dining').length,20);
 
   for(const s of seats)assert.ok(walkable(s.position[0],s.position[2],.3),s.id);
 });
 test('navigation reaches all dining seats and every practice area without crossing walls or water',()=>{
-  const selected=[...seats.filter(s=>['dining','reading','tea'].includes(s.kind)),...seats.filter(s=>s.zone==='bamboo'||['temple-0','temple-17','hall-0','hall-19','tea-0'].includes(s.id))];
+  const selected=[...seats.filter(s=>['dining','reading','tea'].includes(s.kind)),...seats.filter(s=>s.zone==='bamboo'||['temple-8','temple-17','hall-0','hall-19','tea-0'].includes(s.id))];
   for(const s of selected){const start:[number,number]=[0,22],path=findPath(start,[s.position[0],s.position[2]]);assert.ok(path.length,s.id);let from=start;for(const p of path){assert.ok(clearLine(from,p),`${s.id}: ${from} -> ${p}`);from=p;}assert.ok(distance(from,[s.position[0],s.position[2]])<1,s.id);}
 });
 test('meals require a dining seat and cannot be reordered before finishing',()=>{
@@ -77,7 +77,7 @@ test('leaving the table interrupts eating and preserves the prepared meal',()=>{
   useGame.setState({seated:'dining-1',meal:{dish:'noodles',seatId:'dining-1',status:'ready',readyAt:0}});useGame.getState().eat();useGame.getState().stand();assert.equal(useGame.getState().meal?.status,'ready');assert.equal(useGame.getState().progress.meal,0);assert.equal(useGame.getState().seated,null);
 });
 test('occupied seats cannot be selected and meditation selects an actual cushion',()=>{
-  useGame.setState({peers:[{id:'p2',name:'Guest',robe:'#888888',x:0,y:0,z:0,heading:0,action:'sit',seat:'temple-0'}]});useGame.getState().sit('temple-0');assert.equal(useGame.getState().pendingSeat,null);
+  useGame.setState({peers:[{id:'p2',name:'Guest',robe:'#888888',x:0,y:0,z:0,heading:0,action:'sit',seat:'temple-8'}]});useGame.getState().sit('temple-8');assert.equal(useGame.getState().pendingSeat,null);
   useGame.setState({position:[-38,12]});useGame.getState().perform('meditate');const s=useGame.getState();assert.ok(s.pendingSeat);assert.equal(seats.find(c=>c.id===s.pendingSeat)?.kind,'cushion');assert.equal(s.pendingAction,'meditate');
 });
 test('garden consumes a seed, needs water and takes 60 seconds to mature',()=>{

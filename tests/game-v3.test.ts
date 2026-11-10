@@ -20,7 +20,7 @@ test('rapid prayer toggles always return a standing character to walking, even d
   for(let i=0;i<30;i++){useGame.getState().perform('pray');assert.equal(useGame.getState().action,i%2===0?'pray':'walk');assert.equal(useGame.getState().seated,null)}
 });
 test('prayer toggles on a real seat retain the seat and return to sitting',()=>{
-  useGame.setState({seated:'temple-0',action:'sit'});useGame.getState().perform('pray');assert.equal(useGame.getState().action,'pray');useGame.getState().perform('pray');assert.equal(useGame.getState().action,'sit');assert.equal(useGame.getState().seated,'temple-0');
+  useGame.setState({seated:'temple-8',action:'sit'});useGame.getState().perform('pray');assert.equal(useGame.getState().action,'pray');useGame.getState().perform('pray');assert.equal(useGame.getState().action,'sit');assert.equal(useGame.getState().seated,'temple-8');
 });
 test('new and migrated V2 journeys open character selection without losing progress',async()=>{
   assert.equal(defaults.characterConfigured,false);
@@ -38,9 +38,9 @@ test('movement snapshots do not write storage, while changed preferences are buf
   buffer.setItem(key,'B');buffer.setItem(key,'C');await pause();assert.equal(values.get(key),'C');assert.equal(writes,start+2);
   buffer.setItem(key,'D');buffer.setItem(key,'C');await pause();assert.equal(values.get(key),'C');assert.equal(writes,start+2);
 });
-test('donation ships without any recipient or active QR and normalizes optional bank note',async()=>{
+test('donation uses the supplied TPBank recipient and normalizes optional bank note',async()=>{
   const config=JSON.parse(await readFile(new URL('../public/donation.json',import.meta.url),'utf8'));
-  assert.equal(config.enabled,false);assert.equal(config.accountNumber,'');assert.equal(config.recipientName,'');assert.ok(config.qrImage.startsWith('/donate/'));
+  assert.equal(config.enabled,true);assert.equal(config.accountNumber,'10003618684');assert.equal(config.recipientName,'VO MINH GIA BAO');assert.ok(config.qrImage.startsWith('/donate/'));
   assert.equal(normalizeDonationNote('An Nhiên Đỗ!'),'An Nhien Do');assert.equal(normalizeDonationNote('a'.repeat(40)).length,20);
 });
 
@@ -73,8 +73,8 @@ test('incense burner excludes player positions and redirects an overlapping offe
 });
 
 test('temple seats are inside the nave with an open centre aisle',async()=>{
- const {seats}=await import('../src/gameData.ts');const {CUSHION}=await import('../src/cushionData.ts');const temple=seats.filter(s=>s.zone==='temple');assert.equal(temple.length,40);
- const rows=[...new Set(temple.map(s=>s.position[2]))].sort((a,b)=>a-b);assert.equal(rows.length,5);
+ const {seats}=await import('../src/gameData.ts');const {CUSHION}=await import('../src/cushionData.ts');const temple=seats.filter(s=>s.zone==='temple');assert.equal(temple.length,32);
+ const rows=[...new Set(temple.map(s=>s.position[2]))].sort((a,b)=>a-b);assert.equal(rows.length,4);
  for(const z of rows){const xs=temple.filter(s=>s.position[2]===z).map(s=>s.position[0]).sort((a,b)=>a-b);assert.equal(xs.length,8);assert.deepEqual(xs,xs.map(x=>-x).reverse());}
  for(const seat of temple){assert.ok(Math.abs(seat.position[0])+CUSHION.radius<11);assert.ok(Math.abs(seat.position[0])-CUSHION.radius>3.7);assert.ok(seat.position[2]-CUSHION.radius>=-28.6&&seat.position[2]+CUSHION.radius<-20);assert.equal(seat.position[1],2.28+CUSHION.seatLift);for(const other of temple){if(other.id===seat.id)continue;assert.ok(Math.hypot(seat.position[0]-other.position[0],seat.position[2]-other.position[2])-2*CUSHION.radius>=.53,'Space between cushion edges');}}
 });
@@ -274,4 +274,11 @@ test('three successive throws split the school without redirecting fish already 
  const second=school.states.map((s,i)=>s.feedAt===b.at?i:-1).filter(i=>i>=0);assert.equal(second.length,8);advanceFishSchool(school,300,[a,b,c]);
  first.forEach(i=>assert.equal(school.states[i].feedAt,a.at));second.forEach(i=>assert.equal(school.states[i].feedAt,b.at));assert.equal(school.states.filter(s=>s.feedAt===c.at).length,7);
  advanceFishSchool(school,400,[b,c]);assert.ok(school.states.every(s=>s.feedAt!==a.at));second.forEach(i=>assert.equal(school.states[i].feedAt,b.at));
+});
+
+
+test('each donation amount selects its own supplied QR; custom uses the unrestricted QR',async()=>{
+ const {donationQR}=await import('../src/DonationPanel');const c=JSON.parse(await readFile(new URL('../public/donation.json',import.meta.url),'utf8'));assert.deepEqual(c.presets,[10000,20000,50000,100000,200000,500000]);
+ for(const amount of c.presets){const url=donationQR(c,amount);assert.equal(url,'/donate/tpbank-'+amount+'.png');const data=await readFile(new URL('../public'+url,import.meta.url));assert.equal(data.subarray(1,4).toString(),'PNG');assert.ok(data.length>1000);}
+ assert.equal(donationQR(c,null),c.qrImage);assert.equal(donationQR(c,12345),null);assert.equal(new Set(Object.values(c.qrImages)).size,6);
 });

@@ -1,8 +1,9 @@
+import {RigidBody,CylinderCollider} from '@react-three/rapier';
 import {useLayoutEffect,useRef} from 'react';
 import {useFrame,type ThreeEvent} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {Seat} from './gameData';
-import {cushionSeats,cushionBaseY,cushionScale} from './cushionPlacement';
+import {cushionSeats,cushionBaseY,cushionScale,cushionColliders} from './cushionPlacement';
 import {cushionNearGeometry,cushionFarGeometry} from './cushionGeometry';
 import {useCushionMaterial} from './cushionMaterial';
 import {useGame} from './gameStore';
@@ -26,6 +27,7 @@ export default function CushionBatches(){
   function click(event:ThreeEvent<MouseEvent>,items:Seat[]){if(event.delta>5||event.instanceId===undefined)return;const seat=items[event.instanceId];if(seat){event.stopPropagation();useGame.getState().sit(seat.id)}}
   const active=cushionSeats.find(s=>s.id===selected);
   return <group name="Bo-doan-Lien-Thuy" dispose={null}>
+    <RigidBody type="fixed" colliders={false}>{cushionColliders.map(c=><CylinderCollider key={c.id} position={c.position} args={[c.halfHeight,c.radius]}/>)}</RigidBody>
     <instancedMesh ref={near} args={[cushionNearGeometry,nearMaterial,cushionSeats.length]} receiveShadow castShadow onClick={e=>click(e,nearItems.current)}/>
     <instancedMesh ref={far} args={[cushionFarGeometry,farMaterial,cushionSeats.length]} receiveShadow onClick={e=>click(e,farItems.current)}/>
     {active&&<mesh position={[active.position[0],cushionBaseY(active)+.006,active.position[2]]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[.65,.72,40]}/><meshBasicMaterial color="#e0c98a" transparent opacity={.28} depthWrite={false}/></mesh>}

@@ -10,3 +10,12 @@
 
 .map-marker:focus,.map-marker:focus-visible{outline:none!important}
 .map-marker:focus-visible>circle{stroke:#b38e4d;stroke-width:1.2}
+
+/* Keep the supplied bank images intact; show their QR with a white quiet zone. */
+.donation-open-qr{width:min(230px,100%)}.donation-open-qr img{display:block;width:100%;height:auto}
+.donation-qr .donation-preset-qr{width:min(320px,100%);aspect-ratio:1;overflow:hidden;background:#fff}
+.donation-qr .donation-preset-qr img{display:block;width:140.38%;max-width:none;height:auto;margin-left:-20.19%;margin-top:-73.63%}
+
+.donation-qr .donation-preset-qr{position:relative}
+.donation-preset-qr::before,.donation-preset-qr::after{content:'';position:absolute;left:0;right:0;height:6%;background:#fff;z-index:1;pointer-events:none}
+.donation-preset-qr::before{top:0}.donation-preset-qr::after{bottom:0}
