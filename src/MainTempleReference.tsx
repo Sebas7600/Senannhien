@@ -48,7 +48,7 @@ function TempleExterior(){
   });
   return {body,top};
  },[scene]);
- return <group scale={.5}><primitive object={parts.body}/><group position={[0,3,0]}><primitive object={parts.top}/><TempleRoofDetail/></group></group>;
+ return <group scale={.5}><primitive object={parts.body}/><group position={[0,templeFixtures.ceiling.roofLift,0]}><primitive object={parts.top}/><TempleRoofDetail/></group></group>;
 }
 function KsitigarbhaStatue() {
  const low = useGame(s => s.quality === 'low');

@@ -1,5 +1,6 @@
 /** Measured from the reference GLB, in temple-local metres (root z = -27). */
 export const templeFixtures={
+ ceiling:{top:9.85,assemblyOffset:2.8,roofLift:8.6,columnTop:9.84},
  statueDais:{z:-4.725,top:3.06,mount:3.065},
  flowerMouth:[-3.7,3.25,-2.835] as [number,number,number],
  lampTable:{x:4.7,y:2.843,z:-2.7,halfWidth:1.3375,halfDepth:.4875},

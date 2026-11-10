@@ -1,7 +1,8 @@
+import {templeFixtures} from './templeFixtures';
 import * as THREE from 'three';
 export function removedTemplePost(x:number,z:number){return Math.abs(x)<9&&[1,4.9].some(row=>Math.abs(z-row)<.65)}
 // The portico stayed at its authored floor height when the roof assembly was lifted.
-export const porticoColumnTop=7.04;
+export const porticoColumnTop=templeFixtures.ceiling.columnTop;
 const closeTo=(value:number,target:number)=>Math.abs(value-target)<.03;
 export function isPorticoColumn(x:number,z:number){
  const onFrontOrBack=closeTo(Math.abs(z),8.725)&&[2.35,7,10.5,13].some(at=>closeTo(Math.abs(x),at));
