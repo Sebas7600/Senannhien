@@ -1,8 +1,31 @@
+import {MathUtils,SphereGeometry} from 'three';
+
+function makeHairCap(){
+  const columns=32,rows=16;
+  const geometry=new SphereGeometry(1,columns,rows,0,Math.PI*2,0,1.38);
+  const {position,normal}=geometry.attributes;
+  for(let row=0;row<=rows;row++){
+    for(let column=0;column<=columns;column++){
+      const azimuth=column/columns*Math.PI*2;
+      const back=MathUtils.smoothstep(-Math.sin(azimuth),-.15,.70);
+      const angle=row/rows*MathUtils.lerp(1.38,2.25,back);
+      const x=-Math.cos(azimuth)*Math.sin(angle);
+      const y=Math.cos(angle);
+      const z=Math.sin(azimuth)*Math.sin(angle);
+      const index=row*(columns+1)+column;
+      position.setXYZ(index,x,y,z);
+      normal.setXYZ(index,x,y,z);
+    }
+  }
+  return geometry;
+}
+
+const hairCap=makeHairCap();
+
 /** Hair stays in head-bone coordinates, so bows and seated poses carry it naturally. */
 export default function FemaleChibiHair(){
   return <group name="female-chibi-hair">
-    <mesh position={[0,.23,-.015]} scale={[.278,.285,.235]} castShadow>
-      <sphereGeometry args={[1,20,12,0,Math.PI*2,0,1.38]}/>
+    <mesh geometry={hairCap} position={[0,.23,-.015]} scale={[.282,.285,.245]} castShadow>
       <meshStandardMaterial color="#30271f" roughness={.88}/>
     </mesh>
     {[-1,1].map(side=><group key={side}>

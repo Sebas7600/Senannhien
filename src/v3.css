@@ -7,3 +7,6 @@
 .v2-game .action-bar button.active>svg{color:#536f43}
 .practice-symbol>svg{width:28px;height:28px}
 @media(max-width:760px){.activity-grid>button>svg{width:26px;height:26px}.v2-game .action-bar button>svg{width:23px;height:23px}.practice-symbol>svg{width:25px;height:25px}}
+
+.map-marker:focus,.map-marker:focus-visible{outline:none!important}
+.map-marker:focus-visible>circle{stroke:#b38e4d;stroke-width:1.2}

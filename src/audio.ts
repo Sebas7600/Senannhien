@@ -54,11 +54,11 @@ export async function setChant(next:boolean){
   const audio=media('chant');if(!audio||!audio.paused)return;
   try{await prepareMedia('chant');if(!enabled||!chantRequested||version!==chantVersion)return;await audio.play();if(!enabled||!chantRequested)stopMedia(audio)}catch{/* A later direct tap may unlock playback. */}
 }
-export async function playBell(){
+export async function playBell(ageMs=0){
   if(!useSound()||!enabled)return;const version=++soundVersion;
-  const audio=media('bell');if(!audio){const c=context();if(c)synthBell(c);return;}
+  const audio=media('bell');if(!audio){const c=context();if(c&&ageMs<1000)synthBell(c);return;}
   stopMedia(audio);
-  try{await prepareMedia('bell');if(!enabled||!useSound()||version!==soundVersion)return;await audio.play();if(!enabled||!useSound())stopMedia(audio)}catch{if(enabled&&useSound()&&version===soundVersion){const c=context();if(c)synthBell(c)}}
+  try{await prepareMedia('bell');if(!enabled||!useSound()||version!==soundVersion)return;audio.currentTime=ageMs/1000;await audio.play();if(!enabled||!useSound())stopMedia(audio)}catch{if(enabled&&useSound()&&version===soundVersion){const c=context();if(c)synthBell(c)}}
 }
 function synthBell(c:AudioContext){
   // Inharmonic bronze modes and slow beating if the recording cannot be decoded.

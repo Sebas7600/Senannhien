@@ -239,11 +239,11 @@ export function createChibiPose(model: Object3D) {
         turn('Dau',.10-.08*quiet.sip);
         const mouth=bones.get('Dau')!.localToWorld(point.set(0,.115,.215));
         model.worldToLocal(mouth);
-        const x=-.10+(mouth.x+.075)*quiet.sip;
-        const y=.29+(mouth.y-.052-.29)*quiet.sip+quiet.breath;
-        const z=.34+(mouth.z+.025-.34)*quiet.sip;
+        const x=-.11+(mouth.x+.0675)*quiet.sip;
+        const y=.32+(mouth.y-.08-.32)*quiet.sip+quiet.breath;
+        const z=.39+(mouth.z-.005-.39)*quiet.sip;
         reachHand('R',point.set(x,y,z));
-        reachHand('L',point.set(x+.047,y-.031,z));
+        reachHand('L',point.set(x+.085,y-.025,z+.015));
         return;
       }
       if (pose === 'read') {
@@ -277,12 +277,14 @@ export function createChibiPose(model: Object3D) {
       }
       if (pose === 'incense') {
         const phase = Math.min(elapsed/3,1);
-        const lift = Math.sin(Math.PI*Math.min(1,phase*1.65));
-        const place = Math.max(0,Math.sin((phase-.56)/.44*Math.PI));
-        turn('Than',.07+place*.16);
-        turn('Dau',.07+place*.12);
-        reachHand('L',point.set(.025,.75+.095*lift-.075*place,.285+.09*place));
-        reachHand('R',point.set(-.025,.76+.095*lift-.075*place,.285+.09*place));
+        const ease=(t:number)=>{const u=Math.max(0,Math.min(1,t));return u*u*(3-2*u)};
+        const raise=ease(phase/.30),place=ease((phase-.52)/.30),settle=ease((phase-.88)/.12);
+        const handY=.57+.23*raise-.12*place-.06*settle;
+        const handZ=.27+.16*place-.05*settle;
+        turn('Than',.045+.13*place);
+        turn('Dau',.05+.13*place);
+        reachHand('L',point.set(.025,handY,handZ));
+        reachHand('R',point.set(-.025,handY+.01,handZ));
         return;
       }
       if (pose === 'water') {

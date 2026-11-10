@@ -1,8 +1,27 @@
-import {templeFixtures} from './templeFixtures';
+import {porticoSupportTop} from './templeEave';
 import * as THREE from 'three';
-export function removedTemplePost(x:number,z:number){return Math.abs(x)<9&&[1,4.9].some(row=>Math.abs(z-row)<.65)}
-// The portico stayed at its authored floor height when the roof assembly was lifted.
-export const porticoColumnTop=templeFixtures.ceiling.columnTop;
+export function removedTemplePost(x:number,z:number){
+ const inNave=Math.abs(x)<9&&[1,4.9].some(row=>Math.abs(z-row)<.65);
+ const redundantPortico=isPorticoColumn(x,z)&&(closeTo(Math.abs(x),10.5)||(
+  closeTo(Math.abs(x),13)&&[3,6].some(row=>closeTo(Math.abs(z),row))));
+ return inNave||redundantPortico;
+}
+export const templeFrontWall={innerX:5.9,outerX:12.6,z:7.45,depth:.36};
+
+export function isTempleDoorCollider({kind,position}:{kind:string;position:readonly number[]}){
+ const [x,y,z]=position;
+ return kind==='cylinder'&&Math.abs(y-3.5)<.02&&Math.abs(z-7.5)<.07&&Math.abs(x)>2.6&&Math.abs(x)<6.8;
+}
+
+/** The two front door assemblies are baked into the wood and gold material batches. */
+export function isTempleDoorPart(material:string,center:THREE.Vector3,size:THREE.Vector3){
+ const x=Math.abs(center.x);
+ if(x<=2.6||x>=6.8||center.z<7.36||center.z>7.64)return false;
+ if(material==='wood')return Math.abs(center.y-3.5)<.02&&size.y>2.6&&size.z<.18;
+ if(material==='wood_warm')return Math.abs(center.z-7.555)<.015&&center.y>2.18&&center.y<4.8&&size.z<.06;
+ return /^gold(?:_light)?$/.test(material)&&center.y>3.4&&center.y<4.5&&size.z<.08;
+}
+// Each original column meets the underside of the gallery roof.
 const closeTo=(value:number,target:number)=>Math.abs(value-target)<.03;
 export function isPorticoColumn(x:number,z:number){
  const onFrontOrBack=closeTo(Math.abs(z),8.725)&&[2.35,7,10.5,13].some(at=>closeTo(Math.abs(x),at));
@@ -10,8 +29,13 @@ export function isPorticoColumn(x:number,z:number){
  return onFrontOrBack||onSide;
 }
 
+export function isPorticoColumnPart(material:string,center:THREE.Vector3,size:THREE.Vector3){
+ return ['wood','wood_dark','wood_warm','stone_dark'].includes(material)&&
+  isPorticoColumn(center.x,center.z)&&center.y>2.18&&center.y<5.73&&size.x<1.05&&size.z<1.05;
+}
+
 export function extendPorticoColumn(positions:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,box:THREE.Box3,indices:number[]){
- const base=box.min.y,height=box.max.y-base,scale=(porticoColumnTop*2-base)/height;
+ const base=box.min.y,height=box.max.y-base,scale=(porticoSupportTop((box.min.x+box.max.x)/4,(box.min.z+box.max.z)/4)*2-base)/height;
  for(const i of new Set(indices))positions.setY(i,base+(positions.getY(i)-base)*scale);
  positions.needsUpdate=true;
 }

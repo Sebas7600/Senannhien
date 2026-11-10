@@ -1,3 +1,4 @@
+import {eveningPosts} from './eveningDecorData';
 import {useLayoutEffect,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
@@ -8,9 +9,6 @@ import {playerMotion} from './runtime';
 import {souvenirStalls} from './souvenirData';
 
 const ceilingFixtures=[
-  ...[-1,1].flatMap(side=>[-3.4,2.75].map(z=>({
-    x:side*4.65,y:6.69,z:-27+z,range:10.3,intensity:57,
-  }))),
   ...pavilionLayouts.flatMap(room=>[-1,1].flatMap(side=>[-1,1].map(row=>({
     x:room.x+side*room.w*.245,y:3.72,z:room.z+row*room.d*.22,range:9.4,intensity:48,
   })))),
@@ -38,7 +36,7 @@ function CeilingFixtures(){
     </instancedMesh>
     <instancedMesh ref={glass} args={[undefined,undefined,ceilingFixtures.length]}>
       <cylinderGeometry args={[.266,.24,.068,16]}/>
-      <meshBasicMaterial color="#f5f7ff"/>
+      <meshBasicMaterial color="#ffe6b6"/>
     </instancedMesh>
   </>;
 }
@@ -69,11 +67,11 @@ export default function CourtyardNightLights(){
     const {x,z}=focus.current;
     if(Math.hypot(last.current.x-x,last.current.y-z)<.38)return;
     last.current.set(x,z);
-    closest(pathLamps,x,z,pointCount).forEach(({point,distance},i)=>{
+    closest([...pathLamps.map(p=>({...p,y:.80})),...eveningPosts.map(p=>({...p,y:2.7}))],x,z,pointCount).forEach(({point,distance},i)=>{
       const light=points.current[i];
       if(!light)return;
-      light.position.set(point.x,.80,point.z);
-      light.intensity=distance<18**2?6.6:0;
+      light.position.set(point.x,point.y,point.z);
+      light.intensity=distance<18**2?10:0;
     });
     closest(ceilingFixtures,x,z,spotCount).forEach(({point,distance},i)=>{
       const light=spots.current[i];
@@ -88,9 +86,9 @@ export default function CourtyardNightLights(){
   return <>
     <CeilingFixtures/>
     {Array.from({length:pointCount},(_,i)=><pointLight key={i}
-      ref={light=>{points.current[i]=light;}} color="#ffd199" intensity={0} distance={5.9} decay={2}/>)}
+      ref={light=>{points.current[i]=light;}} color="#ffd199" intensity={0} distance={8} decay={2}/>)}
     {Array.from({length:spotCount},(_,i)=><spotLight key={i}
-      ref={light=>{spots.current[i]=light;}} color="#f8f9ff" intensity={0}
+      ref={light=>{spots.current[i]=light;}} color="#ffe2b1" intensity={0}
       angle={1.03} penumbra={.68} distance={10} decay={2}/>)}
   </>;
 }

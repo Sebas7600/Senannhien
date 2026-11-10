@@ -7,7 +7,8 @@ import {createTempleRoofTemplate} from '../src/templeRoofTemplate';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {bridgeHeight,bridgeSegments} from '../src/pondLayout';
 import {CHARACTER_OFFSET,CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS} from '../src/gameData';
-import {bambooEntrances,mayaPaths,onLayoutPath,pathPoint,bambooStalks} from '../src/mayaPaths';
+import {bambooEntrances,mayaPaths,onLayoutPath,pathPoint,bambooStalks,templeBackRoad} from '../src/mayaPaths';
+import {ornamentalTrees} from '../src/courtyardCollisionData';
 import {GATE,GATE_ENTRY,BELL_PROP,DRUM_PROP} from '../src/courtyardPropsData';
 import {BODHI} from '../src/bodhiData';
 import {BRIDGE_ROAD,POND,POND_BRIDGES,pondContains} from '../src/pondLayout';
@@ -32,8 +33,11 @@ test('the saved Maya layout moves landmarks and keeps gate, shrine and gravel ro
  assert.ok(POND_BRIDGES[0].z>12);
 });
 
-test('the saved path guides retain their footprint, with walkable joins and clear bamboo shoulders',()=>{
- assert.equal(mayaPaths[0].length,13.832953119351126);assert.equal(mayaPaths[1].width,4.0233839092696115);assert.equal(mayaPaths[2].length,35.6);
+test('the rear path meets both side roads and the Maya bamboo paths retain clear shoulders',()=>{
+ assert.equal(mayaPaths[0].length,13.832953119351126);assert.equal(mayaPaths[1].width,4.0233839092696115);
+ assert.equal(templeBackRoad.length,37);assert.equal(templeBackRoad.width,4);
+ assert.ok(clearLine([-17.5,templeBackRoad.z],[17.5,templeBackRoad.z]));
+ for(const {x,z} of ornamentalTrees.slice(0,2))assert.equal(onLayoutPath(x,z,1),false);
  for(const path of mayaPaths){assert.ok(onLayoutPath(path.x,path.z));const end=pathPoint(path,path.length/2-.1,0);assert.ok(onLayoutPath(...end));}
  for(const {axis,edge,from,to} of bambooEntrances){
    const middle=(from+to)/2;
@@ -61,4 +65,23 @@ test('a real character controller climbs and descends the arched lake bridge wit
   let highest=0;for(let i=0;i<420;i++){controller.computeColliderMovement(capsule,{x:.075,y:-.035,z:0});const p=body.translation(),d=controller.computedMovement();body.setNextKinematicTranslation({x:p.x+d.x,y:p.y+d.y,z:p.z+d.z});world.step();highest=Math.max(highest,body.translation().y-CHARACTER_OFFSET);}
   assert.ok(highest>1.7);assert.ok(body.translation().x>bridge.end);assert.ok(body.translation().y-CHARACTER_OFFSET<.2);
  }finally{world.free();}
+});
+
+test('all six Quan Am columns meet the actual curved roof soffit without floating gaps',async()=>{
+ const {pavilionSupportHeights,createPavilionFrame}=await import('../src/quanAmPavilionFrame');
+ const {PAVILION_POSTS}=await import('../src/quanAmData');
+ const bytes=fs.readFileSync('public/assets/main-temple/tam-the-complete.glb'),loader=new GLTFLoader();loader.register(()=>({name:'test_supports',loadTexture:async()=>new T.Texture()}));
+ const {scene}=await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');const template=createTempleRoofTemplate(scene),heights=pavilionSupportHeights(template),geometry=createPavilionFrame(template);
+ const mesh=new T.Mesh(geometry,new T.MeshBasicMaterial({side:T.DoubleSide}));mesh.updateMatrixWorld(true);
+ assert.ok(Math.max(...heights)-Math.min(...heights)>.3,'the roof cannot be approximated by one column height');
+ PAVILION_POSTS.forEach(({x,z},i)=>{const hits=new T.Raycaster(new T.Vector3(x,4,z),new T.Vector3(0,1,0)).intersectObject(mesh);assert.ok(hits.length>0);const top=Math.max(...hits.map(hit=>hit.point.y));assert.ok(Math.abs(top-heights[i])<.025);});
+ geometry.dispose();
+});
+
+
+test('gallery eaves share closed hip seams and imported columns meet their underside',async()=>{
+ const {eavePoint,eaveHeight,porticoSupportTop,templeEave}=await import('../src/templeEave');const {templeParts}=await import('../src/templeGeometry');const {isPorticoColumn,extendPorticoColumn}=await import('../src/templeLayout');
+ for(let side=0;side<4;side++)for(let row=0;row<=16;row++){const t=row/16;assert.deepEqual(eavePoint(side,1,t),eavePoint((side+1)%4,-1,t));assert.deepEqual(eavePoint(side,1,t,true),eavePoint((side+1)%4,-1,t,true));}
+ const bytes=fs.readFileSync('public/assets/main-temple/tam-the-complete.glb'),loader=new GLTFLoader();loader.register(()=>({name:'offline',loadTexture:async()=>new T.Texture()}));const {scene}=await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');let count=0;
+ scene.traverse(n=>{if(!(n instanceof T.Mesh)||(n.material as T.Material).name!=='wood')return;const g=n.geometry.clone(),p=g.getAttribute('position');for(const part of templeParts(g)){const c=part.box.getCenter(new T.Vector3()).multiplyScalar(.5),size=part.box.getSize(new T.Vector3()).multiplyScalar(.5);if(size.y<2.5||size.x>.9||size.z>.9||!isPorticoColumn(c.x,c.z))continue;const base=part.box.min.y;extendPorticoColumn(p,part.box,part.indices);const ys=[...new Set(part.indices)].map(i=>p.getY(i)/2);assert.ok(Math.abs(Math.min(...ys)-base/2)<.00001);assert.ok(Math.abs(Math.max(...ys)-porticoSupportTop(c.x,c.z))<.00001);const t=Math.max((Math.abs(c.x)-templeEave.innerX)/templeEave.depth,(Math.abs(c.z)-templeEave.innerZ)/templeEave.depth);assert.ok(Math.max(...ys)<=eaveHeight(Math.max(0,t)));count++;}g.dispose();});assert.equal(count,26);
 });

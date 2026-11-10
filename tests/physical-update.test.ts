@@ -215,3 +215,31 @@ test('compressed camera slides laterally without yaw oscillation and restores on
  for(let i=0;i<100;i++){previous.copy(target);target.x+=i<50?.08:-.08;followAfterObstruction(camera,previous,target,6.5);assert.ok(Math.abs(yaw()-initialYaw)<.00001);assert.ok(Math.abs(camera.distanceTo(target)-Math.sqrt(5))<.00001);}
  previous.copy(target);target.x+=.2;target.z+=.2;const before=camera.distanceTo(previous);followAfterObstruction(camera,previous,target,6.5);assert.ok(camera.distanceTo(target)>before);assert.ok(Math.abs(yaw()-initialYaw)<.00001);
 });
+
+test('stair elevation is filtered while ascent and descent preserve camera yaw',async()=>{
+ const {Vector3}=await import('three');const {smoothCameraElevation,followAfterObstruction}=await import('../src/cameraFollow');
+ let elevation=1.16;const target=new Vector3(0,elevation,-8),previous=target.clone(),camera=new Vector3(0,elevation+2,-1.8);
+ for(let frame=0;frame<480;frame++){
+  const t=frame<240?frame/240:(480-frame)/240,desired=1.16+Math.floor(t*24)*2.175/24,before=elevation;
+  elevation=smoothCameraElevation(elevation,desired,1/60);assert.ok(Math.abs(elevation-before)<.05,'a tread must not snap the camera vertically');
+  previous.copy(target);target.set(0,elevation,-8-t*7);followAfterObstruction(camera,previous,target,6.5);
+  assert.ok(Math.abs(Math.atan2(camera.x-target.x,camera.z-target.z))<1e-8,'walking back down must not flip camera yaw');
+ }
+ for(let i=0;i<180;i++)elevation=smoothCameraElevation(elevation,1.16,1/60);assert.ok(Math.abs(elevation-1.16)<.001);
+});
+
+
+test('camera stops at the raised foundation and stairs without blocking open air above them',async()=>{
+ const {templeColliders}=await import('../src/templeCollisionData');const {cameraSafeDistance}=await import('../src/cameraCollision');await RAPIER.init();const world=new RAPIER.World({x:0,y:0,z:0});
+ try{
+  const body=world.createRigidBody(RAPIER.RigidBodyDesc.fixed());body.userData={cameraWall:true};
+  const foundation=templeColliders.find(c=>c.position[0]===0&&c.position[1]===1.05)!;
+  const stairs=templeColliders.filter(c=>c.kind==='box'&&c.position[0]===0&&c.position[2]>9.49&&c.position[2]<16.31);
+  assert.equal(stairs.length,24);
+  for(const c of [foundation,...stairs]){assert.equal(c.cameraWall,true);world.createCollider(RAPIER.ColliderDesc.cuboid(c.args[0],c.args[1],c.args[2]!).setTranslation(...c.position),body);}
+  world.step();const ball=new RAPIER.Ball(.23);
+  assert.ok(cameraSafeDistance(world,{x:17,y:1,z:0},{x:-1,y:0,z:0},8,ball)<3);
+  assert.ok(cameraSafeDistance(world,{x:9,y:1,z:12},{x:-1,y:0,z:0},8,ball)<2);
+  assert.equal(cameraSafeDistance(world,{x:17,y:4,z:0},{x:-1,y:0,z:0},8,ball),8);
+ }finally{world.free()}
+});

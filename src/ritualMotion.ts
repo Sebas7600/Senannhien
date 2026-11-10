@@ -1,3 +1,4 @@
+import {driftingLotusAnchors} from './lotusLayout';
 import {POND} from './pondLayout';
 import type {Vec3} from './gameData';
 
@@ -26,8 +27,8 @@ export function lanternPose(age: number, seed: number, reduced = false,out:{posi
 }
 
 export function floatingLotusPose(seconds:number,index:number,out:Vec3=[0,0,0]){
-  const angle=seconds*.035+index*Math.PI/3,radius=3.2+(index%3)*1.1;
-  out[0]=POND.x-1+Math.cos(angle)*radius;out[1]=POND.waterY+.035+Math.sin(seconds*.65+index)*.015;out[2]=POND.z+8.5+Math.sin(angle)*1.65;
+  const [x,z]=driftingLotusAnchors[index%driftingLotusAnchors.length],phase=seconds*.12+index*2.39996;
+  out[0]=x+Math.cos(phase)*.18;out[1]=POND.waterY+.035+Math.sin(seconds*.65+index)*.015;out[2]=z+Math.sin(phase*.87)*.16;
   return out;
 }
 

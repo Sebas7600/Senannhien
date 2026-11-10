@@ -2,17 +2,20 @@ import * as THREE from 'three';
 import {batchGeometry,coloredGeometry,taperTube} from './geometryBatch';
 import type {Vec3} from './gameData';
 
+export const roofNightUniform={value:0};
+
 /** Ceramic tile relief follows each hip face in the coordinates of the original GLB. */
 export function detailTempleRoof(material:THREE.MeshStandardMaterial){
-  material.customProgramCacheKey=()=> 'temple-roof-ceramic';
+  material.customProgramCacheKey=()=> 'temple-roof-ceramic-uplight-2';
   material.onBeforeCompile=shader=>{
+    shader.uniforms.uRoofNight=roofNightUniform;
     shader.vertexShader='varying vec3 roofPoint; varying vec3 roofFacing;\n'+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`
       #include <begin_vertex>
       roofPoint=position;
       roofFacing=normal;
     `);
-    shader.fragmentShader='varying vec3 roofPoint; varying vec3 roofFacing;\n'+shader.fragmentShader;
+    shader.fragmentShader='uniform float uRoofNight; varying vec3 roofPoint; varying vec3 roofFacing;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`
       #include <map_fragment>
       float faceAlongZ=step(abs(roofFacing.x),abs(roofFacing.z));
@@ -24,6 +27,10 @@ export function detailTempleRoof(material:THREE.MeshStandardMaterial){
       float tileDetail=1.0-smoothstep(.18,.65,max(length(dFdx(tilePoint)),length(dFdy(tilePoint))));
       diffuseColor.rgb*=mix(vec3(1.0),vec3(1.07,.98,.89)*(.88+.20*roll+.15*grain-.23*seam),tileDetail);
       float ceramicRelief=(.055*roll+.016*smoothstep(.07,.32,tile.y)-.016*seam)*tileDetail;
+    `);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+      float roofWash=.08+.15*pow(max(0.,roofFacing.y),.65);
+      totalEmissiveRadiance+=diffuseColor.rgb*vec3(1.,.74,.40)*uRoofNight*roofWash;
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`
       #include <normal_fragment_maps>
@@ -38,7 +45,7 @@ export function detailTempleRoof(material:THREE.MeshStandardMaterial){
 
 const endTile=new THREE.CylinderGeometry(1,1,1,10).rotateX(Math.PI/2);
 const boss=new THREE.SphereGeometry(1,10,6);
-const roofTiers=[
+export const roofTiers=[
   {halfX:29.55,halfZ:20.25,y:11.54,lift:2.10},
   {halfX:24.20,halfZ:13.15,y:19.53,lift:1.63},
   {halfX:20.45,halfZ:9.42,y:25.15,lift:1.93},

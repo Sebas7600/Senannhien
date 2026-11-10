@@ -1,8 +1,14 @@
+import PrismaticHalo from './PrismaticHalo';
+import TempleRoofLights from './TempleRoofLights';
+import BuddhistFlags from './BuddhistFlags';
+import TempleNightFill from './TempleNightFill';
+import TempleExteriorDecor from './TempleExteriorDecor';
 import {templeFixtures} from './templeFixtures';
 import {centerStatueOnBase} from './statuePlacement';
 import TempleDonationChest from './TempleDonationChest';
 
-import {extendPorticoColumn,isPorticoColumn,removeLegacyStatueHalos,removeNavePosts,strayFacadeOrnament} from './templeLayout';
+import {extendPorticoColumn,isPorticoColumnPart,isTempleDoorPart,removeLegacyStatueHalos,removeNavePosts,strayFacadeOrnament} from './templeLayout';
+import {porticoSupportTop} from './templeEave';
 import TempleCeiling from './TempleCeiling';
 import TempleCollision from './TempleCollision';
 import {templeParts} from './templeGeometry';
@@ -10,8 +16,7 @@ import TempleNiches from './TempleNiches';
 import TempleOfferingStations from './TempleOfferingStations';
 import {detailTempleRoof,TempleRoofDetail} from './TempleRoofDetail';
 /** Complete user-provided temple, at uniform scale. Other buildings remain independent. */
-import {useMemo,useRef,useLayoutEffect} from 'react';
-import {useFrame} from '@react-three/fiber';
+import {useMemo,useRef} from 'react';
 import {useGLTF} from '@react-three/drei';
 import {useGame} from './gameStore';
 import * as THREE from 'three';
@@ -30,10 +35,18 @@ function TempleExterior(){
    for(const part of templeParts(geometry)){
     const size=part.box.getSize(new THREE.Vector3()).multiplyScalar(.5);
     const c=part.box.getCenter(new THREE.Vector3()).multiplyScalar(.5);
-    if(strayFacadeOrnament(name,c,size))continue;
+    if(isTempleDoorPart(name,c,size)||strayFacadeOrnament(name,c,size))continue;
     const column=size.y>2.5&&size.x<.9&&size.z<.9;
-    if(column&&name==='wood'&&isPorticoColumn(c.x,c.z))extendPorticoColumn(position,part.box,part.indices);
-    const high=!column&&(name.startsWith('roof')||part.box.min.y>10.8);
+    const portico=isPorticoColumnPart(name,c,size);
+    if(portico){
+     if(column)extendPorticoColumn(position,part.box,part.indices);
+     else if(c.y>5.3){
+      // Keep the carved capitals attached to the same posts at the new eave height.
+      const lift=2*(porticoSupportTop(c.x,c.z)-5.725);
+      for(const i of new Set(part.indices))position.setY(i,position.getY(i)+lift);
+     }
+    }
+    const high=!column&&!portico&&(name.startsWith('roof')||part.box.min.y>10.8);
     buckets[Number(high)][0].push(...part.indices);
    }
    for(const [indices,parent] of buckets)if(indices.length){
@@ -48,7 +61,7 @@ function TempleExterior(){
   });
   return {body,top};
  },[scene]);
- return <group scale={.5}><primitive object={parts.body}/><group position={[0,templeFixtures.ceiling.roofLift,0]}><primitive object={parts.top}/><TempleRoofDetail/></group></group>;
+ return <group scale={.5}><primitive object={parts.body}/><group position={[0,templeFixtures.ceiling.roofLift,0]}><primitive object={parts.top}/><TempleRoofDetail/><TempleRoofLights/></group></group>;
 }
 function KsitigarbhaStatue() {
  const low = useGame(s => s.quality === 'low');
@@ -102,22 +115,19 @@ function TempleReferenceStatue({kind}: {kind:'quan-am'|'buddha'}) {
  return <primitive object={model}/>;
 }
 
-function HaloRays(){const mesh=useRef<THREE.InstancedMesh>(null);useLayoutEffect(()=>{if(!mesh.current)return;const pose=new THREE.Object3D();for(let i=0;i<32;i++){const a=i*Math.PI*2/32;pose.position.set(Math.sin(a)*1.34,Math.cos(a)*1.34,0);pose.rotation.z=-a;pose.updateMatrix();mesh.current.setMatrixAt(i,pose.matrix)}mesh.current.instanceMatrix.needsUpdate=true;mesh.current.computeBoundingSphere()},[]);return <instancedMesh ref={mesh} args={[undefined,undefined,32]}><boxGeometry args={[.009,.09,.009]}/><meshStandardMaterial color="#f2cd78" emissive="#cf9134" emissiveIntensity={.25}/></instancedMesh>}
-function Halo(){const low=useGame(s=>s.quality==='low');return <group position={[0,2.75,-.72]}>{(low?[1.13]:[1.02,1.13,1.25]).map(radius=><mesh key={radius}><torusGeometry args={[radius,.015,6,low?48:80]}/><meshStandardMaterial color="#ffe193" metalness={.65} roughness={.3} emissive="#eab64a" emissiveIntensity={3.6}/></mesh>)}{!low&&<HaloRays/>}<mesh><planeGeometry args={[3.5,3.5]}/><shaderMaterial transparent depthWrite={false} blending={THREE.AdditiveBlending} vertexShader={'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }'} fragmentShader={'varying vec2 vUv;void main(){float r=length(vUv-.5)*2.;float ring=exp(-pow((r-.66)*17.,2.))*.48;float core=pow(max(0.,1.-r),3.)*.23;gl_FragColor=vec4(1.,.68,.16,ring+core);}'}/></mesh></group>}
-
 export default function MainTempleReference(){
  const low=useGame(s=>s.quality==='low');
- const night=useGame(s=>s.night);
+ const night=useGame(s=>s.night);const root=useRef<THREE.Group>(null);
  const {scene}=useGLTF(asset('tam-the-complete-interior.glb'));const interior=useMemo(()=>removeLegacyStatueHalos(removeNavePosts(prepare(scene),templeParts,true),templeParts),[scene]);
- return <group position={[0,.08,-27]}>
-  <TempleExterior/>
+ return <group ref={root} position={[0,.08,-27]}><TempleNightFill root={root}/><BuddhistFlags/>
+  <TempleExterior/><TempleExteriorDecor/>
   <TempleCeiling/>
   <TempleCollision/>
   <group scale={.5}><TempleNiches/></group>
   <TempleOfferingStations/>
   <TempleDonationChest/>
   <group scale={.5}><primitive object={interior}/></group>
-  {[-4.7,0,4.7].map(x=><group key={x} position={[x,templeFixtures.statueDais.mount,templeFixtures.statueDais.z]}>{x<0?<TempleReferenceStatue kind='quan-am'/>:x===0?<TempleReferenceStatue kind='buddha'/>:<KsitigarbhaStatue/>}<group scale={x===0?1.2:x<0?.82:1}><Halo/></group></group>)}
-  {(low?[0]:[-4.7,0,4.7]).map(x=><pointLight key={x} position={[x,5,-2.8]} color="#ffdfab" intensity={12} distance={9} decay={2}/>)}
+  {[-4.7,0,4.7].map(x=><group key={x} position={[x,templeFixtures.statueDais.mount,templeFixtures.statueDais.z]}>{x<0?<TempleReferenceStatue kind='quan-am'/>:x===0?<TempleReferenceStatue kind='buddha'/>:<KsitigarbhaStatue/>}<group scale={x===0?1.2:x<0?.82:1}><PrismaticHalo phase={x*2}/></group></group>)}
+  {!night&&(low?[0]:[-4.7,0,4.7]).map(x=><pointLight key={x} position={[x,5,-2.8]} color="#ffdfab" intensity={night?3:12} distance={9} decay={2}/>)}
  </group>;
 }

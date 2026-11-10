@@ -18,3 +18,6 @@ export function nearestFeedStation(position:readonly number[]):(typeof feedStati
 export function canFeedFrom(position:readonly number[],station:(typeof feedStations)[number]):boolean;
 export const POND_OUTLINE:number[][];
 export function pondBoundary(angle:number,margin?:number):Point;
+
+export const FISH_FEED_LIFETIME:number;
+export function foodIsActive(food:{at:number;eatingAt?:number;expiresAt?:number},now:number):boolean;

@@ -41,3 +41,10 @@ test('shared Quan Am incense sends the station, waits for acknowledgement and pr
  accept();await new Promise(r=>setTimeout(r,0));assert.equal(useGame.getState().merit,2);assert.equal(useGame.getState().inventory.incense,2);
  setOfferingTransport(async()=>{throw Error('offline')});useGame.getState().perform('incense',QUAN_AM.incenseId);now+=INCENSE_DURATION;useGame.getState().tick();await new Promise(r=>setTimeout(r,0));assert.equal(useGame.getState().inventory.incense,2);assert.equal(useGame.getState().merit,2);
 });
+
+test('Quan Am urn has an opaque sand cap visible through its mouth',async()=>{
+ const T=await import('three');const {quanAmAshGeometry,altarAshMaterial}=await import('../src/quanAmAltarGeometry');
+ const sand=new T.Mesh(quanAmAshGeometry,altarAshMaterial);sand.updateMatrixWorld();
+ const ray=new T.Raycaster(new T.Vector3(0,3,2.7),new T.Vector3(0,-1,0));
+ const hits=ray.intersectObject(sand);assert.ok(hits.length>0);assert.ok(hits[0].point.y>1.34);assert.equal(altarAshMaterial.transparent,false);
+});

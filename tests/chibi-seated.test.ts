@@ -69,6 +69,7 @@ function addHair(parent:import('three').Object3D,children:import('react').ReactN
  Children.forEach(children,node=>{if(!isValidElement(node))return;const props=node.props as any;
   if(node.type!=='mesh'&&node.type!=='group')return;
   const object=node.type==='mesh'?new Mesh():new Group();
+  if(object instanceof Mesh&&props.geometry)object.geometry=props.geometry;
   if(props.position)object.position.fromArray(props.position);if(props.scale)object.scale.fromArray(props.scale);if(props.rotation)object.rotation.fromArray(props.rotation);
   if(object instanceof Mesh)Children.forEach(props.children,child=>{if(!isValidElement(child))return;const p=child.props as any;if(child.type==='sphereGeometry')object.geometry=new SphereGeometry(...p.args);if(child.type==='torusGeometry')object.geometry=new TorusGeometry(...p.args);});
   parent.add(object);addHair(object,props.children);

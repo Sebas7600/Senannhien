@@ -108,6 +108,13 @@ function ChibiAvatar({equipment,moving, running, npc, serveFrame, apron, gender 
       avatar.localToWorld(upright.rest.set(0,1.54-.37*rig.drumStrike,.3+.65*rig.drumStrike));
       prop.parent.worldToLocal(upright.rest);prop.quaternion.setFromUnitVectors(upright.axis,upright.rest.normalize());prop.scale.setScalar(1);
     } else if ((pose === 'tea' || pose === 'read') && prop?.parent) {
+      if(pose==='tea'){
+        avatar.getObjectByName('Co_Tay_L')!.getWorldPosition(upright.leftHand);
+        avatar.getObjectByName('Co_Tay_R')!.getWorldPosition(upright.rightHand);
+        avatar.worldToLocal(upright.rest.copy(upright.leftHand).lerp(upright.rightHand,.5));
+        upright.rest.y+=.014;upright.rest.z+=.055;
+        avatar.localToWorld(upright.rest);prop.position.copy(prop.parent.worldToLocal(upright.rest));
+      }
       if(pose==='read'){
         avatar.localToWorld(upright.rest.set(0,.30+rig.quiet.breath,.34));
         prop.position.copy(prop.parent.worldToLocal(upright.rest));
@@ -116,7 +123,7 @@ function ChibiAvatar({equipment,moving, running, npc, serveFrame, apron, gender 
       prop.parent.getWorldQuaternion(upright.parent);
       prop.quaternion.copy(upright.parent.invert().multiply(upright.avatar));
       upright.parent.setFromAxisAngle(upright.direction.set(1,0,0),pose==='tea'?-rig.quiet.cupTilt:-.32);
-      prop.quaternion.multiply(upright.parent);prop.scale.setScalar(1);
+      prop.quaternion.multiply(upright.parent);prop.scale.setScalar(pose==='tea'?1.2:1);
     } else if ((pose === 'incense' || pose === 'water' || pose === 'drawWater' || pose === 'flower' || pose === 'candle') && prop?.parent) {
       if (pose === 'flower' || pose === 'candle') {
         avatar.getObjectByName('Co_Tay_L')!.getWorldPosition(upright.leftHand);

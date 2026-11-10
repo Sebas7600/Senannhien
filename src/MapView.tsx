@@ -12,13 +12,14 @@ import { floorAt, useGame } from './gameStore';
 import {courtyardTrees,restingBenches} from './courtyardData';
 import {bambooZoneBounds,zoneFences} from './courtyardZoneData';
 import {GATE,gateAvenueTrees} from './courtyardPropsData';
+import {templeBackRoad} from './mayaPaths';
 const entries:Record<PlaceId,Vec2>={gate:GATE_ENTRY,courtyard:[0,6],temple:[0,-18],hall:[-33,-9],bell:[MAYA_LEVEL.bellX,-9],pond:[POND_BRIDGES[0].start,POND_BRIDGES[0].z],dining:[34,-17],library:[-34,-35],garden:[28,-45],terrace:[0,-50],lotus:WISH_APPROACH,stupa:[-35,49],bamboo:[BAMBOO_PAVILION.x,12]};
 export function travel(id:PlaceId){const s=useGame.getState(),p=entries[id];if(s.waterQuest){s.notify('Đang gánh nước: đi bộ tới lu hoặc đặt gánh xuống trước khi đến nhanh nhé.');return;}s.stand();const heading=id==='lotus'?Math.atan2(ISLAND.x-p[0],ISLAND.z-p[1]):id==='pond'?Math.PI/2:Math.PI;s.set({position:p,height:floorAt(...p)+.1,destination:null,panel:null,teleport:{position:[p[0],floorAt(...p)+.1,p[1]],heading,at:Date.now()},cameraReset:s.cameraReset+1});s.notify(`Đã đến ${places.find(v=>v.id===id)!.name}.`);}
 export function MapArtwork({mini=false,onSelect}:{mini?:boolean;onSelect?:(id:PlaceId)=>void}){const position=useGame(s=>s.position),heading=useGame(s=>s.heading),peers=useGame(s=>s.peers),visited=useGame(s=>s.visited);
   return <svg className={mini?'map-art mini':'map-art'} viewBox="-66 -72 132 156" role="img" aria-label="Bản đồ toàn khuôn viên chùa">
     <defs><pattern id={mini?'grid-mini':'grid-big'} width="8" height="8" patternUnits="userSpaceOnUse"><path d="M 8 0 L 0 0 0 8" fill="none" stroke="#97ad7913" strokeWidth=".3"/></pattern></defs>
     <rect x="-65" y="-71" width="130" height="154" rx="5" fill="#dce5cf"/><rect x="-60" y="-66" width="120" height="142" rx="2" fill={`url(#${mini?'grid-mini':'grid-big'})`} stroke="#a4b28d" strokeWidth=".5"/>
-    <path d={`M0 ${GATE_ENTRY[1]}V-55 M-45 -6H45 M-43 -32H45 M-17 -55V48 M17 -55V48 M-35 42H28 M34 -50V-6`} stroke="#d2c7a4" strokeWidth="4" fill="none"/>
+    <path d={`M0 ${GATE_ENTRY[1]}V-55 M-45 -6H45 M-43 -32H-17 M17 -32H45 M-17 -55V48 M17 -55V48 M-17 ${templeBackRoad.z}H17 M-35 42H28 M34 -50V-6`} stroke="#d2c7a4" strokeWidth="4" fill="none"/>
     <rect x="-14" y="-17" width="28" height="44" fill="#e6ddbe"/>
     <polygon points={POND_OUTLINE.map(([x,z])=>`${POND.x+x*POND.rx},${POND.z+z*POND.rz}`).join(" ")} fill="#92b5a4"/>
     <path d={`M45 -6H${BRIDGE_ROAD.x}V${POND_BRIDGES[0].z}`} stroke="#a5a69b" strokeWidth="3" fill="none"/>
