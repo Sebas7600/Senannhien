@@ -31,6 +31,14 @@
 }
 @media(max-height:500px) and (max-width:1100px){.camera-zoom{top:62px;height:143px}.camera-zoom input{height:85px;max-height:85px;flex-basis:85px}.v2-game .v2-side-tools{top:62px;right:66px;flex-direction:row;width:auto}.v2-game .practice-card,.v2-game .meal-status,.v2-game .water-task-card{top:111px;right:auto;width:260px;max-height:42dvh}.v2-game .location-card{max-width:260px}.v2-game .joystick{bottom:90px;width:88px;height:88px}.v2-game .toast{bottom:120px;left:auto;width:260px}.v2-game .modal-shade>.v2-modal{max-width:650px;max-height:calc(100dvh - 16px)}.v2-modal .menu-banner{display:none}}
 
+@media(max-width:760px),(max-width:1100px) and (pointer:coarse),(max-width:960px) and (max-height:500px){
+ .v2-game .location-card{display:none !important}
+ .v2-game .bottom-left{display:block !important;position:absolute;top:76px;bottom:auto !important;left:12px;width:min(260px,calc(100vw - 80px));z-index:6}
+ .v2-game .profile-chip{width:100%;box-sizing:border-box}
+ .v2-game .peace{display:flex !important}
+ .v2-game .practice-card,.v2-game .meal-status,.v2-game .water-task-card{top:196px}
+}
+
 @media(max-height:500px) and (max-width:1100px){.v2-game .action-notices{top:111px;right:auto;width:260px;max-height:110px}}
 
 @media(max-width:760px),(max-width:1100px) and (pointer:coarse),(max-width:1100px) and (max-height:500px){

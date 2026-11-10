@@ -23,6 +23,8 @@ import IncenseSticks from './IncenseSticks';
 import { Suspense, memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import FireworksShow from './FireworksShow';
+import './fireworks.css';
 import { Html, OrbitControls, PerspectiveCamera, Environment, Lightformer, Stars } from '@react-three/drei';
 import { Physics, RigidBody, CapsuleCollider, CuboidCollider, useRapier, type RapierRigidBody } from '@react-three/rapier';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
@@ -39,6 +41,7 @@ import { useGame,visitDonationChest, floorAt, type Peer } from './gameStore';
 import { OFFERING_RANGE, WISH_STATION, incenseSpot, outsideIncenseBurner, INCENSE_RANGE, INCENSE_BURN_MS, distance, gardenPlots, nearestSeat, npcs, seats, usesFloorSeat, RECEPTION_HEADING, type Vec2 } from './gameData';
 
 import { findPath } from './navigation';
+import {clampOverviewZoom,useOverviewZoomMax} from './cameraZoomLimits';
 import {mealPlan,sampleRoute,servicePhase,serviceLabels,HANDOFF_MS,MEAL_SCALE,createMealPresentation,sampleMealPresentation,sampleKitchenMeal,chefPhase,chefLabels,PICKUP_HEADING} from './mealService';
 import {ServingMeal} from './Food';
 import CourtyardNightLights from './CourtyardNightLights';
@@ -64,8 +67,23 @@ function TouchCameraInput(){
     return()=>{canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('lostpointercapture',up);window.removeEventListener('blur',clear);clear();};
   },[gl]);return null;
 }
-function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>new rapier.Ball(.23),[rapier]);const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1),elevation=useRef<number>();const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(DEFAULT_FOLLOW_DISTANCE),lastDistance=useRef(DEFAULT_FOLLOW_DISTANCE);
-  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3()),lastZoom=useRef(6.5),sphere=useRef(new THREE.Spherical());
+function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>new rapier.Ball(.23),[rapier]),overviewMax=useOverviewZoomMax();const overviewMaxRef=useRef(overviewMax);overviewMaxRef.current=overviewMax;const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1),elevation=useRef<number>();const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(DEFAULT_FOLLOW_DISTANCE),lastDistance=useRef(DEFAULT_FOLLOW_DISTANCE);
+  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3()),lastZoom=useRef(6.5),lastOverviewZoom=useRef(143),lastMoonView=useRef<boolean>(),sphere=useRef(new THREE.Spherical());
+  useEffect(()=>{const state=useGame.getState(),zoom=clampOverviewZoom(state.cameraOverviewZoom,overviewMax);if(zoom!==state.cameraOverviewZoom)state.set({cameraOverviewZoom:zoom});if(controls.current)controls.current.maxDistance=mode==='overview'?overviewMax:35;},[overviewMax,mode]);
+  useEffect(()=>{
+    const orbit=controls.current;if(!orbit)return;
+    let timer=0;
+    const syncOverviewZoom=()=>{
+      if(useGame.getState().camera!=='overview')return;
+      const next=clampOverviewZoom(orbit.object.position.distanceTo(orbit.target),overviewMaxRef.current);
+      lastOverviewZoom.current=next;
+      useGame.getState().set({cameraOverviewZoom:next});
+    };
+    const settleOverviewZoom=()=>{window.clearTimeout(timer);timer=window.setTimeout(syncOverviewZoom,140);};
+    orbit.addEventListener('change',settleOverviewZoom);
+    orbit.addEventListener('end',settleOverviewZoom);
+    return()=>{orbit.removeEventListener('change',settleOverviewZoom);orbit.removeEventListener('end',settleOverviewZoom);window.clearTimeout(timer)};
+  },[]);
   useFrame(({camera},dt)=>{
     if(!controls.current)return;
     const s=useGame.getState(),target=offsetTarget.current;
@@ -85,14 +103,14 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
     const moonView=s.night&&mode==='follow'&&s.position[1]>-10;
     const pondView=mode==='follow'&&Math.abs(s.position[0]-POND.x)<POND.rx+3&&Math.abs(s.position[1]-POND.z)<POND.rz+2;
     const viewPitch=pondView?-.29:moonView?.646:2.10;
-    const cameraReset=lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus;
+    const cameraReset=lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus||lastMoonView.current!==moonView;
     if(cameraReset||lastMalaFocus.current!==malaFocus){
       const heading=playerMotion.object?playerMotion.heading:s.heading;
       const direction=heading+Math.PI;
       const gateClearance=GATE.z-s.position[1]-1.9;
       const initialDistance=Math.abs(s.position[0]-GATE.x)<6&&gateClearance>0&&gateClearance<10?Math.min(s.cameraZoom,Math.max(2.6,gateClearance)):s.cameraZoom;
       offset.current.set(Math.sin(direction)*6.15,viewPitch,Math.cos(direction)*6.15).setLength(initialDistance);
-      if(mode==='overview')offset.current.set(52,88,100);
+      if(mode==='overview')offset.current.set(52,88,100).setLength(clampOverviewZoom(s.cameraOverviewZoom,overviewMax));
       if(lanternFocus)offset.current.set(-11,5.5,13);
       if(malaFocus){
         if(!lastMalaFocus.current){
@@ -113,9 +131,10 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
       camera.position.copy(target).add(offset.current);
       controls.current.target.copy(target);
       lastTarget.current.copy(target);
-      lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;lastMalaFocus.current=malaFocus;
+      lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;lastMalaFocus.current=malaFocus;lastMoonView.current=moonView;
       requestedDistance.current=lastDistance.current=offset.current.length();
-      controls.current.minDistance=mode==='overview'?35:.05;
+      controls.current.minDistance=mode==='overview'?20:.05;
+      if(mode==='overview')lastOverviewZoom.current=clampOverviewZoom(s.cameraOverviewZoom,overviewMax);
     }
     const delta=deltaTarget.current.copy(target).sub(lastTarget.current);if(mode==='follow'&&!lanternFocus&&!malaFocus)followAfterObstruction(camera.position,lastTarget.current,target,requestedDistance.current);else camera.position.add(delta);controls.current.target.copy(target);lastTarget.current.copy(target);
     if(keys.has('q')||keys.has('c')){offset.current.copy(camera.position).sub(target).applyAxisAngle(new THREE.Vector3(0,1,0),(keys.has('q')?1:-1)*dt);camera.position.copy(target).add(offset.current)}
@@ -124,6 +143,11 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
     controls.current.maxPolarAngle=freeFollow
       ? Math.PI/2+Math.asin(Math.min(.13,lowAngleClearance/Math.max(2.2,s.cameraZoom)))
       : Math.PI/2.12;
+    if(mode==='overview'&&s.cameraOverviewZoom!==lastOverviewZoom.current){
+      const zoom=clampOverviewZoom(s.cameraOverviewZoom,overviewMax);lastOverviewZoom.current=zoom;requestedDistance.current=zoom;
+      if(zoom!==s.cameraOverviewZoom)useGame.getState().set({cameraOverviewZoom:zoom});
+      offset.current.copy(camera.position).sub(target).setLength(zoom);camera.position.copy(target).add(offset.current);
+    }
     if(freeFollow){
       if(s.cameraZoom!==lastZoom.current){lastZoom.current=s.cameraZoom;requestedDistance.current=s.cameraZoom;offset.current.copy(camera.position).sub(target).setLength(s.cameraZoom);camera.position.copy(target).add(offset.current);}
       if(!s.panel&&(touchLookDelta.yaw||touchLookDelta.pitch)){
@@ -144,7 +168,7 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
       lastDistance.current=camera.position.distanceTo(target);
     }
   },0);
-  return <OrbitControls ref={controls} target={[0,1.2,22]} enablePan={false} minDistance={mode==='overview'?35:.05} maxDistance={mode==='overview'?170:35} minPolarAngle={.25} maxPolarAngle={Math.PI/2.12} enableDamping dampingFactor={.08} mouseButtons={{LEFT:undefined as unknown as THREE.MOUSE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE}} touches={{ONE:undefined as unknown as THREE.TOUCH,TWO:undefined as unknown as THREE.TOUCH}}/>;
+  return <OrbitControls ref={controls} target={[0,1.2,22]} enablePan={false} minDistance={mode==='overview'?20:.05} maxDistance={mode==='overview'?overviewMax:35} minPolarAngle={.25} maxPolarAngle={Math.PI/2.12} enableDamping dampingFactor={.08} mouseButtons={{LEFT:undefined as unknown as THREE.MOUSE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE}} touches={{ONE:mode==='overview'?THREE.TOUCH.ROTATE:undefined as unknown as THREE.TOUCH,TWO:mode==='overview'?THREE.TOUCH.DOLLY_ROTATE:undefined as unknown as THREE.TOUCH}}/>;
 }
 function RemoteAvatar({peer}:{peer:Peer}){
   const [moving,setMoving]=useState(false),movingRef=useRef(false);
@@ -224,7 +248,7 @@ function Lighting(){
   return <>
     <color attach="background" args={[sky]}/>
     <CourtyardSky night={night}/>
-    <fog attach="fog" args={[sky,overview?150:night?55:45,overview?340:night?155:135]}/>
+    <fog attach="fog" args={[sky,overview?150:night?55:45,overview?560:night?155:135]}/>
     <ambientLight intensity={night?.38:.34} color={night?'#aebee5':'#fff5e5'}/>
     <hemisphereLight args={[night?'#9ebbf0':'#e0eeff',night?'#66788e':'#8b9075',night?.65:.7]}/>
     <directionalLight ref={light} castShadow position={offset.toArray()} intensity={night?.95:2.65}
@@ -250,7 +274,7 @@ function CourtyardReflections({low}:{low:boolean}){
 function FrameMetrics(){const samples=useRef<number[]>([]),elapsed=useRef(0);useFrame((_,dt)=>{samples.current.push(dt*1000);elapsed.current+=dt;if(elapsed.current>=2){const sorted=samples.current.slice().sort((a,b)=>a-b);performanceStats.fps=Math.round(samples.current.length/elapsed.current);performanceStats.p95=Math.round(sorted[Math.floor(sorted.length*.95)]||0);performanceStats.frames+=samples.current.length;document.documentElement.dataset.performance=JSON.stringify(performanceStats);samples.current=[];elapsed.current=0}});return null;}
 function SceneReady(){useEffect(()=>{document.documentElement.dataset.scene='ready';return()=>{delete document.documentElement.dataset.scene}},[]);return null;}
 function WorldV2(){const quality=useGame(s=>s.quality);return <Canvas shadows={quality==='high'} dpr={quality==='high'?[1,1.3]:1} gl={{alpha:false,premultipliedAlpha:false,antialias:quality==='high',powerPreference:quality==='low'?'low-power':'high-performance'}} camera={{position:[0,6.8,COURTYARD_SPAWN_Z+14],fov:48}}>
-  <CourtyardReflections low={quality==='low'}/><FrameMetrics/><OutdoorLighting/><PerspectiveCamera makeDefault position={[0,6.8,COURTYARD_SPAWN_Z+14]} fov={48} near={.1} far={360}/><Keyboard/>
+  <CourtyardReflections low={quality==='low'}/><FrameMetrics/><OutdoorLighting/><PerspectiveCamera makeDefault position={[0,6.8,COURTYARD_SPAWN_Z+14]} fov={48} near={.1} far={650}/><Keyboard/><FireworksShow/>
   <Suspense fallback={null}><MountainScenery/></Suspense>
   <Suspense fallback={<Html center><div className="scene-loading"><span className="loading-lotus">❋</span>Đang mở khuôn viên an nhiên…</div></Html>}>
     <Physics gravity={[0,-9.81,0]} timeStep={1/60} interpolate updatePriority={-50}><TouchCameraInput/><CameraRig/><Ground/><Architecture/><SouvenirMarket/><Waters/><Seats/><Garden/><PlayerV3/><Others/><Villagers/><TreeLeaves/><MealPlates/><OfferingEffects/><FruitOfferings/><SceneReady/></Physics>

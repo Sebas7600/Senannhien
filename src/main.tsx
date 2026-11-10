@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './AppV2';
 import './style.css';
 import './v2.css';
+import './adaptive-ui.css';
 const BenchPreview=React.lazy(()=>import('./BenchPreview'));
 const BodhiPreview=React.lazy(()=>import('./BodhiPreview'));
 const CushionPreview=React.lazy(()=>import('./CushionPreview'));

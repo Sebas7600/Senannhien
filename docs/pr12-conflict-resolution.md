@@ -17,3 +17,7 @@ Automatic merges were also reviewed. The calibrated prayer, standing/cushion bow
 Fish regressions exercise the production shared simulation: initial four-quadrant distribution, independent turns in both directions, most fish visiting at least three quadrants, continuous shoreline/island clearance, all 35 feeding stations, meal reservations and resuming patrol after expiry. Existing deterministic synchronization, multiple food piles, purchases/equipment, save migration, two-player world actions and full-cycle ritual geometry checks remain enabled.
 
 This resolution updates the PR branch only. It does not merge PR #12 into `main`.
+
+## Concurrent main update
+
+While GitHub was recalculating mergeability, `main` advanced to `3a737ed`. A second merge incorporates its central dining reception, mobile camera/overview controls, status toggles and optional fireworks. Four additional conflicts were combined explicitly: preserve the souvenir context button and panel routes, version 6 inventory/equipment defaults and opaque canvas; add the incoming camera limits, optional show and updated help text. The central reception and cook share `RECEPTION`, and the existing handoff/path checks follow that data. Company presentation images load only when that optional presentation is enabled.

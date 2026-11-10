@@ -67,13 +67,15 @@ export interface Peer {equipment?:Equipment;id:string;name:string;robe:string;ge
 export interface ChatMessage {id:string;name:string;text:string;at:number;system?:boolean}
 export interface GameState {
   souvenirs:SouvenirId[];souvenirFocus:SouvenirId|null;shopFocus:string|null;buySouvenir:(id:string)=>void;eatFruit:()=>void;equipment:Equipment;equipSouvenir:(id:string)=>void;fruitOfferings:FruitOffering[];offerFruit:()=>void;
+  fireworksShow:{startAt:number;seed:number;companyPresentationEnabled:boolean}|null;
+  startFireworks:(companyPresentationEnabled?:boolean)=>void;stopFireworks:()=>void;
   waterQuest:WaterQuest|null;waterJars:WaterJarState[];lastWaterDeliveryAt:number;waterTask:(jar?:number)=>void;cancelWaterTask:()=>void;tickWaterTask:()=>void;
   meditationBow:boolean;bow:BowSession|null;finishBow:()=>void;
   name:string;robe:string;gender:'male'|'female';skin:string;robeStyle:'traditional'|'cross';characterConfigured:boolean;merit:number;peace:number;experience:number;energy:number;day:string;started:boolean;
   progress:Record<Activity,number>;lifetime:Record<Activity,number>;sweepRemainder:number;inventory:Record<Item,number>;claimed:string[];badges:string[];
   beadStepAt:number;advanceBead:()=>void;
   visited:PlaceId[];readBooks:string[];tasted:DishId[];gardenPending:string|null;plots:Record<string,PlotState>;wishes:Wish[];
-  sharedWorld:{serverOffset:number;leaves:{epoch:number;revision:number;cleared:number[][]}}|null;worldBellAt:number;worldBellReadyAt:number;worldDrumAt:number;sharedFish:{at:number;seconds:number;poses:number[];receivedAt:number}|null;lastFishFedAt:number;fishFeedAt:number;fishFeeds:{at:number;x:number;z:number;eatingAt?:number;expiresAt?:number}[];offeringSlots:Record<string,string>;offeringFocus:string|null;offerings:{flower:number[];candle:number[]};burningIncense:number[];action:Action;panel:Panel;night:boolean;sound:boolean;chantMusic:boolean;quality:'high'|'low';camera:'follow'|'overview';cameraYaw:number;cameraReset:number;cameraZoom:number;
+  sharedWorld:{serverOffset:number;leaves:{epoch:number;revision:number;cleared:number[][]}}|null;worldBellAt:number;worldBellReadyAt:number;worldDrumAt:number;sharedFish:{at:number;seconds:number;poses:number[];receivedAt:number}|null;lastFishFedAt:number;fishFeedAt:number;fishFeeds:{at:number;x:number;z:number;eatingAt?:number;expiresAt?:number}[];offeringSlots:Record<string,string>;offeringFocus:string|null;offerings:{flower:number[];candle:number[]};burningIncense:number[];action:Action;panel:Panel;night:boolean;sound:boolean;chantMusic:boolean;quality:'high'|'low';camera:'follow'|'overview';cameraYaw:number;cameraReset:number;cameraZoom:number;cameraOverviewZoom:number;showCharacterStatus:boolean;
 
   position:Vec2;height:number;heading:number;destination:Vec2|null;seated:string|null;pendingSeat:string|null;pendingAction:Action;
   teleport:{position:Vec3;heading:number;at:number}|null;event:{type:Activity;at:number;x:number;z:number;target?:string}|null;toast:{text:string;id:number}|null;
@@ -92,11 +94,12 @@ export const floorAt=surfaceHeight;
 export function nearDiningReception(position:Vec2){return distance(position,RECEPTION)<=4;}
 function freeDiningSeat(s:Pick<GameState,'position'|'peers'>){return seats.filter(c=>c.kind==='dining'&&!s.peers.some(p=>p.seat===c.id)).sort((a,b)=>distance(s.position,[a.position[0],a.position[2]])-distance(s.position,[b.position[0],b.position[2]]))[0];}
 export const useGame=create<GameState>()(persist((set,get)=>({
+  fireworksShow:null,startFireworks:(companyPresentationEnabled=false)=>set({fireworksShow:{startAt:Date.now(),seed:Math.floor(Math.random()*0x7fffffff),companyPresentationEnabled}}),stopFireworks:()=>set({fireworksShow:null}),
   waterQuest:null,waterJars:emptyWaterJars(),lastWaterDeliveryAt:0,...createWaterQuestActions(set,get),
   name:'An Nhiên',robe:'#9b704a',gender:'male',skin:'#c99c79',robeStyle:'traditional',characterConfigured:false,merit:0,peace:0,experience:0,energy:80,day:localDay(),started:false,
   souvenirs:[],souvenirFocus:null,shopFocus:null,equipment:emptyEquipment(),fruitOfferings:[],
   progress:emptyProgress(),lifetime:emptyProgress(),sweepRemainder:0,inventory:{feed:20,lantern:5,incense:10,candle:8,flower:8,seed:12,vegetable:0,fruit:0},claimed:[],badges:[],visited:[],readBooks:[],tasted:[],gardenPending:null,plots:{},wishes:[],
-  sharedWorld:null,worldBellAt:0,worldBellReadyAt:0,worldDrumAt:0,sharedFish:null,lastFishFedAt:0,fishFeedAt:0,fishFeeds:[],offeringSlots:{},offeringFocus:null,offerings:{flower:[],candle:[]},burningIncense:[],action:'walk',panel:null,night:true,sound:false,chantMusic:true,quality:typeof window!=='undefined'&&window.matchMedia?.('(pointer: coarse)').matches?'low':'high',camera:'follow',cameraYaw:0,cameraReset:0,cameraZoom:6.5,
+  sharedWorld:null,worldBellAt:0,worldBellReadyAt:0,worldDrumAt:0,sharedFish:null,lastFishFedAt:0,fishFeedAt:0,fishFeeds:[],offeringSlots:{},offeringFocus:null,offerings:{flower:[],candle:[]},burningIncense:[],action:'walk',panel:null,night:true,sound:false,chantMusic:true,quality:typeof window!=='undefined'&&window.matchMedia?.('(pointer: coarse)').matches?'low':'high',camera:'follow',cameraYaw:0,cameraReset:0,cameraZoom:6.5,cameraOverviewZoom:143,showCharacterStatus:true,
 
   position:[0,COURTYARD_SPAWN_Z],height:.06,heading:Math.PI,destination:null,seated:null,pendingSeat:null,pendingAction:'sit',teleport:null,event:null,toast:null,meal:null,mealRequest:null,npc:null,scripture:'breath',sessionSeconds:0,meditationSeconds:0,meditationBow:false,bodhiIncense:0,bow:null,
   pendingActivity:null,ceremony:null,flights:[],reflectionWish:'',
