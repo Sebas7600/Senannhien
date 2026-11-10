@@ -7,7 +7,7 @@ import {templeFixtures} from './templeFixtures';
 import {centerStatueOnBase} from './statuePlacement';
 import TempleDonationChest from './TempleDonationChest';
 
-import {extendPorticoColumn,isPorticoColumn,removeLegacyStatueHalos,removeNavePosts,strayFacadeOrnament} from './templeLayout';
+import {extendPorticoColumn,isPorticoColumn,isTempleDoorPart,removeLegacyStatueHalos,removeNavePosts,strayFacadeOrnament} from './templeLayout';
 import TempleCeiling from './TempleCeiling';
 import TempleCollision from './TempleCollision';
 import {templeParts} from './templeGeometry';
@@ -34,7 +34,7 @@ function TempleExterior(){
    for(const part of templeParts(geometry)){
     const size=part.box.getSize(new THREE.Vector3()).multiplyScalar(.5);
     const c=part.box.getCenter(new THREE.Vector3()).multiplyScalar(.5);
-    if(strayFacadeOrnament(name,c,size))continue;
+    if(isTempleDoorPart(name,c,size)||strayFacadeOrnament(name,c,size))continue;
     // Old capitals would otherwise be lifted with the roof and left hanging above the gallery.
     if(name.startsWith('wood')&&isPorticoColumn(c.x,c.z)&&size.x<.9&&size.z<.9&&size.y<.4&&c.y>5.4&&c.y<5.8)continue;
     const column=size.y>2.5&&size.x<.9&&size.z<.9;

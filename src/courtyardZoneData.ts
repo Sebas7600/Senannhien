@@ -31,8 +31,8 @@ export const courtyardZones:CourtyardZone[]=[
 export const fenceDepth=.28;
 export const fenceHeight=.82;
 const sides:Side[]=['north','south','west','east'];
-// The shared lake replaces the old pond/lotus zones; keep its shores and bridge approaches clear.
-export const zoneFences=courtyardZones.filter(zone=>!['courtyard','pond','lotus','quan-am'].includes(zone.id)).flatMap(zone=>sides.filter(side=>!(zone.id==='courtyard'&&side==='east')).flatMap(side=>{
+const fencedZones=new Set(['garden','stupa','bamboo']);
+export const zoneFences=courtyardZones.filter(zone=>fencedZones.has(zone.id)).flatMap(zone=>sides.flatMap(side=>{
   const [west,east,north,south]=zone.bounds;
   const horizontal=side==='north'||side==='south';
   const fixed=side==='north'?north:side==='south'?south:side==='west'?west:east;

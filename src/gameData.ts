@@ -5,7 +5,7 @@ import {quanAmObstacles} from './quanAmData';
 import {WATER_WELL,WATER_JARS} from './waterTaskData';
 import {templeSurfaceHeight} from './templeFixtures';
 import {POND_BRIDGES,bridgeRailEnd,pondSurface,pondBlocked} from './pondLayout';
-import {removedTemplePost} from './templeLayout';
+import {isTempleDoorCollider,removedTemplePost,templeFrontWall} from './templeLayout';
 import templeObjectShapes from './templeObjectColliders.json';
 import {stoneBenches,benchSeatWorld} from './stoneBenchData';
 import {BODHI} from './bodhiData';
@@ -142,8 +142,8 @@ export const obstacles:Obstacle[]=[
   ...gateMasonry.filter(p=>p.y-p.h/2<1.7).map(p=>({x:GATE.x+p.x*GATE.scale,z:GATE.z+p.z*GATE.scale,w:p.w*GATE.scale,d:p.d*GATE.scale,navigationOnly:true})),
   {x:WISH_STATION[0],z:WISH_STATION[1],w:1.1,d:1.1},
  {x:10.6,z:-31.6,w:1,d:.74,navigationOnly:true},
- ...templeObjectShapes.filter(s=>!removedTemplePost(s.position[0],s.position[2])).filter(s=>s.position[1]+s.args[0]>2.6&&s.position[1]-s.args[0]<4).filter(s=>s.kind==='cylinder').map(s=>({x:s.position[0],z:s.position[2]-27,w:s.args[1]*2,d:s.args[1]*2,navigationOnly:true})),
-  {x:-7.45,z:-19.55,w:10.3,d:.36,navigationOnly:true},{x:7.45,z:-19.55,w:10.3,d:.36,navigationOnly:true},
+ ...templeObjectShapes.filter(s=>s.kind==='cylinder'&&!removedTemplePost(s.position[0],s.position[2])&&!isTempleDoorCollider(s)&&s.position[1]+s.args[0]>2.6&&s.position[1]-s.args[0]<4).map(s=>({x:s.position[0],z:s.position[2]-27,w:s.args[1]*2,d:s.args[1]*2,navigationOnly:true})),
+ ...[-1,1].map(side=>({x:side*(templeFrontWall.innerX+templeFrontWall.outerX)/2,z:templeFrontWall.z-27,w:templeFrontWall.outerX-templeFrontWall.innerX,d:templeFrontWall.depth,navigationOnly:true})),
   ...[-11.5,-7.025,-2.35,2.35,7.025,11.5].flatMap(x=>[-33.75,-30.4].map(z=>({x,z,w:.6,d:.6,navigationOnly:true}))),
   {x:0,z:-30.6,w:7.8,d:1.7,navigationOnly:true},
   {x:incenseSpot[0],z:incenseSpot[1],w:1.3,d:1.3},
