@@ -6,7 +6,7 @@ import {canopyGeometry,foliageMaterial,FOLIAGE_DETAIL_CLUSTERS,LEAVES_PER_CLUSTE
 import {foliageTexture} from '../src/foliageTexture';
 import {BODHI} from '../src/bodhiData';
 import {GATE_ENTRY} from '../src/courtyardPropsData';
-import {walkable} from '../src/gameData';
+import {incenseApproach,walkable} from '../src/gameData';
 import {findPath,clearLine} from '../src/navigation';
 import {courtyardTrees,COURTYARD_TREE,restingBenches} from '../src/courtyardData';
 import {courtyardTreeGeometry} from '../src/courtyardTreeGeometry';
@@ -82,6 +82,6 @@ test('cancelling Bodhi incense preserves the item and reward',()=>{
 });
 
 test('temple offering stays separate and an empty incense bag cannot light the Bodhi altar',()=>{
-  useGame.setState({position:[0,-7.1]});useGame.getState().perform('incense');useGame.setState({event:{...useGame.getState().event!,at:Date.now()-3100}});useGame.getState().tick();assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().progress.incense,1);
+  useGame.setState({position:[...incenseApproach]});useGame.getState().perform('incense');useGame.setState({event:{...useGame.getState().event!,at:Date.now()-3100}});useGame.getState().tick();assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().progress.incense,1);
   useGame.setState({event:null,position:[...BODHI.offeringPoint],inventory:{...defaults.inventory,incense:0}});useGame.getState().perform('incense');assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().panel,'bag');assert.equal(useGame.getState().progress.incense,1);
 });

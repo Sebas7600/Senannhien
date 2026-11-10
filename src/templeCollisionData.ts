@@ -1,7 +1,7 @@
 import {porticoSupportTop} from './templeEave';
 import {flagMounts} from './BuddhistFlags';
 import {templeVaseSolids,middleStairRails} from './templeDetailCollision';
-import {isPorticoColumn,removedTemplePost} from './templeLayout';
+import {isPorticoColumn,isTempleDoorCollider,removedTemplePost,templeFrontWall} from './templeLayout';
 import objectShapes from './templeObjectColliders.json';
 import {templeFixtures} from './templeFixtures';
 export type TempleCollider={kind:'box'|'cylinder';position:[number,number,number];args:[number,number,number]|[number,number];rotationX?:number;cameraWall?:boolean};
@@ -14,7 +14,7 @@ const allTempleColliders:TempleCollider[]=[
  ...[7.45,8.9].map(z=>({kind:'box' as const,cameraWall:true,position:[0,7.7,z] as [number,number,number],args:[13.25,2.25,.15] as [number,number,number]})),
  ...templeVaseSolids.map(v=>({kind:'cylinder' as const,position:[v.x,v.y,v.z] as [number,number,number],args:[v.height/2,v.radius] as [number,number]})),
  ...middleStairRails.map(r=>({kind:'box' as const,cameraWall:true,position:[r.x,r.y,r.z] as [number,number,number],args:[r.halfWidth,r.halfHeight,r.halfDepth] as [number,number,number]})),
- ...objectShapes.map((s):TempleCollider=>{
+ ...objectShapes.filter(s=>!isTempleDoorCollider(s)).map((s):TempleCollider=>{
   const [x,y,z]=s.position;
   if(s.kind==='cylinder'&&isPorticoColumn(x,z)){
    const base=y-s.args[0],porticoColumnTop=porticoSupportTop(x,z);
@@ -28,7 +28,7 @@ const allTempleColliders:TempleCollider[]=[
  ...[-1,1].map(side=>({kind:'box' as const,cameraWall:true,position:[side*7.325,1.46,12.965] as [number,number,number],rotationX:Math.atan2(2.175,6.806),args:[.12,.34,3.59] as [number,number,number]})),
  ...[-1,1].flatMap(side=>[
  {kind:'box' as const,cameraWall:true,position:[side*12.6,4.23,0] as [number,number,number],args:[.158,2.045,7.7] as [number,number,number]},
- {kind:'box' as const,cameraWall:true,position:[side*7.45,4.23,7.45] as [number,number,number],args:[5.15,2.045,.18] as [number,number,number]},
+ {kind:'box' as const,cameraWall:true,position:[side*(templeFrontWall.innerX+templeFrontWall.outerX)/2,4.23,templeFrontWall.z] as [number,number,number],args:[(templeFrontWall.outerX-templeFrontWall.innerX)/2,2.045,templeFrontWall.depth/2] as [number,number,number]},
  {kind:'box' as const,cameraWall:true,position:[side*14,2.52,0] as [number,number,number],args:[.12,.34,9.65] as [number,number,number]},
  {kind:'box' as const,cameraWall:true,position:[side*10.8,2.52,9.65] as [number,number,number],args:[3.12,.34,.12] as [number,number,number]}
  ]),

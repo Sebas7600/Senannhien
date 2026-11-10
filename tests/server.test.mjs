@@ -5,7 +5,7 @@ import {mkdir,writeFile,unlink} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {createGameServer} from '../server-runtime.mjs';
 import {feedStations,QUAN_AM_SPOT,ISLAND} from '../src/pondScene.mjs';
-import {BODHI_INCENSE,HALL_INCENSE} from '../src/ritualStations.mjs';
+import {BODHI_INCENSE,HALL_INCENSE,MAIN_INCENSE} from '../src/ritualStations.mjs';
 import {allowedBrowserOrigin} from '../server-origin.mjs';
 function stream(base,id,room='an-nhien'){
   let state={peers:[],messages:[]},request,buffer='',listeners=[];
@@ -28,7 +28,7 @@ test('LAN Origin covers player state, all offerings, hall/Quan Am incense, koi, 
   try{
     await client.opened;
     for(const route of ['/api/state','/api/chat','/api/offerings','/api/garden'])assert.equal((await post(route,{},'https://evil.example')).status,403);
-    const feed=feedStations[0],offers=[['incense',undefined,[0,-7.1]],['flower','flower-table-1',[-3.7,-28]],['candle','candle-table-2',[4.7,-28]],['incense',HALL_INCENSE.id,HALL_INCENSE.spot],['incense','quan-am',QUAN_AM_SPOT],['incense',BODHI_INCENSE.id,BODHI_INCENSE.spot],['feed',feed.id,feed.spot]];
+    const feed=feedStations[0],offers=[['incense',undefined,MAIN_INCENSE.approach],['flower','flower-table-1',[-3.7,-28]],['candle','candle-table-2',[4.7,-28]],['incense',HALL_INCENSE.id,HALL_INCENSE.spot],['incense','quan-am',QUAN_AM_SPOT],['incense',BODHI_INCENSE.id,BODHI_INCENSE.spot],['feed',feed.id,feed.spot]];
     for(const [i,[kind,station,position]]of offers.entries()){
       assert.equal((await post('/api/state',{x:position[0],z:position[1],action:kind})).status,200);
       clock+=3000;const operation='lan_offering_'+i;
@@ -97,7 +97,7 @@ test('Quan Am incense stays at its altar, reaches late joiners, rejects remote/i
   assert.equal(await post('/api/offerings',{kind:'incense',station:'quan-am',operation:'quan_am_valid'}),200);
   await a.wait(s=>s.offerings.length===1);assert.equal(a.state.offerings[0].station,'quan-am');assert.equal(other.state.offerings.length,0);
   const late=stream(base,'quan_am_test_late');all.push(late);await late.opened;assert.equal(late.state.offerings.length,1);assert.equal(late.state.offerings[0].station,'quan-am');
-  clock+=3000;await post('/api/state',{x:0,z:-7.1});assert.equal(await post('/api/offerings',{kind:'incense',operation:'temple_after_quan_am'}),200);await late.wait(s=>s.offerings.length===2);assert.equal(late.state.offerings.find(o=>o.station===null)?.kind,'incense');
+  clock+=3000;await post('/api/state',{x:MAIN_INCENSE.approach[0],z:MAIN_INCENSE.approach[1]});assert.equal(await post('/api/offerings',{kind:'incense',operation:'temple_after_quan_am'}),200);await late.wait(s=>s.offerings.length===2);assert.equal(late.state.offerings.find(o=>o.station===null)?.kind,'incense');
   clock+=650001;await late.wait(s=>s.offerings.length===0);
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 });
@@ -107,7 +107,9 @@ test('room offerings: all kinds, late join, isolation, deduplication, capacity a
  try{
   const a=stream(base,'offer_player_a'),b=stream(base,'offer_player_b'),other=stream(base,'offer_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
   assert.equal(await post('/api/offerings',{kind:'incense',operation:'incense_0001'}),409);
-  await post('/api/state',{x:0,z:-7.1});
+  await post('/api/state',{x:0,z:-8.7});
+  assert.equal(await post('/api/offerings',{kind:'incense',operation:'incense_0001'}),409);
+  await post('/api/state',{x:MAIN_INCENSE.approach[0],z:MAIN_INCENSE.approach[1]});
   assert.equal(await post('/api/offerings',{kind:'incense',operation:'incense_0001'}),200);
   assert.equal(await post('/api/offerings',{kind:'incense',operation:'incense_0001'}),200);
   await b.wait(s=>s.offerings.length===1);assert.equal(b.state.offerings[0].kind,'incense');assert.equal(other.state.offerings.length,0);

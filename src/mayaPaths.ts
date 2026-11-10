@@ -2,11 +2,13 @@ import revision from './mayaRevision.json';
 import {BAMBOO_PAVILION,BAMBOO_PAVILION_STEP} from './bambooPavilionLayout';
 import {bambooZoneBounds} from './courtyardZoneData';
 export interface LayoutPath {id:string;x:number;z:number;length:number;width:number;rotation:number}
+// Snap the rear link to the same paving grid as the side roads.
+export const templeBackRoad:LayoutPath={id:'pCube3',x:0,z:-41.5,length:37,width:4,rotation:0};
 /** World-space dimensions of the saved Maya path guides. */
 export const mayaPaths:LayoutPath[]=[
  {id:'pCube1',x:-26.55125139716638,z:11.966240553586097,length:13.832953119351126,width:4.277375522244474,rotation:0},
  {id:'pCube2',x:-37.984489795182014,z:.9538245445068032,length:13.832953119351126,width:4.0233839092696115,rotation:-89.12623021279104*Math.PI/180},
- {id:'pCube3',x:.21854207511945134,z:-41.400241026382076,length:35.6,width:3.751112923363385,rotation:-179.9854144252431*Math.PI/180},
+ templeBackRoad,
  {id:'bamboo-turn',x:-35.67,z:11.29,length:4.7,width:2.1,rotation:-Math.atan2(-1.35,-4.41)},
 ];
 

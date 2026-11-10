@@ -7,7 +7,8 @@ import {createTempleRoofTemplate} from '../src/templeRoofTemplate';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {bridgeHeight,bridgeSegments} from '../src/pondLayout';
 import {CHARACTER_OFFSET,CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS} from '../src/gameData';
-import {bambooEntrances,mayaPaths,onLayoutPath,pathPoint,bambooStalks} from '../src/mayaPaths';
+import {bambooEntrances,mayaPaths,onLayoutPath,pathPoint,bambooStalks,templeBackRoad} from '../src/mayaPaths';
+import {ornamentalTrees} from '../src/courtyardCollisionData';
 import {GATE,GATE_ENTRY,BELL_PROP,DRUM_PROP} from '../src/courtyardPropsData';
 import {BODHI} from '../src/bodhiData';
 import {BRIDGE_ROAD,POND,POND_BRIDGES,pondContains} from '../src/pondLayout';
@@ -32,8 +33,11 @@ test('the saved Maya layout moves landmarks and keeps gate, shrine and gravel ro
  assert.ok(POND_BRIDGES[0].z>12);
 });
 
-test('the saved path guides retain their footprint, with walkable joins and clear bamboo shoulders',()=>{
- assert.equal(mayaPaths[0].length,13.832953119351126);assert.equal(mayaPaths[1].width,4.0233839092696115);assert.equal(mayaPaths[2].length,35.6);
+test('the rear path meets both side roads and the Maya bamboo paths retain clear shoulders',()=>{
+ assert.equal(mayaPaths[0].length,13.832953119351126);assert.equal(mayaPaths[1].width,4.0233839092696115);
+ assert.equal(templeBackRoad.length,37);assert.equal(templeBackRoad.width,4);
+ assert.ok(clearLine([-17.5,templeBackRoad.z],[17.5,templeBackRoad.z]));
+ for(const {x,z} of ornamentalTrees.slice(0,2))assert.equal(onLayoutPath(x,z,1),false);
  for(const path of mayaPaths){assert.ok(onLayoutPath(path.x,path.z));const end=pathPoint(path,path.length/2-.1,0);assert.ok(onLayoutPath(...end));}
  for(const {axis,edge,from,to} of bambooEntrances){
    const middle=(from+to)/2;
