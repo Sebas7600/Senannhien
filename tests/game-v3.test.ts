@@ -199,3 +199,79 @@ test('online garden does not consume supplies before acknowledgement or award re
   setGardenTransport(async()=>{throw new Error('Luống vừa được thu hoạch.')});useGame.getState().garden('plot-0');await new Promise(r=>setTimeout(r,2050));assert.equal(useGame.getState().inventory.vegetable,0);assert.equal(useGame.getState().progress.harvest,0);assert.equal(useGame.getState().gardenPending,null);
  }finally{setGardenTransport(null)}
 });
+
+test('koi patrol the whole lake and steer round the island without crossing land',async()=>{
+ const {koiTarget,steerKoi,foodIsActive}=await import('../src/fishFeeding.ts');
+ const zs:number[]=[];
+ for(let i=0;i<15;i++)for(let t=0;t<160;t+=3){const [x,z]=koiTarget(i,t,null);assert.ok(pondContains(x,z));zs.push(z);}
+ assert.ok(Math.max(...zs)>POND.z+POND.rz*.65);assert.ok(Math.min(...zs)<POND.z-POND.rz*.65);
+ let x=ISLAND.x-8,z=ISLAND.z;
+ for(let i=0;i<1600;i++){[x,z]=steerKoi(x,z,ISLAND.x+8,ISLAND.z,.03);assert.ok(Math.hypot(x-ISLAND.x,z-ISLAND.z)>ISLAND.radius+.4);}
+ assert.ok(x>ISLAND.x+7);
+ assert.equal(foodIsActive({at:1000},20000),true);
+ assert.equal(foodIsActive({at:1000,eatingAt:20000},37999),true);
+ assert.equal(foodIsActive({at:1000,eatingAt:20000},38000),false);
+});
+
+test('koi circle food at a visible pace and patrol independently',async()=>{
+ const {koiTarget,steerKoi}=await import('../src/fishFeeding.ts');
+ const food={x:POND.x+8,z:POND.z+10};
+ for(let i=0;i<23;i++){
+  let [x,z]=koiTarget(i,0,food),previous=Math.atan2(z-food.z,x-food.x),rotation=0;
+  for(let frame=1;frame<=1080;frame++){
+   const target=koiTarget(i,frame/60,food);[x,z]=steerKoi(x,z,...target,1.45/60);
+   const angle=Math.atan2(z-food.z,x-food.x);rotation+=Math.atan2(Math.sin(angle-previous),Math.cos(angle-previous));previous=angle;
+   assert.ok(pondContains(x,z));assert.ok(Math.hypot(x-food.x,z-food.z)<1.5);
+  }
+  assert.ok(Math.abs(rotation)>Math.PI*2,'a fish should complete an orbit during an 18 second meal');
+ }
+ const radii=new Set(Array.from({length:23},(_,i)=>{const [x,z]=koiTarget(i,43,null);return Math.round(Math.hypot((x-POND.x)/POND.rx,(z-POND.z)/POND.rz)*20)}));
+ assert.ok(radii.size>6,'fish must not share one circular formation');
+ assert.ok(feedStations.length>=30);
+ for(const station of feedStations){assert.ok(pondContains(...station.target));assert.ok(!((station.target[0]-ISLAND.x)**2+(station.target[1]-ISLAND.z)**2<ISLAND.radius**2));}
+});
+
+test('authoritative fish simulation is independent of client frame rate and owns first bite time',async()=>{
+ const {createFishSchool,advanceFishSchool,FISH_COUNT}=await import('../src/fishSimulation.mjs');
+ const {foodIsActive}=await import('../src/pondScene.mjs');
+ const a=createFishSchool(0),b=createFishSchool(0);
+ const station=feedStations.reduce((best,s)=>{
+  const distance=(p:typeof s)=>Math.min(...Array.from({length:FISH_COUNT},(_,i)=>Math.hypot(a.poses[i*3]-p.target[0],a.poses[i*3+1]-p.target[1])));
+  return distance(s)>distance(best)?s:best;
+ });
+ const foodA={at:1000,x:station.target[0],z:station.target[1]} as {at:number;x:number;z:number;eatingAt?:number},foodB={...foodA};
+ advanceFishSchool(a,900,[foodA]);advanceFishSchool(b,900,[foodB]);assert.equal(foodA.eatingAt,undefined);
+ for(let now=1000;now<=60000;now+=100){advanceFishSchool(a,now,[foodA]);for(let tick=now-75;tick<=now;tick+=25)advanceFishSchool(b,tick,[foodB]);}
+ assert.deepEqual(a.poses,b.poses);assert.equal(foodA.eatingAt,foodB.eatingAt);assert.ok(foodA.eatingAt!>1000);
+ assert.equal(foodIsActive(foodA,foodA.eatingAt!+17999),true);assert.equal(foodIsActive(foodA,foodA.eatingAt!+18000),false);
+});
+
+test('woodland placement and colliders leave the lake and bridge approaches clear',async()=>{
+ const {forestPositions,woodlandSolids}=await import('../src/woodlandLayout');
+ for(const [x,,z]of forestPositions){assert.equal(pondContains(x,z,3.5),false);for(const b of POND_BRIDGES)assert.ok(!(Math.abs(z-b.z)<b.halfWidth+3&&x>b.start-3&&x<b.end+3));}
+ for(const solid of woodlandSolids)assert.ok(forestPositions.some(([x,,z])=>x===solid.x&&z===solid.z));
+ assert.ok(forestPositions.length<175);
+});
+
+test('eating fish keep their existing pile while arrivals choose a newer pile',async()=>{
+ const {createFishSchool,advanceFishSchool}=await import('../src/fishSimulation.mjs');
+ const school=createFishSchool(0),a={at:0,x:school.poses[0],z:school.poses[1]};
+ for(let t=100;t<=1000;t+=100)advanceFishSchool(school,t,[a]);assert.equal(school.states[0].eating,true);
+ const b={at:1000,x:POND.x+8,z:POND.z+12};
+ for(let t=1100;t<=7000;t+=100){advanceFishSchool(school,t,[a,b]);assert.equal(school.states[0].feedAt,a.at);}
+ assert.ok(school.states.some(s=>s.feedAt===b.at));assert.ok(school.states.some(s=>!s.eating&&s.speed>2.5));
+ const c={at:18000,x:POND.x-8,z:POND.z-10};
+ for(let t=7100;t<=19500;t+=100)advanceFishSchool(school,t,[a,b,c]);assert.notEqual(school.states[0].feedAt,a.at);assert.ok(school.states.some(s=>s.feedAt===c.at));
+});
+
+
+test('three successive throws split the school without redirecting fish already on their way',async()=>{
+ const {createFishSchool,advanceFishSchool,FISH_COUNT}=await import('../src/fishSimulation.mjs');const school=createFishSchool(0);
+ const a={at:0,x:POND.x-7,z:POND.z-13},b={at:100,x:POND.x+7,z:POND.z+12},c={at:200,x:POND.x-6,z:POND.z+9};
+ advanceFishSchool(school,100,[a]);const first=school.states.map((s,i)=>s.feedAt===a.at?i:-1).filter(i=>i>=0);assert.equal(first.length,Math.ceil(FISH_COUNT/3));
+ // Force the arrival state: a new throw must not steal fish that have not eaten yet.
+ first.forEach(i=>school.states[i].eating=false);advanceFishSchool(school,200,[a,b]);first.forEach(i=>assert.equal(school.states[i].feedAt,a.at));
+ const second=school.states.map((s,i)=>s.feedAt===b.at?i:-1).filter(i=>i>=0);assert.equal(second.length,8);advanceFishSchool(school,300,[a,b,c]);
+ first.forEach(i=>assert.equal(school.states[i].feedAt,a.at));second.forEach(i=>assert.equal(school.states[i].feedAt,b.at));assert.equal(school.states.filter(s=>s.feedAt===c.at).length,7);
+ advanceFishSchool(school,400,[b,c]);assert.ok(school.states.every(s=>s.feedAt!==a.at));second.forEach(i=>assert.equal(school.states[i].feedAt,b.at));
+});

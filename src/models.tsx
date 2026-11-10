@@ -1,3 +1,4 @@
+import {useGame} from './gameStore';
 import ScannedBuddha from './ScannedBuddha';
 import {canopyGeometry,foliageMaterial} from './foliage';
 import {useOutdoorSurface,useSurface,classifySurface} from './materials';
@@ -30,7 +31,7 @@ export function Roof({ y, width, depth, height }: {y:number;width:number;depth:n
   </group>;
 }
 export function Buddha(){return <ScannedBuddha/>}
-export function Lantern({position}:{position:[number,number,number]}) { const night=false; return <group position={position}><mesh><sphereGeometry args={[.25,12,12]}/><meshStandardMaterial color="#f2cf86" emissive="#f7b245" emissiveIntensity={night?1.2:.65}/></mesh><Box position={[0,.28,0]} scale={[.18,.08,.18]} color="#645133"/><Box position={[0,-.3,0]} scale={[.04,.18,.04]} color="#b78949"/></group>; }
+export function Lantern({position}:{position:[number,number,number]}) { const night=useGame(s=>s.night); return <group position={position}><mesh><sphereGeometry args={[.25,12,12]}/><meshStandardMaterial color="#f2cf86" emissive="#f7b245" emissiveIntensity={night?1.2:.65}/></mesh><Box position={[0,.28,0]} scale={[.18,.08,.18]} color="#645133"/><Box position={[0,-.3,0]} scale={[.04,.18,.04]} color="#b78949"/></group>; }
 export function Tree({position,scale=1,banyan=false}:{position:[number,number,number];scale?:number;banyan?:boolean}) {
   const bark=useOutdoorSurface('bark'),crown=useRef<THREE.Mesh>(null);useCameraOccluder(crown);
   const variant=Math.abs(Math.round(position[0]+position[2]))%woodlandBarkGeometries.length;

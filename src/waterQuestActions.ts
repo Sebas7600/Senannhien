@@ -1,6 +1,8 @@
+import {submitWorld} from './worldTransport';
+import {createClientId} from './clientIds';
 import type {GameState} from './gameStore';
 import {WATER_TASK,WATER_WELL,WATER_JARS,jarUnits,nearWaterWell,nearWaterJar,nearestWaterJar} from './waterTaskData';
-export function createWaterQuestActions(set:(patch:Partial<GameState>)=>void,get:()=>GameState){return {
+export function createWaterQuestActions(set:(patch:Partial<GameState>)=>void,get:()=>GameState){let deliveryPending=false;return {
   cancelWaterTask:()=>{const s=get();if(!s.waterQuest)return;set({waterQuest:null,action:'walk',destination:null,pendingActivity:null});s.notify('Đã đặt gánh xuống. Khi muốn tiếp tục, ghé giếng nhận nước nhé.');},
   waterTask:(jarId?:number)=>{const s=get(),now=Date.now(),quest=s.waterQuest;
     if(s.gardenPending||['incense','flower','candle'].includes(s.action)){s.notify('Hoàn tất công việc đang làm trước khi gánh nước nhé.');return;}
@@ -29,6 +31,10 @@ export function createWaterQuestActions(set:(patch:Partial<GameState>)=>void,get
       if(q.jar===null||s.action!=='pourWater'||!nearWaterJar(s.position,q.jar)){set({waterQuest:{...q,phase:'carrying',phaseAt:now,jar:null},action:'carryWater'});s.notify('Chưa giao nước. Mang gánh đến gần miệng lu rồi thử lại nhé.');return;}
       if(now-q.phaseAt<WATER_TASK.pourMs)return;
       const units=jarUnits(s.waterJars[q.jar],now);if(units>=WATER_TASK.jarCapacity){set({waterQuest:{...q,phase:'carrying',phaseAt:now,jar:null},action:'carryWater'});s.notify('Lu vừa đầy. Mời bạn chọn lu khác.');return;}
+      if(s.connection==='online'){
+        if(deliveryPending)return;deliveryPending=true;const room=s.room,jar=q.jar;
+        void submitWorld({kind:'water',jar,operation:createClientId()}).then(()=>{const current=get();if(current.room!==room)return;set({waterQuest:null,lastWaterDeliveryAt:Date.now(),action:'walk',destination:null,pendingActivity:null});current.record('carryWater');current.notify('Đã giao nước vào lu chung. Cảm ơn đôi vai chăm chỉ!');}).catch(e=>{const current=get();if(current.room===room){set({waterQuest:{...q,phase:'carrying',phaseAt:Date.now(),jar:null},action:'carryWater'});current.notify(e.message);}}).finally(()=>{deliveryPending=false;});return;
+      }
       const jars=WATER_JARS.map(j=>j.id===q.jar?{units:units+1,at:now}:s.waterJars[j.id]||{units:0,at:now});
       // Clear the trip before awarding: another tick/click cannot pay the same delivery twice.
       set({waterQuest:null,waterJars:jars,lastWaterDeliveryAt:now,action:'walk',destination:null,pendingActivity:null});s.record('carryWater');s.notify(`Đã giao nước cho bếp chay. +${WATER_TASK.reward} công đức. Cảm ơn đôi vai chăm chỉ!`);

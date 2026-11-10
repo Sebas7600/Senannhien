@@ -15,3 +15,6 @@ export function followAfterObstruction(camera:Vector3,previousTarget:Vector3,tar
  // strafing along a wall does not rotate the orbit around a stationary camera.
  camera.x+=dx+ux*restore;camera.y+=dy;camera.z+=dz+uz*restore;
 }
+
+/** Filter staircase treads without changing the user's orbit direction. */
+export function smoothCameraElevation(current:number,desired:number,dt:number){return desired+(current-desired)*Math.exp(-6*Math.min(.05,Math.max(0,dt)));}

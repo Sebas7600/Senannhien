@@ -1,3 +1,5 @@
+import {lotusPositions} from './lotusLayout';
+import {FISH_COUNT,createFishSchool,advanceFishSchool} from './fishSimulation.mjs';
 import {useLayoutEffect,useMemo,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import {RigidBody,CuboidCollider,CylinderCollider} from '@react-three/rapier';
@@ -9,7 +11,7 @@ import {useGame} from './gameStore';
 import {useReducedMotion} from './useReducedMotion';
 import {WorldLabel} from './Environment';
 import {FlyingLanterns,FloatingLotuses,WishStation} from './Lanterns';
-import {FISH_FEED_LIFETIME,koiTarget} from './fishFeeding';
+
 import {fullMoonOffset} from './CourtyardSky';
 
 const waterVertex=`
@@ -31,21 +33,26 @@ const waterFragment=`
   uniform vec3 uMoonDirection;
   void main(){
     vec2 p=vPoint.xz;
-    float a=sin(dot(p,vec2(1.6,1.1))+uTime*.85);
-    float b=cos(dot(p,vec2(-.85,2.2))-uTime*.66);
-    vec3 normal=normalize(vec3(a*.042,1.0,b*.043));
+    // Intersecting currents distort small ripples; broad waves stay gentle.
+    vec2 drift=p+vec2(sin(p.y*.47+uTime*.35),cos(p.x*.39-uTime*.29))*.38;
+    float a=sin(dot(drift,vec2(1.6,1.1))+uTime*1.25);
+    float b=cos(dot(drift,vec2(-.85,2.2))-uTime*.94);
+    float c=sin(dot(p,vec2(4.1,-2.7))+uTime*1.9);
+    vec3 normal=normalize(vec3(a*.075+c*.022,1.0,b*.072-c*.02));
     vec3 eye=normalize(cameraPosition-vPoint);
     float glancing=pow(1.0-max(0.0,dot(normal,eye)),3.0);
-    vec3 deep=vec3(.019,.166,.126);
-    vec3 sky=vec3(.27,.52,.56);
-    vec3 color=mix(deep,sky,glancing*.62);
-    float flecks=pow(max(0.0,a*b),7.0);
-    color+=vec3(.13,.20,.13)*flecks*(.42+glancing*.45);
+    float currents=.5+.5*sin(p.x*.31+p.y*.23+a*.7-uTime*.18);
+    vec3 deep=mix(vec3(.025,.21,.16),vec3(.07,.30,.22),currents*.55);
+    vec3 color=mix(deep,vec3(.30,.49,.48),glancing*.36);
+    float ripple=pow(.5+.5*sin(dot(drift,vec2(3.2,2.6))-uTime*1.65+b*.72),24.);
+    float broken=.3+.7*pow(.5+.5*sin(p.x*1.7-p.y*.9+uTime*.43),2.);
+    color+=vec3(.13,.19,.15)*ripple*broken*.33;
+    vec3 lightDir=normalize(mix(vec3(-.45,.8,.3),uMoonDirection,uNight));
+    vec3 halfVector=normalize(lightDir+eye);
+    float glint=pow(max(0.,dot(normal,halfVector)),120.);
+    color+=vec3(.50,.47,.32)*glint*.32;
     color=mix(color,color*vec3(.30,.43,.56),uNight);
-    vec3 halfVector=normalize(uMoonDirection+eye);
-    float glint=pow(max(0.,dot(normal,halfVector)),94.);
-    color+=vec3(.35,.48,.68)*glint*.43*uNight;
-    gl_FragColor=vec4(color,.75+.22*glancing);
+    gl_FragColor=vec4(color,.63+.24*glancing);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
     #include <fog_fragment>
@@ -100,25 +107,27 @@ const rim=Array.from({length:115},(_,i)=>i/115*Math.PI*2).filter(angle=>{
   const [x,z]=pondBoundary(angle);
   return !POND_BRIDGES.some(bridge=>x>=bridge.start&&x<=bridge.end&&Math.abs(z-bridge.z)<bridge.halfWidth+.66);
 });
-function RockShore(){
-  const ref=useRef<T.InstancedMesh>(null);
-  useLayoutEffect(()=>{
-    const mesh=ref.current!,rock=new T.Object3D(),tints=['#918777','#9b8f7a','#77796e','#a59882'].map(c=>new T.Color(c));
-    rim.forEach((angle,i)=>{
+const shoreRocks=rim.map((angle,i)=>{const rock=new T.Object3D();
       const offset=.12*Math.sin(i*5.1);
       const [x,z]=pondBoundary(angle,offset);rock.position.set(x,.035+Math.sin(i*7)*.07,z);
       const [nextX,nextZ]=pondBoundary(angle+.001),tangentX=nextX-x,tangentZ=nextZ-z;
       rock.rotation.set(Math.sin(i*4)*.20,-Math.atan2(tangentZ,tangentX),Math.cos(i*5)*.25);
       rock.scale.set(.54+(i*7%11)*.043,.30+(i*5%9)*.032,.36+(i*3%7)*.055);
       rock.updateMatrix();
-      mesh.setMatrixAt(i,rock.matrix);
-      mesh.setColorAt(i,tints[i%tints.length]);
-    });
+      return {matrix:rock.matrix.clone(),x:rock.position.x,y:rock.position.y,z:rock.position.z,yaw:rock.rotation.y,sx:rock.scale.x,sy:rock.scale.y,sz:rock.scale.z};
+
+});
+function RockShore(){
+  const ref=useRef<T.InstancedMesh>(null);
+  useLayoutEffect(()=>{
+    const mesh=ref.current!,tints=['#918777','#9b8f7a','#77796e','#a59882'].map(c=>new T.Color(c));
+    shoreRocks.forEach((rock,i)=>{mesh.setMatrixAt(i,rock.matrix);mesh.setColorAt(i,tints[i%tints.length]);});
     mesh.instanceMatrix.needsUpdate=true;
     if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
     mesh.computeBoundingSphere();
   },[]);
   return <>
+    <RigidBody type="fixed" colliders={false}>{shoreRocks.map((r,i)=><CuboidCollider key={i} position={[r.x,r.y,r.z]} rotation={[0,r.yaw,0]} args={[r.sx*.88,r.sy*.84,r.sz*.88]}/>)}</RigidBody>
     <mesh geometry={bank}><meshStandardMaterial color="#716b58" side={T.DoubleSide} roughness={1}/></mesh>
     <instancedMesh ref={ref} args={[stoneGeometry,undefined,rim.length]} castShadow receiveShadow>
       <meshStandardMaterial roughness={.94} vertexColors flatShading/>
@@ -226,68 +235,69 @@ function LakeCrossings(){
   </>;
 }
 
-const koiGeometry=batchGeometry([
-  coloredGeometry(new T.SphereGeometry(1,10,6),'#f0d8a8',[0,0,0],[.15,.078,.37]),
-  coloredGeometry(new T.SphereGeometry(1,8,5),'#cb6d3b',[0,.036,.10],[.118,.052,.146]),
-]);
-const tailGeometry=new T.ConeGeometry(.145,.23,4).rotateX(-Math.PI/2);
-const koiCount=15;
+// Original rounded koi proportions and three colour patterns, batched by pattern.
+const koiGeometries=Array.from({length:3},(_,i)=>batchGeometry([
+ coloredGeometry(new T.SphereGeometry(1,12,8),['#efe5cf','#d18d53','#d3a52e'][i],[0,0,0],[.16,.08,.43]),
+ coloredGeometry(new T.SphereGeometry(1,10,6),i===0?'#c5774d':i===1?'#f0e0b9':'#f4d879',[0,.04,.1],[.14,.05,.17]),
+ ...[-1,1].map(side=>coloredGeometry(new T.SphereGeometry(1,6,4),'#342e21',[side*.095,.045,.31],[.018,.016,.018])),
+]));
+// Narrow attachment at the rear; forked fan extends away from the body (-Z).
+const tailGeometry=new T.BufferGeometry();
+tailGeometry.setAttribute('position',new T.Float32BufferAttribute([-.025,0,0,-.18,0,-.27,0,0,-.19,.025,0,0,0,0,-.19,.18,0,-.27],3));
+tailGeometry.computeVertexNormals();
+const koiCount=FISH_COUNT;
 function KoiSchool(){
-  const bodies=useRef<T.InstancedMesh>(null),tails=useRef<T.InstancedMesh>(null);
+  const bodies=useRef<(T.InstancedMesh|null)[]>([]),tails=useRef<T.InstancedMesh>(null);
   const work=useRef(new T.Object3D());
-  const target=useRef<[number,number]>([0,0]);
-  const swimming=useRef(new Float32Array(koiCount*3).fill(Number.NaN));
-  const normalTarget=useRef<[number,number]>([0,0]);
-  const feedingState=useRef(Array.from({length:koiCount},()=>({x:0,z:0,at:0,blend:0,speed:.65})));
-  const reduced=useReducedMotion(),quality=useGame(s=>s.quality);
+  const simulation=useRef(createFishSchool(Date.now()));
+  const swimming=useRef(new Float64Array(koiCount*3).fill(Number.NaN));
+  const interpolation=useRef({at:0,from:new Float64Array(koiCount*3),to:[] as number[],received:0});
+  const reduced=useReducedMotion();
   useLayoutEffect(()=>{
-    for(const mesh of [bodies.current!,tails.current!]){
-      mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
-      mesh.boundingSphere=new T.Sphere(new T.Vector3(POND.x,POND.waterY,POND.z),POND.rz);
+    for(const mesh of [...bodies.current,tails.current!]){
+      mesh!.instanceMatrix.setUsage(T.DynamicDrawUsage);
+      mesh!.boundingSphere=new T.Sphere(new T.Vector3(POND.x,POND.waterY,POND.z),POND.rz);
     }
   },[]);
   useFrame(({clock},dt)=>{
     dt=Math.min(dt,.05);
-    const body=bodies.current!,tail=tails.current!,object=work.current,poses=swimming.current;
-    const now=Date.now(),feeds=useGame.getState().fishFeeds;
-    const firstActive=feeds.findIndex(item=>now-item.at<FISH_FEED_LIFETIME);
-    const count=quality==='low'?9:koiCount,time=reduced?0:clock.elapsedTime;
-    body.count=tail.count=count;
-    for(let i=0;i<count;i++){
-      const feed=firstActive<0?null:feeds[firstActive+i%(feeds.length-firstActive)];
-      const a=feedingState.current[i];if(feed){a.x=feed.x;a.z=feed.z;a.at=feed.at;}
-      a.blend=T.MathUtils.damp(a.blend,feed?1:0,feed?1.2:.22,dt);a.speed=T.MathUtils.damp(a.speed,feed?1.05:.65,feed?1.5:.3,dt);
-      const normal=koiTarget(i,time,null,normalTarget.current),eating=koiTarget(i,time,a,target.current);
-      const tx=T.MathUtils.lerp(normal[0],eating[0],a.blend),tz=T.MathUtils.lerp(normal[1],eating[1],a.blend);
-      const index=i*3,x0=poses[index]||tx,z0=poses[index+1]||tz;
-      const dx=tx-x0,dz=tz-z0,distance=Math.hypot(dx,dz),step=Math.min(distance,a.speed*dt);
-      let x=x0+(distance>0?dx/distance*step:0),z=z0+(distance>0?dz/distance*step:0);
-      if(islandContains(x,z,-.55)){
-        const dx=x-ISLAND.x,dz=z-ISLAND.z,factor=(ISLAND.radius+.55)/(Math.hypot(dx,dz)||1);
-        x=ISLAND.x+dx*factor;z=ISLAND.z+dz*factor;
+    const tail=tails.current!,object=work.current,poses=swimming.current;
+    const state=useGame.getState(),now=Date.now(),shared=state.connection==='online'?state.sharedFish:null;
+    let next:ArrayLike<number>,time:number;
+    if(shared){
+      const lerp=interpolation.current;
+      if(lerp.at!==shared.at){
+        for(let i=0;i<poses.length;i++)lerp.from[i]=Number.isFinite(poses[i])?poses[i]:shared.poses[i];
+        lerp.to=shared.poses;lerp.at=shared.at;lerp.received=shared.receivedAt;
       }
-      const oldYaw=poses[index+2]||i,targetYaw=Math.hypot(x-x0,z-z0)>.001?Math.atan2(x-x0,z-z0):oldYaw;
-      const yaw=oldYaw+(T.MathUtils.euclideanModulo(targetYaw-oldYaw+Math.PI,Math.PI*2)-Math.PI)*Math.min(1,dt*3);
-      poses[index]=x;poses[index+1]=z;poses[index+2]=yaw;
-      const y=POND.waterY-.041+Math.sin(time*.20+i*2.399)*.019;
-      object.position.set(x,y,z);object.rotation.set(0,yaw,0);object.scale.setScalar(1+(i%4)*.10);object.updateMatrix();
-      body.setMatrixAt(i,object.matrix);
-      object.position.set(x-Math.sin(yaw)*.40,y,z-Math.cos(yaw)*.40);
-      object.rotation.y=yaw+Math.sin(time*(4+a.speed*2)+i)*.3;object.updateMatrix();tail.setMatrixAt(i,object.matrix);
+      const t=T.MathUtils.clamp((now-lerp.received)/350,0,1);
+      for(let i=0;i<poses.length;i++)poses[i]=i%3===2?lerp.from[i]+Math.atan2(Math.sin(lerp.to[i]-lerp.from[i]),Math.cos(lerp.to[i]-lerp.from[i]))*t:T.MathUtils.lerp(lerp.from[i],lerp.to[i],t);
+      next=poses;time=shared.seconds+Math.min(.5,(now-shared.receivedAt)/1000);
+    }else{
+      const school=advanceFishSchool(simulation.current,now,state.fishFeeds);next=school.poses;time=(school.at-school.epoch)/1000;
     }
-    body.instanceMatrix.needsUpdate=tail.instanceMatrix.needsUpdate=true;
+    if(reduced)time=0;
+    const count=koiCount;tail.count=count;
+    bodies.current.forEach((mesh,i)=>{if(mesh)mesh.count=Math.max(0,Math.ceil((count-i)/3));});
+    for(let i=0;i<count;i++){
+      const index=i*3,x=next[index],z=next[index+1],yaw=next[index+2];poses[index]=x;poses[index+1]=z;poses[index+2]=yaw;
+      const y=POND.waterY-.041+Math.sin(time*.20+i*2.399)*.019;
+      object.position.set(x,y,z);object.rotation.set(0,yaw,0);object.scale.setScalar(1.25*(.9+(i%4)*.06));object.updateMatrix();
+      bodies.current[i%3]!.setMatrixAt(Math.floor(i/3),object.matrix);
+      object.position.set(x-Math.sin(yaw)*.39*object.scale.x,y,z-Math.cos(yaw)*.39*object.scale.x);
+      object.rotation.y=yaw+Math.sin(time*5.5+i)*.3;object.updateMatrix();tail.setMatrixAt(i,object.matrix);
+    }
+    for(const mesh of bodies.current)if(mesh)mesh.instanceMatrix.needsUpdate=true;tail.instanceMatrix.needsUpdate=true;
   });
   return <>
-    <instancedMesh ref={bodies} args={[koiGeometry,undefined,koiCount]}><meshStandardMaterial vertexColors roughness={.53}/></instancedMesh>
-    <instancedMesh ref={tails} args={[tailGeometry,undefined,koiCount]}><meshStandardMaterial color="#cc9864" roughness={.68}/></instancedMesh>
+    {koiGeometries.map((geometry,i)=><instancedMesh key={i} ref={mesh=>{bodies.current[i]=mesh}} args={[geometry,undefined,Math.ceil(koiCount/3)]}><meshStandardMaterial vertexColors roughness={.53}/></instancedMesh>)}
+    <instancedMesh ref={tails} args={[tailGeometry,undefined,koiCount]}><meshStandardMaterial color="#d6ac70" roughness={.68} side={T.DoubleSide}/></instancedMesh>
   </>;
 }
 
 const pads:T.BufferGeometry[]=[],blossoms:T.BufferGeometry[]=[];
-for(let i=0;i<37;i++){
-  const angle=i*2.39996,radius=.56+i%7*.053;
-  const x=POND.x+Math.cos(angle)*POND.rx*radius,z=POND.z+Math.sin(angle)*POND.rz*radius;
-  if(islandContains(x,z,-1)||POND_BRIDGES.some(bridge=>x>bridge.start&&x<bridge.end&&Math.abs(z-bridge.z)<bridge.halfWidth+1))continue;
+for(let i=0;i<lotusPositions.length;i++){
+  const [x,z]=lotusPositions[i];
   const y=POND.waterY+.025;
   pads.push(coloredGeometry(new T.CircleGeometry(.47+i%4*.045,11,0,5.52).rotateZ(i),
     ['#688c54','#7f9a5b','#799352'][i%3],[x,y,z],[1,1,1],[-Math.PI/2,0,0]));

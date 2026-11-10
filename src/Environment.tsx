@@ -1,3 +1,7 @@
+import AvenueFlags from './AvenueFlags';
+import EveningDecor from './EveningDecor';
+import {forestPositions} from './woodlandLayout';
+import OuterLandscape from './OuterLandscape';
 import HallIncense from './HallIncense';
 import CourtyardCollision from './CourtyardCollision';
 import BambooGrove from './BambooGrove';
@@ -65,6 +69,8 @@ paveStrip(-3,3,-17,GATE.z+10);
 paveStrip(-47,BRIDGE_ROAD.x+1,-7,-4);
 paveStrip(BRIDGE_ROAD.x-1,BRIDGE_ROAD.x+1,BRIDGE_ROAD.northZ,BRIDGE_ROAD.southZ);
 paveStrip(-18,18,26,27);
+// Rear cross-lane belongs to the same paving union, so its junction edges stay continuous.
+paveStrip(-18,18,-43,-40);
 paveStrip(-47,-15,-33,-32);
 paveStrip(15,47,-33,-32);
 paveStrip(-18,-17,-57,47);
@@ -123,7 +129,7 @@ function Pavers(){
   </group>;
 }
 function WalkSurface(){const click=(e:ThreeEvent<MouseEvent>)=>{if(e.delta>5)return;e.stopPropagation();const s=useGame.getState();s.stand();s.set({destination:[e.point.x,e.point.z],pendingSeat:null});};return <mesh position={[0,.065,0]} rotation={[-Math.PI/2,0,0]} onClick={click}><planeGeometry args={[124,132]}/><meshBasicMaterial transparent opacity={0} depthWrite={false}/></mesh>}
-export function Ground(){const night=useGame(s=>s.night),soil=useOutdoorSurface('bamboo-soil'),stone=useOutdoorSurface('flagstone');return <group><IncenseBurner/>
+export function Ground(){const night=useGame(s=>s.night),soil=useOutdoorSurface('bamboo-soil'),stone=useOutdoorSurface('flagstone');return <group><OuterLandscape/><IncenseBurner/>
   <mesh position={[0,-.15,0]} geometry={outerGroundGeometry} receiveShadow dispose={null}><meshStandardMaterial color={night?'#4b596a':'#a6b18a'}/></mesh>
   <mesh position={[0,.01,0]} geometry={courtyardGroundGeometry} material={stone} receiveShadow dispose={null}/>
   <mesh position={[0,.01,0]} geometry={bambooGroundGeometry} material={soil} receiveShadow dispose={null}/>
@@ -229,17 +235,7 @@ export function Garden(){return <><TempleGarden/><WorldLabel position={[36,2.3,-
 function Forest(){
   const broad=useRef<THREE.InstancedMesh>(null),upright=useRef<THREE.InstancedMesh>(null),leaves=useRef<THREE.InstancedMesh>(null);
   const bark=useOutdoorSurface('bark');
-  const coords=useMemo(()=>{
-    const positions:Vec3[]=[];
-    for(let i=0;i<145;i++){
-      const angle=i*2.399,radius=64+(i%9)*3;
-      positions.push([Math.sin(angle)*radius,0,Math.cos(angle)*radius-5]);
-    }
-    for(let i=0;i<30;i++)positions.push([-47+Math.sin(i*2.4)*8,0,-5+i*1.6]);
-    const [west,east,north,south]=bambooZoneBounds;
-    return positions.filter(([x,,z])=>Math.hypot(x-GATE.x,z-GATE.z)>12&&
-      (x<west-2.7||x>east+2.7||z<north-2.7||z>south+2.7));
-  },[]);
+  const coords=forestPositions;
   useLayoutEffect(()=>{
     const trunkBatches=[broad.current!,upright.current!],crown=leaves.current!,pose=new THREE.Object3D();
     const shades=['#517454','#68825a','#84966a'].map(color=>new THREE.Color(color));
@@ -276,11 +272,11 @@ function Forest(){
     </instancedMesh>
   </group>;
 }
-function Decorations(){return <><Forest/><BambooGrove/><PathLamps/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
+function Decorations(){return <><Forest/><BambooGrove/><AvenueFlags/><PathLamps/><EveningDecor/><GardenDetails/><group position={[BODHI.x,BODHI.ground,BODHI.z]}><BodhiTree/></group>
   <group position={[MAYA_LEVEL.extraBodhi.x,BODHI.ground,MAYA_LEVEL.extraBodhi.z]}><BodhiTree interactive={false}/></group>
   <CourtyardTrees/>
   {gateAvenueTrees.map(({x,z,scale})=><Tree key={`${x}-${z}`} position={[x,.06,z]} scale={scale}/>)}
-  {[[12,0,-40],[-13,0,-43],[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
+  {[[47,0,-16],[-20,0,34]].map((p,i)=><Tree key={i} position={p as Vec3} scale={1.1}/>)}
   {Array.from({length:12},(_,i)=><mesh key={i} position={[Math.sin(i*2.4)*170,10,-145-Math.abs(Math.cos(i*2.4))*70]} scale={[30,25+i%3*10,25]}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color={i%2?'#8ca188':'#a0af93'} flatShading/></mesh>)}
 </>}
 function Architecture(){return <><QuanAmShrine/><WaterTaskWorld/><TableAccessories/><AltarOfferings/><HallIncense/><ReceptionDesk/><MainTemple/><MeditationHall/><DiningHall/><Library/><Gate/><BellPavilion x={MAYA_LEVEL.bellX}/><BellPavilion x={MAYA_LEVEL.drumX} drum/><TeaTerrace/><Stupa/><BambooPavilion/><Decorations/><CourtyardZoneDecor/></>}

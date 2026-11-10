@@ -5,7 +5,7 @@ import {mkdir,writeFile,unlink} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {createGameServer} from '../server-runtime.mjs';
 import {feedStations,QUAN_AM_SPOT,ISLAND} from '../src/pondScene.mjs';
-import {HALL_INCENSE} from '../src/ritualStations.mjs';
+import {BODHI_INCENSE,HALL_INCENSE} from '../src/ritualStations.mjs';
 import {allowedBrowserOrigin} from '../server-origin.mjs';
 function stream(base,id,room='an-nhien'){
   let state={peers:[],messages:[]},request,buffer='',listeners=[];
@@ -28,14 +28,14 @@ test('LAN Origin covers player state, all offerings, hall/Quan Am incense, koi, 
   try{
     await client.opened;
     for(const route of ['/api/state','/api/chat','/api/offerings','/api/garden'])assert.equal((await post(route,{},'https://evil.example')).status,403);
-    const feed=feedStations[0],offers=[['incense',undefined,[0,-7.1]],['flower','flower-table-1',[-3.7,-28]],['candle','candle-table-2',[4.7,-28]],['incense',HALL_INCENSE.id,HALL_INCENSE.spot],['incense','quan-am',QUAN_AM_SPOT],['feed',feed.id,feed.spot]];
+    const feed=feedStations[0],offers=[['incense',undefined,[0,-7.1]],['flower','flower-table-1',[-3.7,-28]],['candle','candle-table-2',[4.7,-28]],['incense',HALL_INCENSE.id,HALL_INCENSE.spot],['incense','quan-am',QUAN_AM_SPOT],['incense',BODHI_INCENSE.id,BODHI_INCENSE.spot],['feed',feed.id,feed.spot]];
     for(const [i,[kind,station,position]]of offers.entries()){
       assert.equal((await post('/api/state',{x:position[0],z:position[1],action:kind})).status,200);
       clock+=3000;const operation='lan_offering_'+i;
       assert.equal((await post('/api/offerings',{kind,station,operation})).status,200,kind+' / '+station);
       assert.equal((await post('/api/offerings',{kind,station,operation})).status,200,'A lost response must not duplicate an offering.');
     }
-    await client.wait(s=>s.offerings.length===6);assert.equal(client.state.offerings.length,6);assert.equal(client.state.offerings.filter(o=>o.station===HALL_INCENSE.id).length,1);
+    await client.wait(s=>s.offerings.length===7);assert.equal(client.state.offerings.length,7);assert.equal(client.state.offerings.filter(o=>o.station===HALL_INCENSE.id).length,1);
     assert.equal((await post('/api/chat',{text:'Kiểm tra sân chùa qua LAN'})).status,200);
     await post('/api/state',{x:31,z:-53});
     for(const [revision,action]of ['plant','water','harvest'].entries()){if(action==='harvest')clock+=60001;assert.equal((await post('/api/garden',{plot:'plot-0',revision,action,operation:'lan_garden_'+revision})).status,200);}
@@ -125,7 +125,7 @@ test('room offerings: all kinds, late join, isolation, deduplication, capacity a
   await post('/api/state',{x:bridgeStation.spot[0],z:9});assert.equal(await post('/api/offerings',{kind:'feed',station:bridgeStation.id,operation:'feed_mid_bridge'}),409);
   await post('/api/state',{x:bridgeStation.spot[0],z:18-bridgeStation.spot[1]});assert.equal(await post('/api/offerings',{kind:'feed',station:bridgeStation.id,operation:'feed_wrong_side'}),409);
   await post('/api/state',{x:bridgeStation.spot[0],z:bridgeStation.spot[1]});assert.equal(await post('/api/offerings',{kind:'feed',station:bridgeStation.id,operation:'feed_right_side'}),200);
-  clock+=12001;await b.wait(s=>!s.offerings.some(o=>o.kind==='feed'));
+  clock+=120001;await b.wait(s=>!s.offerings.some(o=>o.kind==='feed'));
   clock+=480001;await b.wait(s=>s.offerings.length===1);assert.equal(b.state.offerings[0].kind,'incense');
   clock+=170000;await b.wait(s=>s.offerings.length===0);
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
@@ -178,5 +178,68 @@ test('two players share meditation heading, chibi appearance and bow phase, incl
   await post({...seated,action:'meditate',bow:null});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='meditate'&&!p.bow));
   clock+=60000;await post({...seated,action:'bow',bow:{at:token+60000,elapsed:0}});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.bow?.at===clock));
   await post({...seated,seat:null,action:'walk',bow:null});await b.wait(s=>s.peers.some(p=>p.id==='meditation_player_a'&&p.action==='walk'&&!p.bow&&!p.seat));
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('room fish snapshots match for both players and late joiners; clients cannot forge bites',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(path,data)=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'fish_player_a',room:'an-nhien',...data})});
+ try{
+  const a=stream(base,'fish_player_a'),b=stream(base,'fish_player_b');all.push(a,b);await Promise.all(all.map(c=>c.opened));
+  clock+=350;await Promise.all([a.wait(s=>s.fish.at>clock-100),b.wait(s=>s.fish.at>clock-100)]);assert.deepEqual(a.state.fish,b.state.fish);assert.equal(a.state.fish.poses.length,69);
+  const late=stream(base,'fish_player_late');all.push(late);await late.opened;await a.wait(s=>s.peers.length===3);assert.deepEqual(late.state.fish,a.state.fish);
+  const station=feedStations[0];await post('/api/state',{x:station.spot[0],z:station.spot[1]});await post('/api/offerings',{kind:'feed',station:station.id,operation:'fish_food_test_1'});await b.wait(s=>s.offerings.some(o=>o.kind==='feed'));
+  const food=b.state.offerings.find(o=>o.kind==='feed');await post('/api/state',{fishEating:[food.at]});await b.wait(s=>s.fish.at===a.state.fish.at);assert.equal(b.state.offerings.find(o=>o.kind==='feed').eatingAt,undefined);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
+
+test('shared bell is exclusive, rests ten seconds after its end, and stays inside its room',async()=>{
+ let clock=1000000;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(id,path,data)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,room:'an-nhien',...data})});return {status:r.status,data:await r.json()}};
+ try{
+  const a=stream(base,'bell_player_a'),b=stream(base,'bell_player_b'),other=stream(base,'bell_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  for(const id of ['bell_player_a','bell_player_b'])await post(id,'/api/state',{x:-12.99111344053481,z:-9});
+  const result=await Promise.all(['bell_player_a','bell_player_b'].map((id,i)=>post(id,'/api/world',{kind:'bell',operation:'bell_operation_'+i})));
+  assert.deepEqual(result.map(r=>r.status).sort(),[200,429]);await b.wait(s=>s.world.bell!==null);assert.equal(other.state.world.bell,null);assert.equal(b.state.world.bell.readyAt,clock+16000);
+  const winner=result[0].status===200?0:1;const retry=await post(['bell_player_a','bell_player_b'][winner],'/api/world',{kind:'bell',operation:'bell_operation_'+winner});assert.equal(retry.data.at,clock);
+  clock+=15999;assert.equal((await post('bell_player_a','/api/world',{kind:'bell',operation:'bell_wait_10s'})).status,429);
+  clock++;assert.equal((await post('bell_player_a','/api/world',{kind:'bell',operation:'bell_after_rest'})).status,200);
+  const late=stream(base,'bell_player_late');all.push(late);await late.opened;assert.equal(late.state.world.bell.at,clock);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('shared swept leaves are collected once, visible to late joiners and reject distant or malformed sweeps',async()=>{
+ let clock=1000000;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(id,path,data)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,room:'an-nhien',...data})});return {status:r.status,data:await r.json()}};
+ try{
+  const a=stream(base,'leaf_player_a'),b=stream(base,'leaf_player_b'),other=stream(base,'leaf_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  const {createSharedLeaves}=await import('../src/sharedLeaves.mjs');const slot=createSharedLeaves(clock)[12];
+  const contact={x:slot.landX,z:slot.landZ,fromX:slot.landX,fromZ:slot.landZ,ground:.085,radius:.28,forwardX:0,forwardZ:1,depthScale:.68};
+  for(const id of ['leaf_player_a','leaf_player_b'])await post(id,'/api/state',{x:slot.landX,z:slot.landZ-.57,y:.06,action:'sweep'});
+  const results=await Promise.all(['leaf_player_a','leaf_player_b'].map((id,i)=>post(id,'/api/sweep',{operation:'leaf_operation_'+i,seeds:[slot.seed],contact})));
+  assert.deepEqual(results.map(r=>r.data.count).sort(),[0,1]);await b.wait(s=>s.world.leaves.cleared.some(c=>c[0]===slot.seed));assert.equal(other.state.world.leaves.cleared.length,0);
+  const late=stream(base,'leaf_player_late');all.push(late);await late.opened;assert.equal(late.state.world.leaves.cleared[0][0],slot.seed);
+  assert.equal((await post('leaf_player_a','/api/sweep',{operation:'leaf_invalid_1',seeds:[slot.seed+1],contact:{}})).status,409);
+  await post('leaf_player_a','/api/state',{x:0,z:40,action:'sweep'});assert.equal((await post('leaf_player_a','/api/sweep',{operation:'leaf_too_far_1',seeds:[slot.seed+1],contact})).status,409);
+  clock+=160000;await b.wait(s=>s.world.leaves.cleared.length===0);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('drum, lanterns, gate and delivered jar water are shared without synchronizing meal service',async()=>{
+ let clock=1000000;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(path,data)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'world_player_a',room:'an-nhien',...data})});return {status:r.status,data:await r.json()}};
+ try{
+  const a=stream(base,'world_player_a'),b=stream(base,'world_player_b'),other=stream(base,'world_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  const {default:layout}=await import('../src/sharedWorldLayout.json',{with:{type:'json'}});
+  await post('/api/state',{x:layout.drum.x,z:layout.drum.z+2.1});assert.equal((await post('/api/world',{kind:'drum',operation:'world_drum_0001'})).status,200);await b.wait(s=>s.world.drum?.at===clock);
+  assert.equal((await post('/api/world',{id:'world_player_b',kind:'drum',operation:'world_drum_0002'})).status,409);
+  await post('/api/state',{x:layout.wish[0],z:layout.wish[1]});assert.equal((await post('/api/world',{kind:'lantern',text:'Bình an',operation:'world_lantern_1'})).status,200);await b.wait(s=>s.world.lanterns.length===1);assert.equal(b.state.world.lanterns[0].text,'Bình an');assert.equal(other.state.world.lanterns.length,0);
+  await post('/api/state',{x:5,z:layout.gate.z});assert.equal((await post('/api/world',{kind:'gate',open:false,operation:'world_gate_close'})).status,200);await b.wait(s=>!s.world.gateOpen);
+  await post('/api/state',{x:0,z:layout.gate.z});await b.wait(s=>s.world.gateOpen);
+  await post('/api/state',{x:layout.water.well.x,z:layout.water.well.z,action:'drawWater'});clock+=3000;await post('/api/state',{action:'carryWater'});
+  const jar=layout.water.jars[0];await post('/api/state',{x:jar.x,z:jar.z-1,action:'pourWater'});clock+=2200;
+  assert.equal((await post('/api/world',{kind:'water',jar:0,operation:'world_water_001'})).status,200);assert.equal((await post('/api/world',{kind:'water',jar:0,operation:'world_water_001'})).status,200);
+  await b.wait(s=>s.world.waterJars[0].units===1);assert.equal(other.state.world.waterJars[0].units,0);assert.equal((await post('/api/world',{kind:'water',jar:0,operation:'world_water_002'})).status,409);
+  const late=stream(base,'world_player_late');all.push(late);await late.opened;assert.equal(late.state.world.waterJars[0].units,1);assert.equal(late.state.world.lanterns.length,1);
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 });

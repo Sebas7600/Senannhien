@@ -56,7 +56,7 @@ function GateCameraBounds({open}:{open:boolean}){
 }
 export function ImportedBell(){
   const model=useCourtyardProp('bell'),reduced=useReducedMotion(),bell=useMemo(()=>model.getObjectByName('Bell')!,[model]);
-  useFrame(()=>{const c=useGame.getState().ceremony;bell.rotation.z=c?.type==='bell'?bellAngle(Date.now()-c.at,reduced):0;});
+  useFrame(()=>{const s=useGame.getState(),at=s.worldBellAt||(s.ceremony?.type==='bell'?s.ceremony.at:0);bell.rotation.z=at?bellAngle(Date.now()-at,reduced):0;});
   return <group position={[0,.4,0]} scale={BELL_PROP.scale} dispose={null}><primitive object={model}/></group>;
 }
 export function ImportedDrum(){const model=useCourtyardProp('drum');return <group position={[0,.4,0]} scale={DRUM_PROP.scale} dispose={null}><primitive object={model}/></group>;}

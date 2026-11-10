@@ -3,7 +3,7 @@ import {ISLAND,QUAN_AM_SPOT} from './pondLayout';
 const {x,z}=ISLAND;
 export const QUAN_AM={
   x,z,ground:ISLAND.top,rotation:-Math.PI/2,height:4.8,pedestalHeight:.56,
-  incenseId:'quan-am',tableX:x-2.7,tableZ:z,ashY:ISLAND.top+1.30,
+  incenseId:'quan-am',tableX:x-2.7,tableZ:z,ashY:ISLAND.top+1.35,
   spot:QUAN_AM_SPOT,approach:[x-4.65,z] as [number,number],range:2.0,
 };
 export const PAVILION_POSTS=Array.from({length:6},(_,i)=>{

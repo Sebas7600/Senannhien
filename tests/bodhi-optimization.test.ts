@@ -69,10 +69,18 @@ test('raised coping has the requested height while the altar front stays visible
     const mesh=new THREE.Mesh(g,material);mesh.updateMatrixWorld();const hits=new THREE.Raycaster(new THREE.Vector3((r-.13)*Math.cos(.1),2,(r-.13)*Math.sin(.1)),new THREE.Vector3(0,-1,0)).intersectObject(mesh);assert.ok(hits.length);assert.ok(Math.abs(hits[0].point.y-h)<.001);
   }
 });
-test('offering at the Bodhi altar consumes one incense, records once and persists the location counter',()=>{
-  useGame.setState({position:[...BODHI.offeringPoint]});const before=useGame.getState().inventory.incense;useGame.getState().perform('incense');let s=useGame.getState();assert.equal(s.inventory.incense,before-1);assert.equal(s.bodhiIncense,1);assert.equal(s.progress.incense,1);assert.equal(s.event?.x,BODHI.x);assert.equal(s.event?.z,BODHI.altarZ);assert.equal(s.destination,null);
-  s.perform('incense');assert.equal(useGame.getState().inventory.incense,before-1);assert.equal(useGame.getState().bodhiIncense,1);assert.equal((useGame.persist.getOptions().partialize!(s) as any).bodhiIncense,1);
+test('Bodhi incense waits for the complete gesture and records only once',()=>{
+ useGame.setState({position:[...BODHI.offeringPoint]});const before=useGame.getState().inventory.incense;
+ useGame.getState().perform('incense');let s=useGame.getState();assert.equal(s.action,'incense');assert.equal(s.event?.target,'bodhi');assert.equal(s.inventory.incense,before);assert.equal(s.progress.incense,0);
+ s.perform('incense');assert.equal(useGame.getState().inventory.incense,before);
+ useGame.setState({event:{...s.event!,at:Date.now()-3100}});s.tick();s=useGame.getState();assert.equal(s.inventory.incense,before-1);assert.equal(s.bodhiIncense,1);assert.equal(s.progress.incense,1);assert.equal(s.action,'walk');assert.equal(s.offeringSlots[s.burningIncense[0]],'bodhi');
+ s.tick();assert.equal(useGame.getState().progress.incense,1);
 });
+
+test('cancelling Bodhi incense preserves the item and reward',()=>{
+ useGame.setState({position:[...BODHI.offeringPoint]});useGame.getState().perform('incense');const before=useGame.getState().inventory.incense;useGame.getState().stand();useGame.getState().tick();assert.equal(useGame.getState().inventory.incense,before);assert.equal(useGame.getState().progress.incense,0);
+});
+
 test('temple offering stays separate and an empty incense bag cannot light the Bodhi altar',()=>{
   useGame.setState({position:[0,-7.1]});useGame.getState().perform('incense');useGame.setState({event:{...useGame.getState().event!,at:Date.now()-3100}});useGame.getState().tick();assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().progress.incense,1);
   useGame.setState({event:null,position:[...BODHI.offeringPoint],inventory:{...defaults.inventory,incense:0}});useGame.getState().perform('incense');assert.equal(useGame.getState().bodhiIncense,0);assert.equal(useGame.getState().panel,'bag');assert.equal(useGame.getState().progress.incense,1);

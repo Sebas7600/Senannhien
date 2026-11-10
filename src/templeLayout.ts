@@ -1,8 +1,7 @@
-import {templeFixtures} from './templeFixtures';
+import {porticoSupportTop} from './templeEave';
 import * as THREE from 'three';
 export function removedTemplePost(x:number,z:number){return Math.abs(x)<9&&[1,4.9].some(row=>Math.abs(z-row)<.65)}
-// The portico stayed at its authored floor height when the roof assembly was lifted.
-export const porticoColumnTop=templeFixtures.ceiling.columnTop;
+// Each original column meets the underside of the gallery roof.
 const closeTo=(value:number,target:number)=>Math.abs(value-target)<.03;
 export function isPorticoColumn(x:number,z:number){
  const onFrontOrBack=closeTo(Math.abs(z),8.725)&&[2.35,7,10.5,13].some(at=>closeTo(Math.abs(x),at));
@@ -11,7 +10,7 @@ export function isPorticoColumn(x:number,z:number){
 }
 
 export function extendPorticoColumn(positions:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,box:THREE.Box3,indices:number[]){
- const base=box.min.y,height=box.max.y-base,scale=(porticoColumnTop*2-base)/height;
+ const base=box.min.y,height=box.max.y-base,scale=(porticoSupportTop((box.min.x+box.max.x)/4,(box.min.z+box.max.z)/4)*2-base)/height;
  for(const i of new Set(indices))positions.setY(i,base+(positions.getY(i)-base)*scale);
  positions.needsUpdate=true;
 }

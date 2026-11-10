@@ -13,3 +13,6 @@ export function createTempleRoofTemplate(scene:T.Group){
  roof.traverse(node=>{if(!(node instanceof T.Mesh))return;node.geometry.applyMatrix4(normalize);node.castShadow=true;node.receiveShadow=true;});
  return roof;
 }
+
+const roofTemplates=new WeakMap<T.Group,T.Group>();
+export function cachedTempleRoofTemplate(scene:T.Group){let roof=roofTemplates.get(scene);if(!roof){roof=createTempleRoofTemplate(scene);roofTemplates.set(scene,roof);}return roof;}

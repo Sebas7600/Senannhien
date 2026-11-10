@@ -67,13 +67,13 @@ export function pondSurface(x,z){
   return bridge?bridgeHeight(x,bridge):null;
 }
 
-const shoreStations=Array.from({length:12},(_,i)=>{
-  const angle=i*Math.PI/6,cos=Math.cos(angle),sin=Math.sin(angle);
+const shoreStations=Array.from({length:24},(_,i)=>{
+  const angle=i<12?i*Math.PI/6:(i-12+.5)*Math.PI/6;
   return {id:'shore-'+i,spot:pondBoundary(angle,1.1),
     target:pondBoundary(angle,-1.8)};
 });
 const koiBridge=POND_BRIDGES[0];
-export const feedStations=[...shoreStations,...[-5,0,5].flatMap((dx,i)=>[-1,1].map(side=>({
+export const feedStations=[...shoreStations,...[-5,0,5,-8,-2.5,2.5,8].flatMap((dx,i)=>[-1,1].map(side=>({
   id:'bridge-'+i+'-'+(side+1),spot:[POND.x+dx,koiBridge.z+side*.85],
   target:[POND.x+dx,koiBridge.z+side*3],
 })))].filter(station=>canFeedFrom(station.spot,station));
@@ -95,3 +95,7 @@ export function canFeedFrom(position,station){
  }
  return true;
 }
+
+export const FISH_FEED_LIFETIME=18000;
+// Start the meal on first contact. Bound unvisited food in empty rooms.
+export function foodIsActive(food,now){return food.expiresAt!=null?now<food.expiresAt:food.eatingAt!=null?now-food.eatingAt<FISH_FEED_LIFETIME:now-food.at<120000;}

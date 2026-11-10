@@ -2,7 +2,7 @@ import AltarSmoke from './AltarSmoke';
 import {HALL_INCENSE} from './ritualStations.mjs';
 import {DRUM_APPROACH} from './drumMotion';
 import {TouchLookGesture,touchLookDelta} from './touchLook';
-import {followAfterObstruction,DEFAULT_FOLLOW_DISTANCE} from './cameraFollow';
+import {followAfterObstruction,DEFAULT_FOLLOW_DISTANCE,smoothCameraElevation} from './cameraFollow';
 import {cameraSafeDistance} from './cameraCollision';
 import {MAYA_LEVEL} from './mayaLevel';
 import PlayerAvatar from './PlayerAvatar';
@@ -59,8 +59,8 @@ function TouchCameraInput(){
     return()=>{canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('lostpointercapture',up);window.removeEventListener('blur',clear);clear();};
   },[gl]);return null;
 }
-function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>new rapier.Ball(.23),[rapier]);const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1);const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(DEFAULT_FOLLOW_DISTANCE),lastDistance=useRef(DEFAULT_FOLLOW_DISTANCE);
-  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3()),lastZoom=useRef(6.5),lastMoonView=useRef<boolean>(),sphere=useRef(new THREE.Spherical());
+function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>new rapier.Ball(.23),[rapier]);const controls=useRef<OrbitControlsType>(null);const mode=useGame(s=>s.camera),reset=useGame(s=>s.cameraReset);const lastMode=useRef(''),lastReset=useRef(-1),lastCeremony=useRef(false),followHeight=useRef(1.1),elevation=useRef<number>();const offset=useRef(new THREE.Vector3());const lastTarget=useRef(new THREE.Vector3(0,1.2,26)),offsetTarget=useRef(new THREE.Vector3()),deltaTarget=useRef(new THREE.Vector3()),ray=useRef(new THREE.Raycaster()),hits=useRef<THREE.Intersection[]>([]),viewDirection=useRef(new THREE.Vector3()),requestedDistance=useRef(DEFAULT_FOLLOW_DISTANCE),lastDistance=useRef(DEFAULT_FOLLOW_DISTANCE);
+  const lastMalaFocus=useRef(false),beforeMala=useRef(new THREE.Vector3()),lastZoom=useRef(6.5),sphere=useRef(new THREE.Spherical());
   useFrame(({camera},dt)=>{
     if(!controls.current)return;
     const s=useGame.getState(),target=offsetTarget.current;
@@ -72,11 +72,13 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
       playerMotion.object.getWorldPosition(target);
       const height=s.seated?(malaFocus?.46:.55):(malaFocus?1.04:1.1);
       followHeight.current=THREE.MathUtils.damp(followHeight.current,height,8,dt);
-      target.y+=followHeight.current;
+      const desiredY=target.y+followHeight.current;
+      elevation.current=lastReset.current!==reset||lastMode.current!==mode||elevation.current===undefined?desiredY:smoothCameraElevation(elevation.current,desiredY,dt);
+      target.y=elevation.current;
     }else target.set(s.position[0],s.height+1.1,s.position[1]);
 
     const moonView=s.night&&mode==='follow'&&s.position[1]>-10;
-    const cameraReset=lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus||lastMoonView.current!==moonView;
+    const cameraReset=lastMode.current!==mode||lastReset.current!==reset||lastCeremony.current!==lanternFocus;
     if(cameraReset||lastMalaFocus.current!==malaFocus){
       const heading=playerMotion.object?playerMotion.heading:s.heading;
       const direction=heading+Math.PI;
@@ -104,7 +106,7 @@ function CameraRig(){const {world,rapier}=useRapier(),cameraShape=useMemo(()=>ne
       camera.position.copy(target).add(offset.current);
       controls.current.target.copy(target);
       lastTarget.current.copy(target);
-      lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;lastMalaFocus.current=malaFocus;lastMoonView.current=moonView;
+      lastMode.current=mode;lastReset.current=reset;lastCeremony.current=lanternFocus;lastMalaFocus.current=malaFocus;
       requestedDistance.current=lastDistance.current=offset.current.length();
       controls.current.minDistance=mode==='overview'?35:.05;
     }
@@ -210,10 +212,10 @@ function Lighting(){
     <color attach="background" args={[sky]}/>
     <CourtyardSky night={night}/>
     <fog attach="fog" args={[sky,overview?150:night?55:45,overview?340:night?155:135]}/>
-    <ambientLight intensity={night?.25:.34} color={night?'#aebee5':'#fff5e5'}/>
-    <hemisphereLight args={[night?'#9ebbf0':'#e0eeff',night?'#66788e':'#8b9075',night?.55:.7]}/>
-    <directionalLight ref={light} castShadow position={offset.toArray()} intensity={night?1.22:2.65}
-      color={night?'#c1d7ff':'#ffe9c2'} shadow-mapSize={[2048,2048]}
+    <ambientLight intensity={night?.38:.34} color={night?'#aebee5':'#fff5e5'}/>
+    <hemisphereLight args={[night?'#9ebbf0':'#e0eeff',night?'#66788e':'#8b9075',night?.65:.7]}/>
+    <directionalLight ref={light} castShadow position={offset.toArray()} intensity={night?.95:2.65}
+      color={night?'#d9deea':'#ffe9c2'} shadow-mapSize={[2048,2048]}
       shadow-camera-left={-shadowExtent} shadow-camera-right={shadowExtent}
       shadow-camera-top={shadowExtent} shadow-camera-bottom={-shadowExtent}
       shadow-bias={-.0005} shadow-normalBias={.025}/>

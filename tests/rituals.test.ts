@@ -65,3 +65,19 @@ test('wish station has a solid base and a separate reachable standing position',
   const path=findPath([0,22],WISH_APPROACH);assert.ok(path.length);let from:[number,number]=[0,22];for(const point of path){assert.ok(clearLine(from,point));from=point;}assert.ok(distance(from,WISH_APPROACH)<.01);
   useGame.getState().perform('lantern');assert.deepEqual(useGame.getState().destination,WISH_APPROACH);
 });
+
+test('lotuses are balanced across all four sectors and stay off bridges while drifting',async()=>{
+ const {lotusPositions,driftingLotusAnchors,lotusWaterClear}=await import('../src/lotusLayout');
+ const {floatingLotusPose}=await import('../src/ritualMotion');
+ const counts=[0,0,0,0];for(const [x,z]of [...lotusPositions,...driftingLotusAnchors]){counts[(x>POND.x?2:0)+(z>POND.z?1:0)]++;assert.ok(lotusWaterClear(x,z));}
+ assert.deepEqual(counts,[14,14,14,14]);
+ for(let i=0;i<driftingLotusAnchors.length;i++)for(let t=0;t<600;t+=13){const [x,,z]=floatingLotusPose(t,i);assert.ok(lotusWaterClear(x,z,.7));}
+});
+
+test('shared world clock translation does not replay bell/drum snapshots or change lantern seeds',async()=>{
+ const {createWorldSnapshotApplier}=await import('../src/worldSnapshot');
+ const apply=createWorldSnapshotApplier(),clock=Date.now(),server=clock-90000;
+ const world={bell:{at:server-2000,readyAt:server+14000},drum:{at:server-1000},gateOpen:true,waterJars:[{units:2,at:server-3000}],lanterns:[{at:server-500,text:'Bình an'}],leaves:{epoch:server-10000,revision:0,cleared:[]}};
+ const first=apply(world,server);assert.ok(Math.abs(first.worldBellAt!-(clock-2000))<100);assert.equal(first.flights![0].serverAt,server-500);assert.equal(first.waterJars![0].units,2);
+ const duplicate=apply(world,server+350);assert.equal(duplicate.worldBellAt,undefined);assert.equal(duplicate.worldDrumAt,undefined);assert.equal(duplicate.flights,undefined);
+});
