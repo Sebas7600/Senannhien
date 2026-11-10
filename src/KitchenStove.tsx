@@ -6,11 +6,12 @@ import {Steam} from './Food';
 import {SacredFlame} from './FireEffects';
 import {useReducedMotion} from './useReducedMotion';
 import {KITCHEN_COUNTER_TOP} from './gameData';
+import {roomServiceMeal} from './sharedMeal';
 
 /** Only the central stove lights up during the three-second cooking stage. */
 export function KitchenStove(){
   const effects=useRef<THREE.Group>(null),burner=useRef<THREE.MeshStandardMaterial>(null),reduced=useReducedMotion();
-  useFrame(({clock})=>{const m=useGame.getState().meal,now=Date.now(),active=!!m&&m.orderedAt!==undefined&&m.cookedAt!==undefined&&now>=m.orderedAt&&now<m.cookedAt;if(effects.current)effects.current.visible=active;if(burner.current)burner.current.emissiveIntensity=active?(reduced?.55:.55+Math.sin(clock.elapsedTime*6)*.12):0;});
+  useFrame(({clock})=>{const now=Date.now(),m=roomServiceMeal(useGame.getState(),now),active=!!m&&m.orderedAt!==undefined&&m.cookedAt!==undefined&&now>=m.orderedAt&&now<m.cookedAt;if(effects.current)effects.current.visible=active;if(burner.current)burner.current.emissiveIntensity=active?(reduced?.55:.55+Math.sin(clock.elapsedTime*6)*.12):0;});
   return <group position={[0,KITCHEN_COUNTER_TOP,-6.55]}>
     <mesh position={[0,.035,0]} castShadow><boxGeometry args={[1,.07,.82]}/><meshStandardMaterial color="#403e35" roughness={.75}/></mesh>
     <mesh position={[0,.08,0]} rotation={[-Math.PI/2,0,0]}><torusGeometry args={[.29,.025,6,20]}/><meshStandardMaterial ref={burner} color="#6b5740" emissive="#de833a" emissiveIntensity={0}/></mesh>

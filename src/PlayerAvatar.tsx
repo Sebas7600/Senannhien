@@ -22,9 +22,9 @@ import {DRUM_FACE_CENTER} from './drumMotion';
 
 const modelUrl = '/assets/characters/thay-chua-chibi.glb';
 
-type PlayerAvatarProps = CharacterProps & {equipment?:Equipment;npc?:boolean;running?: boolean; stairsDirection?: -1|0|1};
+type PlayerAvatarProps = CharacterProps & {actionStartedAt?:number;equipment?:Equipment;npc?:boolean;running?: boolean; stairsDirection?: -1|0|1};
 
-function ChibiAvatar({equipment,moving, running, npc, serveFrame, apron, gender = 'male', stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
+function ChibiAvatar({actionStartedAt,equipment,moving, running, npc, serveFrame, apron, gender = 'male', stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
   const {scene, animations} = useGLTF(modelUrl);
   const avatar = useMemo(() => {
     const instance = clone(scene);
@@ -95,8 +95,8 @@ function ChibiAvatar({equipment,moving, running, npc, serveFrame, apron, gender 
     if(npc&&serveFrame){Object.assign(service.current,serveFrame.current);service.current.handZ-=(bodyVisual.current?.position.z??0)*NPC_CHIBI_SCALE;}
     if(pose==='sweep')sampleChibiSweepPose(Date.now(),reduced,sweepFrame,localPlayer?sweepContact:null,-(bodyVisual.current?.position.y??-.025));
     const bucketPose=pose==='drawWater'||pose==='pourWater';
-    if(bucketPose){const now=Date.now();if(waterClock.current.pose!==pose)waterClock.current={pose,at:now};const at=localPlayer?useGame.getState().waterQuest?.phaseAt??waterClock.current.at:waterClock.current.at;sampleChibiWater(pose,(now-at)/(pose==='drawWater'?WATER_TASK.drawMs:WATER_TASK.pourMs),waterFrame);}else waterClock.current.pose='';
-    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced,npc&&serveFrame?service.current:undefined,holding,pose==='sweep'?sweepFrame:undefined,bucketPose?waterFrame:undefined);
+    if(bucketPose){const now=Date.now();if(waterClock.current.pose!==pose)waterClock.current={pose,at:now};const at=localPlayer?useGame.getState().waterQuest?.phaseAt??waterClock.current.at:actionStartedAt??waterClock.current.at;sampleChibiWater(pose,(now-at)/(pose==='drawWater'?WATER_TASK.drawMs:WATER_TASK.pourMs),waterFrame);}else waterClock.current.pose='';
+    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced,npc&&serveFrame?service.current:undefined,holding,pose==='sweep'?sweepFrame:undefined,bucketPose?waterFrame:undefined,actionStartedAt===undefined?undefined:Math.max(0,(Date.now()-actionStartedAt)/1000));
     if(holding&&equipmentProp.current?.parent){
       const prop=equipmentProp.current;
       avatar.getObjectByName('Co_Tay_L')!.getWorldPosition(upright.leftHand);avatar.getObjectByName('Co_Tay_R')!.getWorldPosition(upright.rightHand);

@@ -125,7 +125,7 @@ export default function MainTempleReference(){
  const {scene}=useGLTF(asset('tam-the-complete-interior.glb'));const interior=useMemo(()=>removeLegacyStatueHalos(removeNavePosts(prepare(scene),templeParts,true),templeParts),[scene]);
  return <group ref={root} position={[0,.08,-27]}><TempleNightFill root={root}/><BuddhistFlags/>
   <TempleExterior onRoofBounds={placePresentationAnchor}/><TempleExteriorDecor/>
-  {show?.companyPresentationEnabled&&presentationAnchor&&<CompanyPresentation position={presentationAnchor} startAt={show.startAt}/>}
+  {show?.companyPresentationEnabled&&presentationAnchor&&<CompanyPresentation position={presentationAnchor} startAt={show.startAt} serverAt={show.serverAt}/>}
   <TempleCeiling/>
   <TempleCollision/>
   <group scale={.5}><TempleNiches/></group>

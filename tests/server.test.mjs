@@ -13,6 +13,19 @@ function stream(base,id,room='an-nhien'){
   return {opened,get state(){return state},close(){request.destroy()},wait(predicate){if(predicate(state))return Promise.resolve();return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('snapshot timeout')),3000);const fn=()=>{if(predicate(state)){clearTimeout(timer);listeners=listeners.filter(f=>f!==fn);resolve();}};listeners.push(fn);})}};
 }
 
+test('player action start times remain stable for observers and late joins',async()=>{
+ let clock=1700000000000;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const base='http://127.0.0.1:'+server.address().port,a=stream(base,'phase_player_a'),b=stream(base,'phase_player_b');let late;
+ const post=action=>fetch(base+'/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'phase_player_a',room:'an-nhien',action})});
+ try{
+  await Promise.all([a.opened,b.opened]);await post('drum');await b.wait(s=>s.peers.some(p=>p.id==='phase_player_a'&&p.actionAt===clock));
+  const start=clock;clock+=1700;await post('drum');late=stream(base,'phase_player_late');await late.opened;
+  assert.equal(late.state.peers.find(p=>p.id==='phase_player_a').actionAt,start);
+  clock+=500;await post('pray');await b.wait(s=>s.peers.some(p=>p.id==='phase_player_a'&&p.action==='pray'));
+  assert.equal(b.state.peers.find(p=>p.id==='phase_player_a').actionAt,clock);
+ }finally{a.close();b.close();late?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
+
 test('same-origin LAN Safari requests work without accepting unrelated sites or malformed origins',()=>{
   assert.equal(allowedBrowserOrigin('http://192.168.1.20:5174','192.168.1.20:5174'),true);
   assert.equal(allowedBrowserOrigin('http://localhost:5175','127.0.0.1:5174'),true);
@@ -47,7 +60,7 @@ test('shared courtyard: live positions, room separation, exclusive seats and cha
   const server=createGameServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;const all=[];
   const post=async(route,data)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return {status:res.status,data:await res.json()}};
   try{
-    const health=await (await fetch(base+'/api/health')).json();assert.equal(health.version,3);
+    const health=await (await fetch(base+'/api/health')).json();assert.equal(health.version,4);
     const a=stream(base,'test_player_a'),b=stream(base,'test_player_b'),other=stream(base,'test_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));await a.wait(s=>s.peers.length===2);
     const first=await post('/api/state',{id:'test_player_a',room:'an-nhien',name:'An',robe:'#bf733e',gender:'female',skin:'#b58a66',robeStyle:'cross',x:28.2,y:.53,z:-29,heading:1.5,action:'sit',seat:'dining-0'});assert.equal(first.status,200);assert.equal(first.data.seat,'dining-0');
     const conflict=await post('/api/state',{id:'test_player_b',room:'an-nhien',name:'Bình',x:3,z:4,action:'sit',seat:'dining-0'});assert.equal(conflict.data.seat,null);
@@ -233,7 +246,7 @@ test('shared swept leaves are collected once, visible to late joiners and reject
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 });
 
-test('drum, lanterns, gate and delivered jar water are shared without synchronizing meal service',async()=>{
+test('drum, lanterns, gate and delivered jar water are shared with late joining players',async()=>{
  let clock=1000000;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
  const post=async(path,data)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'world_player_a',room:'an-nhien',...data})});return {status:r.status,data:await r.json()}};
  try{
@@ -249,5 +262,84 @@ test('drum, lanterns, gate and delivered jar water are shared without synchroniz
   assert.equal((await post('/api/world',{kind:'water',jar:0,operation:'world_water_001'})).status,200);assert.equal((await post('/api/world',{kind:'water',jar:0,operation:'world_water_001'})).status,200);
   await b.wait(s=>s.world.waterJars[0].units===1);assert.equal(other.state.world.waterJars[0].units,0);assert.equal((await post('/api/world',{kind:'water',jar:0,operation:'world_water_002'})).status,409);
   const late=stream(base,'world_player_late');all.push(late);await late.opened;assert.equal(late.state.world.waterJars[0].units,1);assert.equal(late.state.world.lanterns.length,1);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('room fireworks share their server seed, presentation, stop and five-minute lifetime with observers and late joins',async()=>{
+ let clock=1000000;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const post=async(id,data,room='an-nhien')=>{const r=await fetch(base+'/api/world',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,room,kind:'fireworks',...data})});return {status:r.status,data:await r.json()}};
+ try{
+  const a=stream(base,'fireworks_player_a'),b=stream(base,'fireworks_player_b'),other=stream(base,'fireworks_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  assert.equal(a.state.world.fireworks,null);
+  for(const [i,invalid]of [{},{command:'restart'},{command:'start',companyPresentationEnabled:'true'},{command:'stop',companyPresentationEnabled:null}].entries())assert.equal((await post('fireworks_player_a',{operation:'fireworks_invalid_'+i,...invalid})).status,400);
+  const started=await post('fireworks_player_a',{command:'start',companyPresentationEnabled:true,operation:'fireworks_start_1',seed:-100,at:-100});assert.equal(started.status,200);
+  await Promise.all([a.wait(s=>s.world.fireworks!==null),b.wait(s=>s.world.fireworks!==null)]);
+  const show=b.state.world.fireworks;assert.equal(show.at,clock);assert.equal(show.owner,'fireworks_player_a');assert.equal(show.companyPresentationEnabled,true);assert.ok(Number.isInteger(show.seed)&&show.seed>=0&&show.seed<0x7fffffff);assert.deepEqual(a.state.world.fireworks,show);assert.equal(other.state.world.fireworks,null);
+  assert.equal((await post('fireworks_player_b',{command:'start',operation:'fireworks_overlap_1'})).status,429);
+  clock+=500;const retry=await post('fireworks_player_a',{command:'start',companyPresentationEnabled:true,operation:'fireworks_start_1'});assert.equal(retry.status,200);assert.equal(retry.data.at,show.at);assert.equal(retry.data.serverTime,clock);
+  const late=stream(base,'fireworks_player_late');all.push(late);await late.opened;assert.deepEqual(late.state.world.fireworks,show);
+  assert.equal((await post('fireworks_player_b',{command:'stop',operation:'fireworks_stop_1'})).status,200);await Promise.all([a.wait(s=>s.world.fireworks===null),late.wait(s=>s.world.fireworks===null)]);
+  assert.equal((await post('fireworks_player_b',{command:'start',operation:'fireworks_start_2'})).status,200);await a.wait(s=>s.world.fireworks?.owner==='fireworks_player_b');assert.equal(a.state.world.fireworks.companyPresentationEnabled,false);
+  // Replaying a completed stop acknowledges its result without stopping the new show.
+  assert.equal((await post('fireworks_player_b',{command:'stop',operation:'fireworks_stop_1'})).status,200);await b.wait(s=>s.world.fireworks?.owner==='fireworks_player_b');
+  const startAt=clock;clock=startAt+299999;await b.wait(s=>s.serverTime===clock);assert.equal(b.state.world.fireworks.at,startAt);
+  clock++;await Promise.all([a.wait(s=>s.world.fireworks===null),b.wait(s=>s.world.fireworks===null)]);assert.equal(other.state.world.fireworks,null);
+  assert.equal((await post('fireworks_player_a',{command:'start',operation:'fireworks_after_ttl'})).status,200);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('fruit offerings validate proximity, reserve each altar once, expire after eight minutes and stay in their room',async()=>{
+ const initial=1000000;let clock=initial;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const {default:layout}=await import('../src/sharedWorldLayout.json',{with:{type:'json'}});
+ const post=async(id,path,data,room='an-nhien')=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,room,...data})});return {status:r.status,data:await r.json()}};
+ try{
+  const a=stream(base,'fruit_player_a'),b=stream(base,'fruit_player_b'),other=stream(base,'fruit_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  assert.deepEqual(a.state.world.fruitOfferings,[]);
+  for(const [i,altar]of [undefined,null,'forged-altar'].entries())assert.equal((await post('fruit_player_a','/api/world',{kind:'fruit',altar,operation:'fruit_invalid_'+i})).status,400);
+  const altar=layout.fruitAltars[0];assert.equal((await post('fruit_player_a','/api/world',{kind:'fruit',altar:altar.id,operation:'fruit_too_far_1'})).status,409);
+  for(const id of ['fruit_player_a','fruit_player_b'])await post(id,'/api/state',{x:altar.spot[0],z:altar.spot[1]});
+  const results=await Promise.all(['fruit_player_a','fruit_player_b'].map((id,i)=>post(id,'/api/world',{kind:'fruit',altar:altar.id,operation:'fruit_competing_'+i})));assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+  for(const [i,next]of layout.fruitAltars.slice(1).entries()){await post('fruit_player_a','/api/state',{x:next.spot[0],z:next.spot[1]});assert.equal((await post('fruit_player_a','/api/world',{kind:'fruit',altar:next.id,operation:'fruit_other_altar_'+i})).status,200);}
+  await Promise.all([a.wait(s=>s.world.fruitOfferings.length===4),b.wait(s=>s.world.fruitOfferings.length===4)]);assert.deepEqual(a.state.world.fruitOfferings,b.state.world.fruitOfferings);assert.equal(other.state.world.fruitOfferings.length,0);assert.equal(new Set(b.state.world.fruitOfferings.map(o=>o.altar)).size,4);
+  const winner=results[0].status===200?0:1;clock+=350;const retry=await post(['fruit_player_a','fruit_player_b'][winner],'/api/world',{kind:'fruit',altar:altar.id,operation:'fruit_competing_'+winner});assert.equal(retry.status,200);assert.equal(retry.data.at,initial);assert.equal(retry.data.serverTime,clock);
+  const late=stream(base,'fruit_player_late');all.push(late);await late.opened;assert.deepEqual(late.state.world.fruitOfferings,b.state.world.fruitOfferings);assert.ok(late.state.world.fruitOfferings.every(o=>o.at===initial&&typeof o.owner==='string'));
+  await post('fruit_player_c','/api/state',{x:altar.spot[0],z:altar.spot[1]},'truc-lam');assert.equal((await post('fruit_player_c','/api/world',{kind:'fruit',altar:altar.id,operation:'fruit_other_room'},'truc-lam')).status,200);await other.wait(s=>s.world.fruitOfferings.length===1);assert.equal(a.state.world.fruitOfferings.length,4);
+  clock=initial+479999;await b.wait(s=>s.serverTime===clock);assert.equal(b.state.world.fruitOfferings.length,4);
+  clock++;await Promise.all([a.wait(s=>s.world.fruitOfferings.length===0),late.wait(s=>s.world.fruitOfferings.length===0)]);
+  await post('fruit_player_a','/api/state',{x:altar.spot[0],z:altar.spot[1]});assert.equal((await post('fruit_player_a','/api/world',{kind:'fruit',altar:altar.id,operation:'fruit_after_ttl'})).status,200);await b.wait(s=>s.world.fruitOfferings.length===1);assert.equal(b.state.world.fruitOfferings[0].at,clock);
+  // Expiry is also checked inside the mutation, without waiting for a broadcast.
+  clock+=480000;assert.equal((await post('fruit_player_b','/api/world',{kind:'fruit',altar:altar.id,operation:'fruit_replace_expired'})).status,200);await a.wait(s=>s.world.fruitOfferings[0]?.owner==='fruit_player_b');
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('simultaneous lantern releases have distinct monotonic timestamps and retries preserve the original lantern',async()=>{
+ let clock=1000000;const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const {default:layout}=await import('../src/sharedWorldLayout.json',{with:{type:'json'}});
+ const post=async(id,path,data)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,room:'an-nhien',...data})});return {status:r.status,data:await r.json()}};
+ try{
+  const ids=['lantern_player_a','lantern_player_b'],a=stream(base,ids[0]),b=stream(base,ids[1]),other=stream(base,'lantern_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  for(const id of ids)await post(id,'/api/state',{x:layout.wish[0],z:layout.wish[1]});
+  const releases=await Promise.all(ids.map((id,i)=>post(id,'/api/world',{kind:'lantern',operation:'lantern_concurrent_'+i,text:'Lời nguyện '+i})));assert.deepEqual(releases.map(r=>r.status),[200,200]);assert.deepEqual(releases.map(r=>r.data.at).sort((a,b)=>a-b),[clock,clock+1]);
+  await Promise.all([a.wait(s=>s.world.lanterns.length===2),b.wait(s=>s.world.lanterns.length===2)]);assert.deepEqual(a.state.world.lanterns,b.state.world.lanterns);assert.equal(new Set(a.state.world.lanterns.map(l=>l.at)).size,2);assert.equal(other.state.world.lanterns.length,0);
+  clock+=500;const retry=await post(ids[0],'/api/world',{kind:'lantern',operation:'lantern_concurrent_0',text:'Lời nguyện khác'});assert.equal(retry.status,200);assert.equal(retry.data.at,releases[0].data.at);assert.equal(retry.data.serverTime,clock);
+  const late=stream(base,'lantern_player_late');all.push(late);await late.opened;assert.deepEqual(late.state.world.lanterns,a.state.world.lanterns);assert.equal(late.state.world.lanterns.length,2);
+ }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
+});
+
+test('meal timing deltas normalize clients hours ahead or behind to server time and remain isolated to their room',async()=>{
+ let clock=Date.now();const server=createGameServer({now:()=>clock});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,all=[];
+ const timing={orderedAt:-9000,cookedAt:-6000,kitchenAt:-4000,counterReadyAt:0,deliveryAt:1150,readyAt:9000,homeAt:15000,eatUntil:18000};
+ const post=async(data)=>{const r=await fetch(base+'/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'meal_clock_player_a',room:'an-nhien',...data})});assert.equal(r.status,200);return r.json()};
+ try{
+  const a=stream(base,'meal_clock_player_a'),b=stream(base,'meal_clock_player_b'),other=stream(base,'meal_clock_player_c','truc-lam');all.push(a,b,other);await Promise.all(all.map(c=>c.opened));
+  for(const offset of [6*3600000,-7*3600000]){
+   clock+=1000;const clientNow=clock+offset,meal={dish:'rice',seatId:'dining-0',status:'preparing',...Object.fromEntries(Object.entries(timing).map(([field,delta])=>[field,clientNow+delta]))};
+   await post({action:'sit',seat:'dining-0',meal,mealTiming:timing});
+   await b.wait(s=>s.peers.some(p=>p.id==='meal_clock_player_a'&&p.meal?.orderedAt===clock+timing.orderedAt));
+   const received=b.state.peers.find(p=>p.id==='meal_clock_player_a').meal;assert.equal(received.dish,'rice');assert.equal(received.seatId,'dining-0');assert.equal(received.status,'preparing');
+   for(const [field,delta]of Object.entries(timing))assert.equal(received[field],clock+delta,field+' must use the server clock rather than the client clock');
+   assert.equal(other.state.peers.some(p=>p.id==='meal_clock_player_a'),false);assert.ok(other.state.peers.every(p=>p.meal===null));
+  }
+  const late=stream(base,'meal_clock_player_late');all.push(late);await late.opened;assert.deepEqual(late.state.peers.find(p=>p.id==='meal_clock_player_a').meal,b.state.peers.find(p=>p.id==='meal_clock_player_a').meal);
  }finally{all.forEach(c=>c.close());server.closeAllConnections();await new Promise(r=>server.close(r))}
 });

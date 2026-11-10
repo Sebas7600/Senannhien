@@ -1,8 +1,14 @@
 import layout from './sharedWorldLayout.json' with {type:'json'};
 import {createSharedLeaves,advanceLeaf,collectLeaf} from './sharedLeaves.mjs';
-export const BELL_DURATION=6000,BELL_REST=10000,DRUM_DURATION=4200;
+import {randomInt} from 'node:crypto';
+export const BELL_DURATION=6000,BELL_REST=10000,DRUM_DURATION=4200,FIREWORKS_DURATION=300000,FRUIT_OFFERING_MS=480000;
 const near=(p,x,z,r)=>Math.hypot(p.x-x,p.z-z)<=r;
-export function createSharedWorld(now){return {bell:null,drum:null,lanterns:[],gateOpen:true,waterJars:[0,0,0,0].map(()=>({units:0,at:now})),leafEpoch:now,leafRevision:0,leafSlots:createSharedLeaves(now),operations:new Map(),lastLantern:new Map()};}
+export function createSharedWorld(now){return {bell:null,drum:null,lanterns:[],lanternAt:now-1,fireworks:null,fruitOfferings:[],gateOpen:true,waterJars:[0,0,0,0].map(()=>({units:0,at:now})),leafEpoch:now,leafRevision:0,leafSlots:createSharedLeaves(now),operations:new Map(),lastLantern:new Map()};}
+function expireEffects(world,now){
+ world.lanterns=world.lanterns.filter(l=>now-l.at<120000);
+ world.fruitOfferings=world.fruitOfferings.filter(o=>now-o.at<FRUIT_OFFERING_MS);
+ if(world.fireworks&&now-world.fireworks.at>=FIREWORKS_DURATION)world.fireworks=null;
+}
 export function gateSweep(p){return near(p,layout.gate.x,layout.gate.z,3.2);}
 export function trackWorldPlayer(world,peer,body,now){
  const action=body.action,old=peer.waterTrip;
@@ -16,13 +22,14 @@ export function trackWorldPlayer(world,peer,body,now){
 }
 export function sharedWorldSnapshot(world,now){
  for(const slot of world.leafSlots)advanceLeaf(slot,now);
- world.lanterns=world.lanterns.filter(l=>now-l.at<120000);
+ expireEffects(world,now);
  for(const [key,value]of world.operations)if(now-value.at>650000)world.operations.delete(key);
- return {bell:world.bell,drum:world.drum,lanterns:world.lanterns,gateOpen:world.gateOpen,waterJars:world.waterJars,leaves:{epoch:world.leafEpoch,revision:world.leafRevision,cleared:world.leafSlots.filter(s=>s.collectedAt).map(s=>[s.seed,s.fallAt,s.collectedAt,s.gatherX,s.gatherZ])}};
+ return {bell:world.bell,drum:world.drum,lanterns:world.lanterns,fireworks:world.fireworks,fruitOfferings:world.fruitOfferings,gateOpen:world.gateOpen,waterJars:world.waterJars,leaves:{epoch:world.leafEpoch,revision:world.leafRevision,cleared:world.leafSlots.filter(s=>s.collectedAt).map(s=>[s.seed,s.fallAt,s.collectedAt,s.gatherX,s.gatherZ])}};
 }
 export function worldAction(world,peers,peer,b,now){
- const key=peer.id+':'+b.operation,cached=world.operations.get(key);if(cached)return cached.result;
- const fail=(status,error,extra={})=>({status,error,...extra});let readyAt;
+ expireEffects(world,now);
+ const key=peer.id+':'+b.operation,cached=world.operations.get(key);if(cached)return {...cached.result,serverTime:now};
+ const fail=(status,error,extra={})=>({status,error,...extra});let readyAt,at=now;
  if(b.kind==='bell'){
   if(!near(peer,layout.bell.x,layout.bell.z,7))return fail(409,'Đến gần lầu chuông rồi thử lại.');
   if(world.bell&&now<world.bell.readyAt)return fail(429,'Chuông đang ngân hoặc đang nghỉ.',{readyAt:world.bell.readyAt});
@@ -35,7 +42,20 @@ export function worldAction(world,peers,peer,b,now){
   if(!near(peer,...layout.wish,4))return fail(409,'Đến đài hoa đăng rồi thử lại.');
   if(now-(world.lastLantern.get(peer.id)??-Infinity)<3000)return fail(429,'Đợi hoa đăng trước bay lên nhé.');
   const text=typeof b.text==='string'?b.text.trim().slice(0,160):'';
-  world.lanterns.push({at:now,owner:peer.id,text});world.lanterns=world.lanterns.slice(-8);world.lastLantern.set(peer.id,now);
+  at=Math.max(now,world.lanternAt+1);world.lanternAt=at;
+  world.lanterns.push({at,owner:peer.id,text});world.lanterns=world.lanterns.slice(-8);world.lastLantern.set(peer.id,now);
+ }else if(b.kind==='fireworks'){
+  if(!['start','stop'].includes(b.command)||(b.companyPresentationEnabled!==undefined&&typeof b.companyPresentationEnabled!=='boolean'))return fail(400,'Chương trình pháo hoa không hợp lệ.');
+  if(b.command==='start'){
+   if(world.fireworks)return fail(429,'Chương trình pháo hoa đang diễn ra.');
+   world.fireworks={at:now,seed:randomInt(0x7fffffff),companyPresentationEnabled:b.companyPresentationEnabled??false,owner:peer.id};
+  }else world.fireworks=null;
+ }else if(b.kind==='fruit'){
+  const altar=layout.fruitAltars.find(a=>a.id===b.altar);
+  if(!altar)return fail(400,'Bàn dâng trái cây không hợp lệ.');
+  if(!near(peer,...altar.spot,altar.range))return fail(409,'Đến gần bàn thờ rồi thử dâng trái cây nhé.');
+  if(world.fruitOfferings.some(o=>o.altar===altar.id))return fail(409,'Bàn đang có mâm trái cây. Mời bạn quay lại khi lễ vật được thu dọn.');
+  world.fruitOfferings.push({altar:altar.id,at:now,owner:peer.id});
  }else if(b.kind==='gate'){
   if(!near(peer,layout.gate.x,layout.gate.z,6))return fail(409,'Đến gần cổng rồi thử lại.');
   if(typeof b.open!=='boolean')return fail(400,'Cổng không hợp lệ.');
@@ -49,7 +69,7 @@ export function worldAction(world,peers,peer,b,now){
   if(units>=4)return fail(409,'Lu đã đầy. Mời chọn lu khác.');
   world.waterJars[b.jar]={units:units+1,at:now};peer.waterTrip=null;
  }else return fail(400,'Hoạt động không hợp lệ.');
- const result={status:200,at:now,serverTime:now,...(readyAt?{readyAt}:{})};world.operations.set(key,{at:now,result});return result;
+ const result={status:200,at,serverTime:now,...(readyAt?{readyAt}:{})};world.operations.set(key,{at:now,result});return result;
 }
 export function sweepLeaves(world,peer,b,now){
  const key=peer.id+':'+b.operation,cached=world.operations.get(key);if(cached)return cached.result;

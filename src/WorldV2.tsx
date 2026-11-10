@@ -1,4 +1,5 @@
 import FruitOfferings from './FruitOfferings';
+import {roomServiceMeal} from './sharedMeal';
 import SouvenirMarket from './SouvenirMarket';
 import {nearestSouvenirStall,atSouvenirStall} from './souvenirData';
 import {openSouvenirStall} from './souvenirActions';
@@ -189,12 +190,12 @@ function RemoteAvatar({peer}:{peer:Peer}){
     const d=THREE.MathUtils.euclideanModulo(peer.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;ref.current.rotation.y+=d*Math.min(1,dt*12);
   });
   const remoteSeat=seats.find(seat=>seat.id===peer.seat);
-  return <group ref={ref} position={initial.current}><PlayerAvatar equipment={peer.equipment} moving={moving} robe={peer.robe} pose={relocated?'walk':peer.action} bowStartedAt={peer.bow?.at} bowMode={peer.bow?.mode} gender={peer.gender} skin={peer.skin} robeStyle={peer.robeStyle} seated={!relocated&&!!peer.seat} dish={peer.meal?.dish} chair={!relocated&&!!peer.seat&&!usesFloorSeat(remoteSeat)}/><Html position={[0,1.8,0]} center zIndexRange={[3,0]}><span className="nametag remote character-name-tag"><i/>{peer.name}</span></Html></group>;
+  return <group ref={ref} position={initial.current}><PlayerAvatar actionStartedAt={peer.actionAt} equipment={peer.equipment} moving={moving} robe={peer.robe} pose={relocated?'walk':peer.action} bowStartedAt={peer.bow?.at} bowMode={peer.bow?.mode} gender={peer.gender} skin={peer.skin} robeStyle={peer.robeStyle} seated={!relocated&&!!peer.seat} dish={peer.meal?.dish} chair={!relocated&&!!peer.seat&&!usesFloorSeat(remoteSeat)}/><Html position={[0,1.8,0]} center zIndexRange={[3,0]}><span className="nametag remote character-name-tag"><i/>{peer.name}</span></Html></group>;
 }
 
 function Others(){const peers=useGame(s=>s.peers);return <>{peers.map(p=><RemoteAvatar key={p.id} peer={p}/>)}</>}
 function Villager({n}:{n:typeof npcs[number]}){
-  const ref=useRef<THREE.Group>(null),plate=useRef<THREE.Group>(null),presentation=useRef(createMealPresentation()),serveFrame=useRef(presentation.current.hands),meal=useGame(s=>n.id==='cook'||n.id==='chef'?s.meal:null),plan=useMemo(()=>meal&&n.id==='cook'?mealPlan(meal.seatId):null,[meal?.seatId,n.id]);
+  const ref=useRef<THREE.Group>(null),plate=useRef<THREE.Group>(null),presentation=useRef(createMealPresentation()),serveFrame=useRef(presentation.current.hands),meal=useGame(s=>n.id==='cook'||n.id==='chef'?roomServiceMeal(s):null),plan=useMemo(()=>meal&&n.id==='cook'?mealPlan(meal.seatId):null,[meal?.seatId,n.id]);
   const [motion,setMotion]=useState({walking:false,carrying:false,cooking:false,label:'Trò chuyện · E'}),lastMotion=useRef(''),sample=useRef({x:n.x as number,y:0,z:n.z as number,heading:0});
   useFrame((_,dt)=>{if(!ref.current)return;const out=sample.current;out.x=n.x;out.z=n.z;out.heading=RECEPTION_HEADING;
     let walking=false,carrying=false,cooking=false,label='Trò chuyện · E';
@@ -211,14 +212,14 @@ function Villager({n}:{n:typeof npcs[number]}){
     const turn=THREE.MathUtils.euclideanModulo(out.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;if(n.id==='chef')ref.current.rotation.y=out.heading;else ref.current.rotation.y+=turn*(1-Math.exp(-Math.min(dt,.05)*12));
     if(meal&&plate.current){
       out.heading=ref.current.rotation.y;const p=sampleMealPresentation(meal,Date.now(),out,presentation.current),dx=p.position[0]-out.x,dz=p.position[2]-out.z,sin=Math.sin(out.heading),cos=Math.cos(out.heading);
-      plate.current.visible=p.visible;plate.current.position.set(dx*cos-dz*sin,p.position[1]-out.y,dx*sin+dz*cos);plate.current.rotation.y=p.heading-out.heading;
+      plate.current.visible=p.visible&&(!useGame.getState().roomSync||Date.now()<meal.readyAt);plate.current.position.set(dx*cos-dz*sin,p.position[1]-out.y,dx*sin+dz*cos);plate.current.rotation.y=p.heading-out.heading;
     }
     const key=`${walking}-${carrying}-${cooking}-${label}`;if(key!==lastMotion.current){lastMotion.current=key;setMotion({walking,carrying,cooking,label})}
   },-1);
   const talk=()=>{const s=useGame.getState(),p=ref.current?.position;if(!p)return;if(motion.label!=='Trò chuyện · E'){s.notify(`${n.name} đang chuẩn bị và phục vụ món, mời bạn chọn ghế rồi gọi món tại bàn nhé.`);return;}if(distance(s.position,[p.x,p.z])>4){s.stand();s.set({destination:[p.x,p.z+1.2]});s.notify(`Đến gần ${n.name} để trò chuyện.`)}else s.set({npc:n.id,panel:'dialogue'})};
   return <group ref={ref} position={[n.x,floorAt(n.x,n.z),n.z]} onClick={e=>{e.stopPropagation();talk()}}>
     <PlayerAvatar {...npcAppearance(n)} dish={meal?.dish} moving={motion.walking} pose={motion.cooking?'cook':motion.carrying?'serve':'walk'} serveFrame={n.id==='cook'||n.id==='chef'?serveFrame:undefined}/>
-    {meal&&n.id==='cook'&&<group ref={plate} visible={false} scale={MEAL_SCALE} onClick={e=>{e.stopPropagation();const s=useGame.getState();if(s.meal?.status==='ready')s.eat();}}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>}
+    {meal&&n.id==='cook'&&<group ref={plate} visible={false} scale={MEAL_SCALE} onClick={e=>{e.stopPropagation();const s=useGame.getState();if(s.meal?.status==='ready'&&s.meal.seatId===meal.seatId)s.eat();}}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>}
     <NearbyOverlay position={[0,n.id==='chef'?2.75:1.9,0]} maxDistance={18}><button className="npc-tag character-name-tag" onClick={talk}>{n.name}<span>{motion.label}</span></button></NearbyOverlay>
   </group>
 }

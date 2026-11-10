@@ -78,8 +78,8 @@ test('shared world clock translation does not replay bell/drum snapshots or chan
  const {createWorldSnapshotApplier}=await import('../src/worldSnapshot');
  const apply=createWorldSnapshotApplier(),clock=Date.now(),server=clock-90000;
  const world={bell:{at:server-2000,readyAt:server+14000},drum:{at:server-1000},gateOpen:true,waterJars:[{units:2,at:server-3000}],lanterns:[{at:server-500,text:'Bình an'}],leaves:{epoch:server-10000,revision:0,cleared:[]}};
- const first=apply(world,server);assert.ok(Math.abs(first.worldBellAt!-(clock-2000))<100);assert.equal(first.flights![0].serverAt,server-500);assert.equal(first.waterJars![0].units,2);
- const duplicate=apply(world,server+350);assert.equal(duplicate.worldBellAt,undefined);assert.equal(duplicate.worldDrumAt,undefined);assert.equal(duplicate.flights,undefined);
+ const first=apply(world,server,clock);assert.equal(first.worldBellAt,clock-2000);assert.equal(first.flights![0].serverAt,server-500);assert.equal(first.waterJars![0].units,2);
+ const duplicate=apply(world,server+350,clock+350);assert.equal(duplicate.worldBellAt,first.worldBellAt);assert.equal(duplicate.worldDrumAt,first.worldDrumAt);assert.deepEqual(duplicate.flights,first.flights);
 });
 
 

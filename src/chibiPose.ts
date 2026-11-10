@@ -110,9 +110,9 @@ export function createChibiPose(model: Object3D) {
       hip.position.y = hipBeforePose;
       hip.position.z = hipBeforeZ;
     },
-    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false, reduced = false,service?:ServeFrame,holding=false,sweepFrame?:SweepPose,waterFrame?:ChibiWaterFrame) {
+    update(pose: string, seated: boolean, chair: boolean, dt: number, bowMode?: BowMode, bowElapsed?: number, stairs: -1|0|1 = 0, moving = false, reduced = false,service?:ServeFrame,holding=false,sweepFrame?:SweepPose,waterFrame?:ChibiWaterFrame,sharedElapsed?:number) {
       if (action !== pose) { action = pose; elapsed = 0; }
-      elapsed += dt;
+      elapsed = sharedElapsed??elapsed+dt;
       holdBlend+=((holding?1:0)-holdBlend)*(1-Math.exp(-dt*12));
       mealLift = 0;
       sampleQuietActivity(pose,elapsed,quiet,reduced);

@@ -233,8 +233,8 @@ function TeaTerrace(){return <Pavilion x={0} z={-56} w={20} d={13} floor={.3} ti
 </Pavilion>}
 
 export function Seats(){return <><BenchBatches/><CushionBatches/></>}
-// The local plate is animated by Cô Tâm and stays the same mesh after placement.
-export function MealPlates(){const peers=useGame(s=>s.peers);return <>{peers.filter(p=>p.meal&&(p.meal.status==='ready'||p.meal.status==='eating')).map(p=>{const meal=p.meal!,seat=seats.find(s=>s.id===meal.seatId);if(!seat?.table)return null;const plan=mealPlan(seat.id);return <group key={p.id} position={plan.plate} rotation={[0,plan.heading,0]} scale={MEAL_SCALE}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>})}</>}
+// Shared delivery is animated by Cô Tâm; placed plates remain visible after her return.
+export function MealPlates(){const state=useGame(),meals=state.roomSync?state.roomMeals:state.peers.flatMap(p=>p.meal?[p.meal]:[]);return <>{meals.filter(meal=>meal.status!=='finished'&&Date.now()>=meal.readyAt).map(meal=>{const seat=seats.find(s=>s.id===meal.seatId);if(!seat?.table)return null;const plan=mealPlan(seat.id);return <group key={meal.seatId} position={plan.plate} rotation={[0,plan.heading,0]} scale={MEAL_SCALE} onClick={event=>{const current=useGame.getState();if(current.meal?.seatId===meal.seatId&&current.meal.status==='ready'){event.stopPropagation();current.eat();}}}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>})}</>}
 export function Garden(){return <><TempleGarden/><WorldLabel position={[36,2.3,-42]} title="VƯỜN RAU TỪ TÂM" subtitle="Vườn chung · Gieo · Tưới · Thu hoạch sau 60 giây"/></>}
 function Forest(){
   const broad=useRef<THREE.InstancedMesh>(null),upright=useRef<THREE.InstancedMesh>(null),leaves=useRef<THREE.InstancedMesh>(null);

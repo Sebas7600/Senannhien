@@ -1,10 +1,12 @@
 import {submitWorld} from './worldTransport';
+import {sharedActivityBlocked} from './sharedActivity';
 import {createClientId} from './clientIds';
 import type {GameState} from './gameStore';
 import {WATER_TASK,WATER_WELL,WATER_JARS,jarUnits,nearWaterWell,nearWaterJar,nearestWaterJar} from './waterTaskData';
 export function createWaterQuestActions(set:(patch:Partial<GameState>)=>void,get:()=>GameState){let deliveryPending=false;return {
   cancelWaterTask:()=>{const s=get();if(!s.waterQuest)return;set({waterQuest:null,action:'walk',destination:null,pendingActivity:null});s.notify('Đã đặt gánh xuống. Khi muốn tiếp tục, ghé giếng nhận nước nhé.');},
   waterTask:(jarId?:number)=>{const s=get(),now=Date.now(),quest=s.waterQuest;
+    if(sharedActivityBlocked(s))return;
     if(s.gardenPending||['incense','flower','candle'].includes(s.action)){s.notify('Hoàn tất công việc đang làm trước khi gánh nước nhé.');return;}
     if(!quest){
       if(jarId!==undefined){s.notify('Ghé giếng nhận một gánh nước trước nhé.');return;}
@@ -30,6 +32,7 @@ export function createWaterQuestActions(set:(patch:Partial<GameState>)=>void,get
     if(q.phase==='pouring'){
       if(q.jar===null||s.action!=='pourWater'||!nearWaterJar(s.position,q.jar)){set({waterQuest:{...q,phase:'carrying',phaseAt:now,jar:null},action:'carryWater'});s.notify('Chưa giao nước. Mang gánh đến gần miệng lu rồi thử lại nhé.');return;}
       if(now-q.phaseAt<WATER_TASK.pourMs)return;
+      if(sharedActivityBlocked(s)){set({waterQuest:{...q,phase:'carrying',phaseAt:now,jar:null},action:'carryWater'});return;}
       const units=jarUnits(s.waterJars[q.jar],now);if(units>=WATER_TASK.jarCapacity){set({waterQuest:{...q,phase:'carrying',phaseAt:now,jar:null},action:'carryWater'});s.notify('Lu vừa đầy. Mời bạn chọn lu khác.');return;}
       if(s.connection==='online'){
         if(deliveryPending)return;deliveryPending=true;const room=s.room,jar=q.jar;

@@ -9,6 +9,7 @@ import {LanternPresentation} from './LanternModel';
 import {SacredCandle} from './FireEffects';
 import {useReducedMotion} from './useReducedMotion';
 import {NearbyOverlay} from './Environment';
+import {sharedEventAge} from './sharedActivity';
 
 const lotusPetals=mergeGeometries(Array.from({length:8},(_,i)=>{
   const angle=i*Math.PI/4,object=new THREE.Object3D();object.position.set(Math.cos(angle)*.22,.12,Math.sin(angle)*.22);object.rotation.set(Math.sin(angle)*.75,0,-Math.cos(angle)*.75);object.scale.set(.11,.26,.11);object.updateMatrix();return new THREE.SphereGeometry(1,10,8).applyMatrix4(object.matrix);
@@ -24,10 +25,10 @@ export function LotusLantern(){return <group dispose={null}>
 function FlyingLantern({wish}:{wish:Wish}){
   const ref=useRef<THREE.Group>(null),reduced=useReducedMotion();
   const pose=useRef({position:[0,0,0] as [number,number,number],rotation:0,scale:1});
-  useFrame(()=>{if(!ref.current)return;const age=Date.now()-wish.at;lanternPose(age,wish.serverAt??wish.at,reduced,pose.current);ref.current.visible=age>=0&&age<LANTERN_LIFETIME;ref.current.position.set(...pose.current.position);ref.current.rotation.z=pose.current.rotation;ref.current.scale.setScalar(pose.current.scale*1.2);});
+  useFrame(()=>{if(!ref.current)return;const age=sharedEventAge(wish.at,wish.serverAt,useGame.getState().sharedWorld?.serverOffset);lanternPose(age,wish.serverAt??wish.at,reduced,pose.current);ref.current.visible=age>=0&&age<LANTERN_LIFETIME;ref.current.position.set(...pose.current.position);ref.current.rotation.z=pose.current.rotation;ref.current.scale.setScalar(pose.current.scale*1.2);});
   return <group ref={ref}><LanternPresentation variant={(wish.serverAt??wish.at)%4}/></group>;
 }
-export function FlyingLanterns(){const flights=useGame(s=>s.flights);return <>{flights.map(w=><FlyingLantern key={w.at} wish={w}/>)}</>}
+export function FlyingLanterns(){const flights=useGame(s=>s.flights);return <>{flights.map(w=><FlyingLantern key={w.serverAt??w.at} wish={w}/>)}</>}
 function DriftingLotus({index}:{index:number}){const ref=useRef<THREE.Group>(null),reduced=useReducedMotion(),point=useRef<[number,number,number]>([0,0,0]);useFrame(({clock})=>{if(!ref.current)return;floatingLotusPose(reduced?0:clock.elapsedTime,index,point.current);ref.current.position.set(...point.current);ref.current.rotation.y=reduced?index:clock.elapsedTime*.025+index;});return <group ref={ref}><LotusLantern/></group>}
 export function FloatingLotuses(){return <>{Array.from({length:driftingLotusAnchors.length},(_,i)=><DriftingLotus index={i} key={i}/>)}</>}
 export function WishStation(){return <group position={[WISH_STATION[0],.08,WISH_STATION[1]]} onClick={e=>{e.stopPropagation();useGame.getState().perform('lantern')}}>

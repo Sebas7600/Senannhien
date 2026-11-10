@@ -40,7 +40,8 @@ async function main(){
     try{
       const health=await fetch(`${url}/api/health`,{signal:AbortSignal.timeout(2000)});
       const page=await fetch(url,{signal:AbortSignal.timeout(2000)});
-      if(!health.ok||!(await health.json()).ok||!page.ok||(await page.text())!==index)throw new Error('different server');
+      const info=await health.json();
+      if(!health.ok||!info.ok||info.version!==4||!page.ok||(await page.text())!==index)throw new Error('different server');
     }catch{throw new Error(`Cong ${port} dang duoc chuong trinh hoac ban game khac su dung. Dong may chu cu hoac dat PORT khac roi thu lai.`);}
     showAddress(url,true);
   }

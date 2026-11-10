@@ -263,7 +263,7 @@ function KoiSchool(){
     // Keep every authoritative fish visible; low quality limits matrix uploads.
     elapsed.current+=dt;if(quality==='low'&&elapsed.current+1e-6<1/30)return;elapsed.current=0;
     const tail=tails.current!,object=work.current,poses=swimming.current;
-    const state=useGame.getState(),now=Date.now(),shared=state.connection==='online'?state.sharedFish:null;
+    const state=useGame.getState(),now=Date.now(),shared=state.sharedFish;
     let next:ArrayLike<number>,time:number;
     if(shared){
       const lerp=interpolation.current;
