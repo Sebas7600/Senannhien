@@ -81,3 +81,16 @@ test('shared world clock translation does not replay bell/drum snapshots or chan
  const first=apply(world,server);assert.ok(Math.abs(first.worldBellAt!-(clock-2000))<100);assert.equal(first.flights![0].serverAt,server-500);assert.equal(first.waterJars![0].units,2);
  const duplicate=apply(world,server+350);assert.equal(duplicate.worldBellAt,undefined);assert.equal(duplicate.worldDrumAt,undefined);assert.equal(duplicate.flights,undefined);
 });
+
+
+test('main and Bodhi urns select disjoint incense and starting sticks share a stable room seed',async()=>{
+ const {incenseAtStation,initialIncenseTimes}=await import('../src/incenseStations');
+ const all=[1,2,3,4],slots={2:'bodhi',3:'quan-am',4:'truc-lam'};assert.deepEqual(incenseAtStation(all,slots),[1]);assert.deepEqual(incenseAtStation(all,slots,'bodhi'),[2]);
+ const epoch=1700000000000,main=initialIncenseTimes(epoch,'main'),bodhi=initialIncenseTimes(epoch,'bodhi');assert.equal(main.length,15);assert.equal(new Set(main).size,15);assert.deepEqual(main,initialIncenseTimes(epoch,'main'));assert.notDeepEqual(main,bodhi);assert.ok(main.every(at=>epoch-at>0&&epoch-at<170000));assert.notDeepEqual(main,initialIncenseTimes(epoch+1000,'main'));
+});
+
+
+test('ambient incense is still burning in old rooms and late arrivals see the same cycles',async()=>{
+ const {initialIncenseTimes}=await import('../src/incenseStations');const {incenseLife}=await import('../src/incenseLifecycle');const epoch=1700000000000;
+ for(const station of ['main','bodhi','bodhi-right','quan-am','truc-lam'])for(const age of [0,170000,650000,3600000,86400000]){const now=epoch+age,times=initialIncenseTimes(epoch,station,15,now);assert.equal(times.length,15);assert.deepEqual(times,initialIncenseTimes(epoch,station,15,now));assert.ok(times.every(at=>incenseLife(at,now).burning),station+' at '+age);assert.ok(new Set(times.map(at=>Math.floor((now-at)/10000))).size>3,'staggered lengths rather than one uniform row');}
+});

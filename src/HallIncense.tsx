@@ -1,3 +1,4 @@
+import InitialIncense from './InitialIncense';
 import {useGame} from './gameStore';
 import {HALL_INCENSE} from './ritualStations.mjs';
 import {INCENSE_BURN_MS} from './gameData';
@@ -8,6 +9,7 @@ export default function HallIncense(){
   const burning=useGame(s=>s.burningIncense),slots=useGame(s=>s.offeringSlots);useGame(s=>s.sessionSeconds);
   const times=burning.filter(at=>slots[at]===HALL_INCENSE.id).slice(-24),lit=times.some(at=>Date.now()-at<INCENSE_BURN_MS);
   return <group>
+    <InitialIncense station={HALL_INCENSE.id} origin={[HALL_INCENSE.urn[0],HALL_INCENSE.urn[2]]} ashY={HALL_INCENSE.urn[1]} radiusScale={.35} heightScale={.5}/>
     {times.length>0&&<IncenseSticks times={times} origin={[HALL_INCENSE.urn[0],HALL_INCENSE.urn[2]]} ashY={HALL_INCENSE.urn[1]} radiusScale={.35} heightScale={.5}/>}
     <AltarSmoke lit={lit} position={[HALL_INCENSE.urn[0],HALL_INCENSE.urn[1]+.4,HALL_INCENSE.urn[2]]}/>
     <NearbyOverlay position={[HALL_INCENSE.urn[0],.97,-21.48]} maxDistance={6} distanceFactor={7}>

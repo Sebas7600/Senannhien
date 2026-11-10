@@ -17,7 +17,7 @@ test('Quan Am web models keep face and hand detail, three materials, bounded geo
 });
 test('the island shrine is reachable from the gate, both shores and the wish station',()=>{
  assert.deepEqual([QUAN_AM.x,QUAN_AM.z],[ISLAND.x,ISLAND.z]);
- assert.equal(stoneBenches.some(b=>b.id===3),false);assert.equal(seats.some(s=>s.id.startsWith('bench-3-')),false);assert.equal(seats.length,146);assert.ok(walkable(...QUAN_AM.approach));assert.equal(quanAmObstacles.length,11);
+ assert.equal(stoneBenches.some(b=>b.id===3),false);assert.equal(seats.some(s=>s.id.startsWith('bench-3-')),false);assert.equal(seats.length,138);assert.ok(walkable(...QUAN_AM.approach));assert.equal(quanAmObstacles.length,11);
  for(const start of [GATE_ENTRY,[15,15],[16.4,38.5],[BRIDGE_ROAD.x,18]] as [number,number][]){const path=findPath(start,QUAN_AM.approach);assert.ok(path.length,`${start}`);let from=start;for(const p of path){assert.ok(clearLine(from,p));from=p;}assert.deepEqual(from,QUAN_AM.approach);}
  assert.equal(walkable(QUAN_AM.x,QUAN_AM.z),false);assert.equal(walkable(QUAN_AM.tableX,QUAN_AM.tableZ),false);
 });

@@ -1,3 +1,4 @@
+import InitialIncense from './InitialIncense';
 import PrismaticHalo from './PrismaticHalo';
 import {SacredCandle} from './FireEffects';
 import FruitTray from './FruitTray';
@@ -16,6 +17,7 @@ function QuanAmShrine(){const night=useGame(s=>s.night);const low=useGame(s=>s.q
    <group position={[.52,1.12,2.95]}><FruitTray/></group>
    <mesh geometry={quanAmCeramicGeometry} material={altarCeramicMaterial}/><mesh geometry={quanAmFlowersGeometry} material={altarFlowerMaterial}/><mesh geometry={quanAmGreenGeometry} material={altarFlowerMaterial}/>
   </group>
+  <InitialIncense station={QUAN_AM.incenseId} origin={[QUAN_AM.tableX,QUAN_AM.tableZ]} ashY={QUAN_AM.ashY} radiusScale={.4} heightScale={.5}/>
   {times.length>0&&<IncenseSticks times={times} origin={[QUAN_AM.tableX,QUAN_AM.tableZ]} ashY={QUAN_AM.ashY} radiusScale={.4} heightScale={.5}/>}
   <AltarSmoke position={[QUAN_AM.tableX,QUAN_AM.ashY+.4,QUAN_AM.tableZ]} lit={lit}/>
   <NearbyOverlay position={[QUAN_AM.tableX,QUAN_AM.ground+2.14,QUAN_AM.z]} maxDistance={11}><button className="npc-tag" onClick={offer}><strong>QUÁN THẾ ÂM BỒ TÁT</strong><span>{nearQuanAm(useGame.getState().position)?'Dâng một nén hương · E':'Ghé bàn hương · Một niệm an lành'}</span></button></NearbyOverlay>

@@ -7,11 +7,11 @@ import {incensePlacement,INCENSE_ASH_Y} from './IncenseBurner';
 import {incenseLife} from './incenseLifecycle';
 
 /** Fixed red bamboo feet, shrinking incense, embers and cooled ash: four shared batches. */
-export default function IncenseSticks({times,origin=incenseSpot,ashY=INCENSE_ASH_Y,radiusScale=1,heightScale=1,thicknessScale=1}:{times:number[];origin?:[number,number];ashY?:number;radiusScale?:number;heightScale?:number;thicknessScale?:number}){
+export default function IncenseSticks({times,origin=incenseSpot,ashY=INCENSE_ASH_Y,radiusScale=1,heightScale=1,thicknessScale=1,clockOffset=0}:{times:number[];origin?:[number,number];ashY?:number;radiusScale?:number;heightScale?:number;thicknessScale?:number;clockOffset?:number}){
  const low=useGame(s=>s.quality==='low'),base=useRef<THREE.InstancedMesh>(null),body=useRef<THREE.InstancedMesh>(null),tip=useRef<THREE.InstancedMesh>(null),ash=useRef<THREE.InstancedMesh>(null),last=useRef(-1);
  const scratch=useMemo(()=>({root:new THREE.Object3D(),part:new THREE.Object3D(),matrix:new THREE.Matrix4()}),[]);
  const placements=useMemo(()=>times.map(at=>incensePlacement(at)),[times]);
- const update=(now:number,includeBase=false)=>{if(!base.current||!body.current||!tip.current||!ash.current)return;const {root,part,matrix}=scratch;
+ const update=(now:number,includeBase=false)=>{now-=clockOffset;if(!base.current||!body.current||!tip.current||!ash.current)return;const {root,part,matrix}=scratch;
   times.forEach((at,i)=>{const p=placements[i],life=incenseLife(at,now);root.position.set(origin[0]+p.x*radiusScale,ashY,origin[1]+p.z*radiusScale);root.rotation.set(p.leanX,0,p.leanZ);root.scale.set(thicknessScale,heightScale,thicknessScale);root.updateMatrix();
    const put=(mesh:THREE.InstancedMesh,y:number,xs:number,ys:number,zs:number)=>{part.position.set(0,y,0);part.scale.set(xs,ys,zs);part.updateMatrix();matrix.multiplyMatrices(root.matrix,part.matrix);mesh.setMatrixAt(i,matrix)};
    // 7 cm buried in the sand; 16 cm of red bamboo remains above it after burning.
