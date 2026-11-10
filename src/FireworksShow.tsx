@@ -3,6 +3,7 @@ import {useFrame} from '@react-three/fiber';
 import {useMemo, useRef, useEffect} from 'react';
 import * as THREE from 'three';
 import {useGame} from './gameStore';
+import {playFireworkBurst,playFireworkLaunch,preloadFireworksAudio} from './audio';
 import {GATE} from './courtyardPropsData';
 import {fireworkVolleySchedule} from './fireworksSchedule';
 
@@ -12,14 +13,13 @@ const palettes=[['#ff5733','#ff9b45','#ffd092','#ff456c'],['#ffe85a','#7dff71','
 // Ten launch tubes line the main gate approach: five on each side of the road.
 const launchTubes=([-1,1] as const).flatMap(side=>[4,8,12,16,20].map(distance=>({side,x:side*6.4,z:GATE.z-distance})));
 const companySlides=[
- {key:'logo',file:'mac-usa-one-logo.gif',alt:'MAC USA ONE animated fireworks logo',start:10,end:20,fireworkStyle:3},
- {key:'hoang',file:'hoang-nguyen.png',alt:'HOANG NGUYEN — Attorney Legal Advisor',start:20,end:30,fireworkStyle:5},
- {key:'sang',file:'sang-ngo.png',alt:'SANG NGO — Senior Advisor',start:30,end:40,fireworkStyle:2},
- {key:'hieu',file:'hieu-nguyen.png',alt:'HIEU NGUYEN — President',start:40,end:50,fireworkStyle:2},
- {key:'viet',file:'viet-pham.png',alt:'VIET PHAM — Vietnam General Director',start:50,end:60,fireworkStyle:5},
+ {file:'mac-usa-one-logo.png',alt:'MAC USA ONE',start:10,end:20,fireworkStyle:3},
+ {file:'hoang-nguyen.png',alt:'HOANG NGUYEN — Attorney Legal Advisor',start:20,end:30,fireworkStyle:5},
+ {file:'sang-ngo.png',alt:'SANG NGO — Senior Advisor',start:30,end:40,fireworkStyle:2},
+ {file:'hieu-nguyen.png',alt:'HIEU NGUYEN — President',start:40,end:50,fireworkStyle:2},
+ {file:'viet-pham.png',alt:'VIET PHAM — Vietnam General Director',start:50,end:60,fireworkStyle:5},
 ] as const;
-const companyAsset=(file:string)=>`/assets/fireworks/company/${file}?v=20261110-animated-gold-set-1`;
-const companyLogoFrames=Array.from({length:6},(_,index)=>`mac-usa-one-logo-frame-${index}.png`);
+const companyAsset=(file:string)=>`/assets/fireworks/company/stills/${file}?v=20261110-user-gif-still-1`;
 function rng(seed:number){let a=seed>>>0;return()=>{a+=0x6D2B79F5;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
 function makePlan(seed:number,quality:'high'|'low',companyPresentationEnabled=false){
  const random=rng(seed),plan:Launch[]=[];
@@ -44,7 +44,23 @@ function makeSparkMaterial(sizeScale:number,opacity:number,glow:number){return n
 function FireworkLaunchTubes({visible}:{visible:boolean}){return <group visible={visible}>{launchTubes.map(({x,z},i)=><group key={i} position={[x,.34,z]} rotation={[x<0?.035:-.035,0,0]}><mesh castShadow={false}><cylinderGeometry args={[.24,.28,.68,10]}/><meshStandardMaterial color="#473d34" roughness={.82} metalness={.16}/></mesh><mesh position={[0,.346,0]}><torusGeometry args={[.21,.035,6,12]}/><meshStandardMaterial color="#b7834a" metalness={.5} roughness={.45}/></mesh><mesh position={[0,.346,0]}><circleGeometry args={[.18,12]}/><meshBasicMaterial color="#171513" side={THREE.DoubleSide}/></mesh></group>)}</group>}
 
 export default function FireworksShow(){
- const show=useGame(s=>s.fireworksShow),quality=useGame(s=>s.quality),geometry=useMemo(()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(48000),3).setUsage(THREE.DynamicDrawUsage));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(48000),3).setUsage(THREE.DynamicDrawUsage));g.setAttribute('aSize',new THREE.BufferAttribute(new Float32Array(16000),1).setUsage(THREE.DynamicDrawUsage));return g;},[]),coreMaterial=useMemo(()=>makeSparkMaterial(1.4,1,.6),[]),glowMaterial=useMemo(()=>makeSparkMaterial(6.8,.28,1.2),[]),points=useRef<THREE.Points>(null),glowPoints=useRef<THREE.Points>(null),plan=useMemo(()=>show?makePlan(show.seed,quality,show.companyPresentationEnabled):[],[show?.seed,show?.companyPresentationEnabled,quality]);
+ const show=useGame(s=>s.fireworksShow),quality=useGame(s=>s.quality),sound=useGame(s=>s.sound),geometry=useMemo(()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(48000),3).setUsage(THREE.DynamicDrawUsage));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(48000),3).setUsage(THREE.DynamicDrawUsage));g.setAttribute('aSize',new THREE.BufferAttribute(new Float32Array(16000),1).setUsage(THREE.DynamicDrawUsage));return g;},[]),coreMaterial=useMemo(()=>makeSparkMaterial(1.4,1,.6),[]),glowMaterial=useMemo(()=>makeSparkMaterial(6.8,.28,1.2),[]),points=useRef<THREE.Points>(null),glowPoints=useRef<THREE.Points>(null),plan=useMemo(()=>show?makePlan(show.seed,quality,show.companyPresentationEnabled):[],[show?.seed,show?.companyPresentationEnabled,quality]);
+ const volleySizes=useMemo(()=>{const counts=new Map<number,number>();for(const event of plan)counts.set(event.at,(counts.get(event.at)??0)+1);return counts;},[plan]);
+ const soundClock=useRef({startAt:0,lastElapsed:-.02,launches:new Set<number>(),bursts:new Set<number>()});
+ useEffect(()=>{if(show&&sound)preloadFireworksAudio();},[show?.startAt,sound]);
+ useFrame(()=>{
+  if(!show)return;
+  const elapsed=(Date.now()-show.startAt)/1000,clock=soundClock.current;
+  if(clock.startAt!==show.startAt){soundClock.current={startAt:show.startAt,lastElapsed:-.02,launches:new Set(),bursts:new Set()};}
+  const activeClock=soundClock.current,windowStart=elapsed-activeClock.lastElapsed<.45?activeClock.lastElapsed:elapsed-.35;
+  for(let i=0;i<plan.length;i++){
+   const event=plan[i],size=volleySizes.get(event.at)??1;
+   if(event.at<=elapsed&&!activeClock.launches.has(i)){if(event.at>windowStart)playFireworkLaunch(event.style,size);activeClock.launches.add(i);}
+   const burstAt=event.at+event.flight;
+   if(burstAt<=elapsed&&!activeClock.bursts.has(i)){if(burstAt>windowStart)playFireworkBurst(event.style+i,size);activeClock.bursts.add(i);}
+  }
+  activeClock.lastElapsed=elapsed;
+ });
  useEffect(()=>()=>{geometry.dispose();coreMaterial.dispose();glowMaterial.dispose()},[geometry,coreMaterial,glowMaterial]);
  useFrame(()=>{if(!points.current||!show){if(points.current)points.current.visible=false;if(glowPoints.current)glowPoints.current.visible=false;return;}points.current.visible=true;if(glowPoints.current)glowPoints.current.visible=true;const elapsed=(Date.now()-show.startAt)/1000;if(elapsed>=300){useGame.getState().stopFireworks();return;}const pos=geometry.getAttribute('position') as THREE.BufferAttribute,col=geometry.getAttribute('color') as THREE.BufferAttribute,sizes=geometry.getAttribute('aSize') as THREE.BufferAttribute;const p=pos.array as Float32Array,c=col.array as Float32Array,ss=sizes.array as Float32Array;let n=0;const put=(x:number,y:number,z:number,color:THREE.Color,brightness:number,pointSize=.85)=>{if(n>=16000)return;const index=n++,j=index*3;p[j]=x;p[j+1]=y;p[j+2]=z;c[j]=color.r*brightness;c[j+1]=color.g*brightness;c[j+2]=color.b*brightness;ss[index]=pointSize;};
   for(const event of plan){const since=elapsed-event.at;if(since<0||since>event.flight+5.5)continue;if(since<event.flight){const t=since/event.flight,ease=t*t*(3-2*t),x=THREE.MathUtils.lerp(event.origin.x,event.target.x,ease),y=THREE.MathUtils.lerp(event.origin.y,event.target.y,ease),z=THREE.MathUtils.lerp(event.origin.z,event.target.z,ease);const white=new THREE.Color('#fff1bd');for(let k=8;k>=0;k--){const trailT=Math.max(0,t-k*.045),trailEase=trailT*trailT*(3-2*trailT);put(THREE.MathUtils.lerp(event.origin.x,event.target.x,trailEase),THREE.MathUtils.lerp(event.origin.y,event.target.y,trailEase),THREE.MathUtils.lerp(event.origin.z,event.target.z,trailEase),white,.9-k*.065,.34+k*.055);}put(x,y,z,white,2.2,1.8);continue;}
@@ -57,8 +73,8 @@ export default function FireworksShow(){
 }
 
 export function CompanyPresentation({position,startAt}:{position:THREE.Vector3;startAt:number}){
- const card=useRef<HTMLDivElement>(null),image=useRef<HTMLImageElement>(null),active=useRef(-1),activeFrame=useRef(-1);
- useEffect(()=>{for(const slide of companySlides){if(slide.key==='logo'){for(const file of companyLogoFrames){const img=new Image();img.src=companyAsset(file);}}else{const img=new Image();img.src=companyAsset(slide.file);}}},[]);
- useFrame(()=>{if(!card.current||!image.current)return;const elapsed=(Date.now()-startAt)/1000,index=companySlides.findIndex(slide=>elapsed>=slide.start&&elapsed<slide.end);if(index!==active.current){active.current=index;activeFrame.current=-1;if(index<0){card.current.style.visibility='hidden';return;}const slide=companySlides[index];image.current.src=companyAsset(slide.key==='logo'?companyLogoFrames[0]:slide.file);image.current.alt=slide.alt;card.current.classList.toggle('is-logo',slide.key==='logo');}if(index<0){card.current.style.visibility='hidden';return;}const slide=companySlides[index],slot=elapsed-slide.start,duration=slide.end-slide.start;if(slide.key==='logo'){const frame=Math.floor(slot/.2)%companyLogoFrames.length;if(frame!==activeFrame.current){activeFrame.current=frame;image.current.src=companyAsset(companyLogoFrames[frame]);}}card.current.style.visibility='visible';card.current.style.opacity=String(Math.max(0,Math.min(1,slot/.8,(duration-slot)/.8)));});
- return <group position={position}><Html center distanceFactor={45} zIndexRange={[10,0]}><div className="company-fireworks-card" ref={card} style={{visibility:'hidden',opacity:0}}><img ref={image} alt=""/><div className="company-fireworks-logo-title" aria-hidden="true"><span>MAC</span><strong>USA ONE</strong></div></div></Html></group>;
+ const card=useRef<HTMLDivElement>(null),image=useRef<HTMLImageElement>(null),active=useRef(-1);
+ useEffect(()=>{for(const slide of companySlides){const img=new Image();img.src=companyAsset(slide.file);}},[]);
+ useFrame(()=>{if(!card.current||!image.current)return;const elapsed=(Date.now()-startAt)/1000,index=companySlides.findIndex(slide=>elapsed>=slide.start&&elapsed<slide.end);if(index!==active.current){active.current=index;if(index<0){card.current.style.visibility='hidden';return;}const slide=companySlides[index];image.current.src=companyAsset(slide.file);image.current.alt=slide.alt;}if(index<0){card.current.style.visibility='hidden';return;}const slide=companySlides[index],slot=elapsed-slide.start,duration=slide.end-slide.start;card.current.style.visibility='visible';card.current.style.opacity=String(Math.max(0,Math.min(1,slot/.45,(duration-slot)/.45)));});
+ return <group position={position}><Html center distanceFactor={45} zIndexRange={[10,0]}><div className="company-fireworks-card" ref={card} style={{visibility:'hidden',opacity:0}}><img ref={image} alt=""/></div></Html></group>;
 }

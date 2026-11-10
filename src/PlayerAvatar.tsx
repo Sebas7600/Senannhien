@@ -11,12 +11,16 @@ import FemaleChibiHair from './FemaleChibiHair';
 import {useReducedMotion} from './useReducedMotion';
 import {ReadingBook,TeaCup} from './QuietActivityProps';
 import {NPC_CHIBI_SCALE,npcServiceLead} from './npcAppearance';
+import {useGame} from './gameStore';
+import {canDisplayHandItem,type Equipment} from './equipmentData';
+import EquipmentMesh from './EquipmentMesh';
+import {DRUM_FACE_CENTER} from './drumMotion';
 
 const modelUrl = '/assets/characters/thay-chua-chibi.glb';
 
-type PlayerAvatarProps = CharacterProps & {npc?:boolean;running?: boolean; stairsDirection?: -1|0|1};
+type PlayerAvatarProps = CharacterProps & {equipment?:Equipment;npc?:boolean;running?: boolean; stairsDirection?: -1|0|1};
 
-function ChibiAvatar({moving, running, npc, serveFrame, apron, gender = 'male', stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
+function ChibiAvatar({equipment,moving, running, npc, serveFrame, apron, gender = 'male', stairsDirection = 0, localPlayer, dish, pose = 'walk', seated = false, chair = false, bowMode, bowStartedAt, bowElapsed, robe = '#9b704a', skin = '#c99c79'}: PlayerAvatarProps) {
   const {scene, animations} = useGLTF(modelUrl);
   const avatar = useMemo(() => {
     const instance = clone(scene);
@@ -71,23 +75,32 @@ function ChibiAvatar({moving, running, npc, serveFrame, apron, gender = 'male', 
   }, [avatar, mixer]);
   const bodyVisual = useRef<Group>(null);
   const heldProp = useRef<Group>(null);
+  const equipmentProp=useRef<Group>(null),holding=!!equipment?.hand&&canDisplayHandItem(pose,seated);
   const upright = useMemo(() => ({parent:new Quaternion(),avatar:new Quaternion(), mouth:new Vector3(), direction:new Vector3(), axis:new Vector3(0,1,0), rest:new Vector3(), leftHand:new Vector3(), rightHand:new Vector3()}),[]);
   useFrame((_, delta) => {
     const dt = Math.min(delta, .05);
     if (bodyVisual.current) {
-      const visualHeight = seated ? 0 : moving && stairsDirection === 1 ? -.085 : -.025;
+      const visualHeight = seated||pose==='bow' ? 0 : moving && stairsDirection === 1 ? -.085 : -.025;
       bodyVisual.current.position.z = MathUtils.damp(bodyVisual.current.position.z,npc&&pose==='serve'&&serveFrame?npcServiceLead(serveFrame.current)/NPC_CHIBI_SCALE:seated && !chair ? -.06 : 0,16,dt);
       bodyVisual.current.position.y = MathUtils.damp(bodyVisual.current.position.y,visualHeight,16,dt);
     }
     rig.restore();
     mixer.update(dt);
     if(npc&&serveFrame){Object.assign(service.current,serveFrame.current);service.current.handZ-=(bodyVisual.current?.position.z??0)*NPC_CHIBI_SCALE;}
-    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced,npc&&serveFrame?service.current:undefined);
+    rig.update(pose,seated,chair,dt,bowMode,bowElapsed ?? (bowStartedAt === undefined ? undefined : (Date.now()-bowStartedAt)/1000),stairsDirection,!!moving,reduced,npc&&serveFrame?service.current:undefined,holding);
+    const equipmentNode=equipmentProp.current,parent=equipmentProp.current?.parent;
+    if(holding&&equipmentNode&&parent){
+      avatar.getObjectByName('Co_Tay_L')!.getWorldPosition(upright.leftHand);avatar.getObjectByName('Co_Tay_R')!.getWorldPosition(upright.rightHand);
+      equipmentNode.position.copy(parent.worldToLocal(upright.leftHand.lerp(upright.rightHand,.5)));
+      avatar.getWorldQuaternion(upright.avatar);parent.getWorldQuaternion(upright.parent);equipmentNode.quaternion.copy(upright.parent.invert().multiply(upright.avatar));
+    }
     const prop = heldProp.current;
     if (prop) prop.position.set(0,0,0);
     if(pose==='drum'&&prop?.parent){
-      avatar.localToWorld(upright.rest.set(0,1.54-.37*rig.drumStrike,.3+.65*rig.drumStrike));
-      prop.parent.worldToLocal(upright.rest);prop.quaternion.setFromUnitVectors(upright.axis,upright.rest.normalize());prop.scale.setScalar(1);
+      avatar.getObjectByName('Co_Tay_R')!.getWorldPosition(upright.leftHand);
+      upright.direction.set(DRUM_FACE_CENTER[0]-upright.leftHand.x,DRUM_FACE_CENTER[1]-upright.leftHand.y,DRUM_FACE_CENTER[2]-upright.leftHand.z).normalize();
+      prop.parent.getWorldQuaternion(upright.parent);upright.direction.applyQuaternion(upright.parent.invert());
+      prop.position.set(0,0,0);prop.quaternion.setFromUnitVectors(upright.axis,upright.direction);prop.scale.setScalar(1.35);
     } else if ((pose === 'tea' || pose === 'read') && prop?.parent) {
       if(pose==='tea'){
         avatar.getObjectByName('Co_Tay_L')!.getWorldPosition(upright.leftHand);
@@ -130,10 +143,14 @@ function ChibiAvatar({moving, running, npc, serveFrame, apron, gender = 'male', 
     } else if (prop) { prop.quaternion.identity(); prop.scale.setScalar(1); }
   });
   const hand = avatar.getObjectByName('Co_Tay_R');
+  const leftHand=avatar.getObjectByName('Co_Tay_L');
   const torso=avatar.getObjectByName('Than'),head=avatar.getObjectByName('Dau');
   return <group ref={bodyVisual} position={[0,seated ? 0 : -.025,seated && !chair ? -.06 : 0]}>
     <primitive object={avatar} scale={[1.08, 1, 1.10]} />
     {gender==='female'&&head&&createPortal(<FemaleChibiHair/>,head)}
+    {equipment?.neck&&torso&&createPortal(<EquipmentMesh id={equipment.neck}/>,torso)}
+    {equipment?.wrist&&leftHand&&createPortal(<group rotation={[Math.PI/2,0,0]}><EquipmentMesh id={equipment.wrist}/></group>,leftHand)}
+    {holding&&equipment?.hand&&hand&&createPortal(<group ref={equipmentProp}><EquipmentMesh id={equipment.hand}/></group>,hand)}
     {seated && <ChibiLapRobe robe={robe} chair={chair}/>}
     {apron&&torso&&createPortal(<group position={[0,-.08,.165]}><mesh><planeGeometry args={[.28,.30]}/><meshStandardMaterial color="#ece2c8" side={2} roughness={1}/></mesh><mesh position={[0,.05,.005]}><boxGeometry args={[.12,.06,.008]}/><meshStandardMaterial color="#d1bea0"/></mesh></group>,torso)}
     {apron&&head&&createPortal(<group position={[0,.36,0]}><mesh><cylinderGeometry args={[.21,.20,.085,16]}/><meshStandardMaterial color="#eee5cf"/></mesh><mesh position={[0,.06,0]} scale={[1,.5,1]}><sphereGeometry args={[.23,16,10]}/><meshStandardMaterial color="#eee5cf"/></mesh></group>,head)}
@@ -144,7 +161,8 @@ function ChibiAvatar({moving, running, npc, serveFrame, apron, gender = 'male', 
 }
 
 export default function PlayerAvatar(props: PlayerAvatarProps) {
+  const equipment=useGame(s=>props.localPlayer?s.equipment:props.equipment);
   return <Suspense fallback={null}>
-    <group scale={props.npc?NPC_CHIBI_SCALE:1}><ChibiAvatar {...props} /></group>
+    <group scale={props.npc?NPC_CHIBI_SCALE:1}><ChibiAvatar {...props} equipment={equipment} /></group>
   </Suspense>;
 }

@@ -89,7 +89,7 @@ export function AltarOfferings(){const night=useGame(s=>s.night);return <group p
   <pointLight position={[0,1.1,.6]} color="#ffd5a0" intensity={night?4.2:1.4} distance={5} decay={2}/>
 </group>}
 export function ReceptionDesk(){
-  const [staff,guest]=useTexture(['/art/pos/staff.jpg','/art/pos/guest.jpg']);
+  const [staff,guest]=useTexture(['/art/pos/receptionist-screen.png','/art/pos/customer-checkin-screen.png']);
   useLayoutEffect(()=>{for(const texture of [staff,guest]){texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=2;texture.needsUpdate=true;}},[staff,guest]);
   return <group position={[RECEPTION[0],.16,RECEPTION[1]]} rotation={[0,Math.PI,0]}>
   <Box position={[0,.06,0]} scale={[1.3,.12,.8]} color="#9b805b"/>
@@ -98,10 +98,10 @@ export function ReceptionDesk(){
   {/* POS terminal: two back-to-back displays, a pedestal and a card-reader slot. */}
   <mesh position={[0,1.22,0]}><boxGeometry args={[.57,.055,.39]}/><meshStandardMaterial color="#deded2"/></mesh>
   <mesh position={[0,1.4,0]} rotation={[-.13,0,0]}><boxGeometry args={[.18,.35,.14]}/><meshStandardMaterial color="#d2d5cb"/></mesh>
-  {[-1,1].map(side=><group key={side} position={[0,1.65,side*.10]} rotation={[0,side===1?0:Math.PI,0]}>
+  {[{side:1,texture:staff,name:'POS-staff',rotation:0},{side:-1,texture:guest,name:'POS-guest',rotation:Math.PI}].map(({side,texture,name,rotation})=><group key={name} position={[0,1.65,side*.10]} rotation={[0,rotation,0]}>
     <mesh><boxGeometry args={[.82,.5,.075]}/><meshStandardMaterial color="#d5d8d0"/></mesh>
-    {/* Local +Z faces world -Z after desk rotation, toward Co Tam. */}
-    <mesh name={side===1?'POS-staff':'POS-guest'} position={[0,0,.043]}><planeGeometry args={[.73,.4]}/><meshBasicMaterial map={side===1?staff:guest} toneMapped={false}/></mesh>
+    {/* Staff screen faces Cô Tâm; customer screen faces the arriving guest. */}
+    <mesh name={name} position={[0,0,.043]}><planeGeometry args={[.73,.4]}/><meshBasicMaterial map={texture} toneMapped={false}/></mesh>
   </group>)}
   <mesh position={[.36,1.24,.20]} rotation={[-.25,0,0]}><boxGeometry args={[.16,.12,.19]}/><meshStandardMaterial color="#bec7bc"/></mesh>
 </group>}

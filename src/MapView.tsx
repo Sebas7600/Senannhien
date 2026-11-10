@@ -12,6 +12,7 @@ import {courtyardTrees,restingBenches} from './courtyardData';
 import {bambooZoneBounds,zoneFences} from './courtyardZoneData';
 import {GATE,gateAvenueTrees} from './courtyardPropsData';
 import {templeBackRoad} from './mayaPaths';
+import {souvenirStalls} from './souvenirData';
 const entries:Record<PlaceId,Vec2>={gate:GATE_ENTRY,courtyard:[0,6],temple:[0,-18],hall:[-33,-9],bell:[MAYA_LEVEL.bellX,-9],pond:[POND_BRIDGES[0].start,POND_BRIDGES[0].z],dining:[34,-17],library:[-34,-35],garden:[28,-45],terrace:[0,-50],lotus:WISH_APPROACH,stupa:[-35,49],bamboo:[BAMBOO_PAVILION.x,12]};
 export function travel(id:PlaceId){const s=useGame.getState(),p=entries[id];if(s.waterQuest){s.notify('Đang gánh nước: đi bộ tới lu hoặc đặt gánh xuống trước khi đến nhanh nhé.');return;}s.stand();const heading=id==='lotus'?Math.atan2(ISLAND.x-p[0],ISLAND.z-p[1]):id==='pond'?Math.PI/2:Math.PI;s.set({position:p,height:floorAt(...p)+.1,destination:null,panel:null,teleport:{position:[p[0],floorAt(...p)+.1,p[1]],heading,at:Date.now()},cameraReset:s.cameraReset+1});s.notify(`Đã đến ${places.find(v=>v.id===id)!.name}.`);}
 export function MapArtwork({mini=false,onSelect}:{mini?:boolean;onSelect?:(id:PlaceId)=>void}){const position=useGame(s=>s.position),heading=useGame(s=>s.heading),peers=useGame(s=>s.peers),visited=useGame(s=>s.visited);
@@ -35,6 +36,8 @@ export function MapArtwork({mini=false,onSelect}:{mini?:boolean;onSelect?:(id:Pl
     <rect x={BAMBOO_PAVILION.x-BAMBOO_PAVILION.w/2} y={BAMBOO_PAVILION.z-BAMBOO_PAVILION.d/2} width={BAMBOO_PAVILION.w} height={BAMBOO_PAVILION.d} rx=".7" fill="#966b55"/>
     {courtyardTrees.map(t=><circle key={t.id} cx={t.x} cy={t.z} r="2.7" fill="#78965f" stroke="#c1c4ac" strokeWidth=".5"/>)}
     {gateAvenueTrees.map(({x,z})=><circle key={`${x}-${z}`} cx={x} cy={z} r="1.55" fill="#78965f"/>)}
+    {souvenirStalls.map(s=><rect key={'souvenir-'+s.id} x={s.x-1.8} y={s.z-2.75} width="3.6" height="5.5" rx=".35" fill={s.cloth} stroke="#f4e7c6" strokeWidth=".3"><title>{'Quầy '+s.id}</title></rect>)}
+    {!mini&&<text x="0" y="61.8" textAnchor="middle" fill="#7d744e" fontSize="2.2">Phố lưu niệm</text>}
     <rect x={GATE.x-6.2} y={GATE.z-1.35} width="12.4" height="2.7" rx=".55" fill="#879d81" stroke="#6c876b" strokeWidth=".5"/>
     {!mini&&restingBenches.map(b=><path key={b.id} transform={`translate(${b.x},${b.z}) rotate(${-b.rotation*180/Math.PI})`} d="M-.9 0H.9" stroke="#5c7b70" strokeWidth=".6"/>)}
     {!mini&&places.map(p=><g key={p.id} onClick={()=>onSelect?.(p.id)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')onSelect?.(p.id)}} aria-label={`Chọn ${p.name}`} className="map-marker"><circle cx={p.x} cy={p.z} r="2.1" fill={visited.includes(p.id)?'#526f4b':'#f6f1df'} stroke="#526f4b" strokeWidth=".6"/><text x={p.x} y={p.z+(p.id==='temple'?7:5)} textAnchor="middle" fill="#405d3c" fontSize="2.4" fontFamily="Be Vietnam Pro, sans-serif">{p.name}</text></g>)}

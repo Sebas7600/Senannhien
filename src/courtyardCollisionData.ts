@@ -1,6 +1,7 @@
 import {avenueFlagPoles} from './avenueFlagsData';
 import {eveningPosts} from './eveningDecorData';
 import {woodlandSolids} from './woodlandLayout';
+import {souvenirSolids} from './souvenirData';
 /** Lightweight solid proxies for decorations that previously had visuals only. */
 export type CourtyardSolid={id:string;x:number;z:number;w:number;d:number;height:number;base?:number;rotation?:number;round?:boolean;bench?:boolean};
 export const ornamentalTrees=[
@@ -10,6 +11,7 @@ export const ornamentalTrees=[
  {x:-20,z:34},
 ];
 export const courtyardSolids:CourtyardSolid[]=[
+ ...souvenirSolids,
  ...avenueFlagPoles.map((p,i)=>({id:`avenue-flag-pole-${i}`,...p,w:.14,d:.14,height:5.6,round:true})),
  ...eveningPosts.map((p,i)=>({id:`evening-post-${i}`,...p,w:.28,d:.28,height:3,round:true})),
  ...ornamentalTrees.map(({x,z},i)=>({id:`ornamental-tree-${i}`,x,z,w:.92,d:.92,height:3.19,round:true})),

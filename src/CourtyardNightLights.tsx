@@ -6,12 +6,15 @@ import {pathLamps} from './courtyardPropsData';
 import {pavilionLayouts} from './gameData';
 import {useGame} from './gameStore';
 import {playerMotion} from './runtime';
+import {souvenirStalls} from './souvenirData';
 
 const ceilingFixtures=[
   ...pavilionLayouts.flatMap(room=>[-1,1].flatMap(side=>[-1,1].map(row=>({
     x:room.x+side*room.w*.245,y:3.72,z:room.z+row*room.d*.22,range:9.4,intensity:48,
   })))),
-];
+].map(fixture=>({...fixture,color:'#f8f9ff'}));
+// Reuse the existing two nearest-light slots so the added stalls do not add lights.
+ceilingFixtures.push(...souvenirStalls.map(stall=>({x:stall.x,y:2.82,z:stall.z,range:7.5,intensity:24,color:'#ffdfa7'})));
 const closest=<T extends {x:number;z:number}>(points:T[],x:number,z:number,count:number)=>
   points.map(point=>({point,distance:(point.x-x)**2+(point.z-z)**2}))
     .sort((a,b)=>a.distance-b.distance).slice(0,count);
@@ -76,6 +79,7 @@ export default function CourtyardNightLights(){
       light.position.set(point.x,point.y-.13,point.z);
       light.target.updateWorldMatrix(true,false);
       light.distance=point.range;
+      light.color.set(point.color);
       light.intensity=distance<20**2?point.intensity:0;
     });
   });

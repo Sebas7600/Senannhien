@@ -1,4 +1,8 @@
 import AltarSmoke from './AltarSmoke';
+import FruitOfferings from './FruitOfferings';
+import SouvenirMarket from './SouvenirMarket';
+import {nearestSouvenirStall,atSouvenirStall} from './souvenirData';
+import {openSouvenirStall} from './souvenirActions';
 import {HALL_INCENSE} from './ritualStations.mjs';
 import {DRUM_APPROACH} from './drumMotion';
 import {TouchLookGesture,touchLookDelta} from './touchLook';
@@ -45,7 +49,7 @@ import CourtyardSky,{fullMoonOffset,morningHorizon,morningSunOffset,nightHorizon
 import MountainScenery from './MountainScenery';
 
 
-function interact(){const s=useGame.getState();if(['incense','flower','candle'].includes(s.action))return;if(distance(s.position,HALL_INCENSE.spot)<=HALL_INCENSE.range){s.perform('incense',HALL_INCENSE.id);return;}if(distance(s.position,DRUM_APPROACH)<3){s.perform('drum');return;}if(nearQuanAm(s.position)){s.perform('incense',QUAN_AM.incenseId);return;}if(nearDonationChest(s.position)){visitDonationChest();return;}const offeringTargets=(['flower','candle'] as const).map(kind=>nearestOfferingStation(kind,s.position,s.offeringFocus)).sort((a,b)=>a.id===s.offeringFocus?-1:b.id===s.offeringFocus?1:distance(s.position,a.spot)-distance(s.position,b.spot));for(const station of offeringTargets)if(distance(s.position,station.spot)<=OFFERING_RANGE){s.perform(station.kind,station.id);return;}if(distance(s.position,incenseSpot)<=INCENSE_RANGE){s.perform('incense');return;}if(nearBodhiAltar(s.position)){s.perform('incense');return;}if(s.seated){s.stand();return;}const waterJar=nearestWaterJar(s.position,s.waterJars);if(s.waterQuest?.phase==='drawing'||s.waterQuest?.phase==='pouring')return;if(s.waterQuest?.phase==='carrying'&&waterJar&&nearWaterJar(s.position,waterJar.id)){s.waterTask(waterJar.id);return;}if(!s.waterQuest&&nearWaterWell(s.position)){s.waterTask();return;}if(nearGate(s.position)){toggleTempleGate();return;}const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot){s.garden(plot.id);return;}const npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&(n.id!=='chef'||!s.meal||chefPhase(s.meal,Date.now())==='idle')&&Math.hypot(n.x-s.position[0],n.z-s.position[1])<3);if(npc){s.set({npc:npc.id,panel:'dialogue'});return;}const seat=nearestSeat(s.position);if(seat&&distance(s.position,[seat.position[0],seat.position[2]])<2.5){s.sit(seat.id);return;}const p=s.position;if(distance(p,nearestFeedStation(p).spot)<2.5){s.perform('feed');return;}if(distance(p,[MAYA_LEVEL.bellX,-9])<7){s.perform('bell');return;}if(distance(p,WISH_STATION)<10){s.perform('lantern');return;}if(distance(p,[0,-24])<14){s.perform('incense');return;}s.sit();}
+function interact(){const s=useGame.getState();if(['incense','flower','candle'].includes(s.action))return;if(distance(s.position,HALL_INCENSE.spot)<=HALL_INCENSE.range){s.perform('incense',HALL_INCENSE.id);return;}if(distance(s.position,DRUM_APPROACH)<3){s.perform('drum');return;}if(nearQuanAm(s.position)){s.perform('incense',QUAN_AM.incenseId);return;}if(nearDonationChest(s.position)){visitDonationChest();return;}const offeringTargets=(['flower','candle'] as const).map(kind=>nearestOfferingStation(kind,s.position,s.offeringFocus)).sort((a,b)=>a.id===s.offeringFocus?-1:b.id===s.offeringFocus?1:distance(s.position,a.spot)-distance(s.position,b.spot));for(const station of offeringTargets)if(distance(s.position,station.spot)<=OFFERING_RANGE){s.perform(station.kind,station.id);return;}if(distance(s.position,incenseSpot)<=INCENSE_RANGE){s.perform('incense');return;}if(nearBodhiAltar(s.position)){s.perform('incense');return;}const souvenirStall=nearestSouvenirStall(s.position);if(atSouvenirStall(s.position,souvenirStall)){openSouvenirStall(souvenirStall.id);return;}if(s.seated){s.stand();return;}const waterJar=nearestWaterJar(s.position,s.waterJars);if(s.waterQuest?.phase==='drawing'||s.waterQuest?.phase==='pouring')return;if(s.waterQuest?.phase==='carrying'&&waterJar&&nearWaterJar(s.position,waterJar.id)){s.waterTask(waterJar.id);return;}if(!s.waterQuest&&nearWaterWell(s.position)){s.waterTask();return;}if(nearGate(s.position)){toggleTempleGate();return;}const plot=gardenPlots.filter(p=>distance(s.position,[p.x,p.z])<=3).sort((a,b)=>distance(s.position,[a.x,a.z])-distance(s.position,[b.x,b.z]))[0];if(plot){s.garden(plot.id);return;}const npc=npcs.find(n=>(n.id!=='cook'||!s.meal||servicePhase(s.meal,Date.now())==='idle')&&(n.id!=='chef'||!s.meal||chefPhase(s.meal,Date.now())==='idle')&&Math.hypot(n.x-s.position[0],n.z-s.position[1])<3);if(npc){s.set({npc:npc.id,panel:'dialogue'});return;}const seat=nearestSeat(s.position);if(seat&&distance(s.position,[seat.position[0],seat.position[2]])<2.5){s.sit(seat.id);return;}const p=s.position;if(distance(p,nearestFeedStation(p).spot)<2.5){s.perform('feed');return;}if(distance(p,[MAYA_LEVEL.bellX,-9])<7){s.perform('bell');return;}if(distance(p,WISH_STATION)<10){s.perform('lantern');return;}if(distance(p,[0,-24])<14){s.perform('incense');return;}s.sit();}
 function Keyboard(){useEffect(()=>{const down=(e:KeyboardEvent)=>{if((e.target as HTMLElement).matches('input,textarea,select')||e.ctrlKey||e.metaKey)return;const k=e.key.toLowerCase(),s=useGame.getState();if(k==='escape'){if(s.panel){s.closePanel();return;}if(s.waterQuest){s.cancelWaterTask();return;}if(s.pendingActivity==='carryWater'){s.stand();return;}if(s.seated)s.stand();else s.set({action:'walk'});return;}if(s.panel||!s.characterConfigured)return;
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift','q','c',' '].includes(k)){e.preventDefault();keys.add(k)}
   if(e.repeat)return;if(k==='e')interact();if(k==='m')s.set({panel:'map'});if(k==='b')s.set({panel:'bag'});if(k==='v')s.set({camera:s.camera==='follow'?'overview':'follow'});if(k==='f')s.set({cameraReset:s.cameraReset+1});if(k==='h')s.set({panel:'help'});
@@ -171,6 +175,7 @@ function RemoteAvatar({peer}:{peer:Peer}){
   const [safeX,safeZ]=outsideIncenseBurner(peer.x,peer.z);
   const relocated=Math.hypot(safeX-peer.x,safeZ-peer.z)>.001;
   const safeY=relocated?floorAt(safeX,safeZ):peer.y;
+  const remoteSeat=seats.find(seat=>seat.id===peer.seat);
   const ref=useRef<THREE.Group>(null),initial=useRef<[number,number,number]>([safeX,safeY,safeZ]),target=useRef(new THREE.Vector3());
   useFrame((_,dt)=>{
     if(!ref.current)return;
@@ -182,7 +187,7 @@ function RemoteAvatar({peer}:{peer:Peer}){
     if(Math.hypot(x-ref.current.position.x,z-ref.current.position.z)>.001){ref.current.position.set(x,floorAt(x,z),z);}
     const d=THREE.MathUtils.euclideanModulo(peer.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;ref.current.rotation.y+=d*Math.min(1,dt*12);
   });
-  return <group ref={ref} position={initial.current}><PlayerAvatar moving={moving} robe={peer.robe} pose={relocated?'walk':peer.action} bowStartedAt={peer.bow?.at} bowMode={peer.bow?.mode} gender={peer.gender} skin={peer.skin} robeStyle={peer.robeStyle} seated={!relocated&&!!peer.seat} dish={peer.meal?.dish} chair={!relocated&&!!peer.seat&&!usesFloorSeat(seats.find(s=>s.id===peer.seat))}/><Html position={[0,1.8,0]} center zIndexRange={[3,0]}><span className="nametag remote"><i/>{peer.name}</span></Html></group>;
+  return <group ref={ref} position={initial.current}><PlayerAvatar equipment={peer.equipment} moving={moving} robe={peer.robe} pose={relocated?'walk':peer.action} bowStartedAt={peer.bow?.at} bowMode={peer.bow?.mode} gender={peer.gender} skin={peer.skin} robeStyle={peer.robeStyle} seated={!relocated&&!!peer.seat} dish={peer.meal?.dish} chair={!relocated&&!!peer.seat&&!usesFloorSeat(remoteSeat)}/><Html position={[0,1.8,0]} center zIndexRange={[3,0]}><span className="nametag remote character-name-tag"><i/>{peer.name}</span></Html></group>;
 }
 
 function Others(){const peers=useGame(s=>s.peers);return <>{peers.map(p=><RemoteAvatar key={p.id} peer={p}/>)}</>}
@@ -212,7 +217,7 @@ function Villager({n}:{n:typeof npcs[number]}){
   return <group ref={ref} position={[n.x,floorAt(n.x,n.z),n.z]} onClick={e=>{e.stopPropagation();talk()}}>
     <PlayerAvatar {...npcAppearance(n)} dish={meal?.dish} moving={motion.walking} pose={motion.cooking?'cook':motion.carrying?'serve':'walk'} serveFrame={n.id==='cook'||n.id==='chef'?serveFrame:undefined}/>
     {meal&&n.id==='cook'&&<group ref={plate} visible={false} scale={MEAL_SCALE} onClick={e=>{e.stopPropagation();const s=useGame.getState();if(s.meal?.status==='ready')s.eat();}}><ServingMeal dish={meal.dish} eating={meal.status==='eating'}/></group>}
-    <NearbyOverlay position={[0,n.id==='chef'?2.75:1.9,0]} maxDistance={18}><button className="npc-tag" onClick={talk}>{n.name}<span>{motion.label}</span></button></NearbyOverlay>
+    <NearbyOverlay position={[0,n.id==='chef'?2.75:1.9,0]} maxDistance={18}><button className="npc-tag character-name-tag" onClick={talk}>{n.name}<span>{motion.label}</span></button></NearbyOverlay>
   </group>
 }
 function Villagers(){return <>{npcs.map(n=><Villager key={n.id} n={n}/>)}</>}
@@ -272,7 +277,7 @@ function WorldV2(){const quality=useGame(s=>s.quality);return <Canvas shadows={q
   <CourtyardReflections low={quality==='low'}/><FrameMetrics/><OutdoorLighting/><PerspectiveCamera makeDefault position={[0,6.8,COURTYARD_SPAWN_Z+14]} fov={48} near={.1} far={650}/><Keyboard/><FireworksShow/>
   <Suspense fallback={null}><MountainScenery/></Suspense>
   <Suspense fallback={<Html center><div className="scene-loading"><span className="loading-lotus">❋</span>Đang mở khuôn viên an nhiên…</div></Html>}>
-    <Physics gravity={[0,-9.81,0]} timeStep={1/60} interpolate updatePriority={-50}><TouchCameraInput/><CameraRig/><Ground/><Architecture/><Waters/><Seats/><Garden/><PlayerV3/><Others/><Villagers/><TreeLeaves/><MealPlates/><OfferingEffects/><SceneReady/></Physics>
+    <Physics gravity={[0,-9.81,0]} timeStep={1/60} interpolate updatePriority={-50}><TouchCameraInput/><CameraRig/><Ground/><Architecture/><SouvenirMarket/><Waters/><Seats/><Garden/><PlayerV3/><Others/><Villagers/><TreeLeaves/><MealPlates/><OfferingEffects/><FruitOfferings/><SceneReady/></Physics>
   </Suspense>
 </Canvas>}
 export default memo(WorldV2);

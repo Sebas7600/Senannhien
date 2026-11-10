@@ -71,6 +71,36 @@ export function playWood(){
   for(const f of [520,870,1280]){const o=track(c.createOscillator()),g=c.createGain();o.frequency.value=f;g.gain.setValueAtTime(.055,c.currentTime);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.23);outputs.set(o,g);o.connect(g).connect(master!);o.start();o.stop(c.currentTime+.25);}
 }
 
+const fireworkLaunchClips=['launch-01.ogg','launch-02.ogg','launch-03.ogg'];
+const fireworkBurstClips=['burst-01.ogg','burst-02.ogg','burst-03.ogg','burst-04.ogg','burst-05.ogg','burst-06.ogg'];
+const fireworkCrackleClips=['crackle-01.ogg','crackle-02.ogg','crackle-03.ogg','crackle-04.ogg','crackle-05.ogg','crackle-06.ogg','crackle-07.ogg','crackle-08.ogg','crackle-09.ogg','crackle-10.ogg'];
+const fireworkBuffers=new Map<string,Promise<AudioBuffer|null>>();
+function fireworkBuffer(file:string){
+  const c=context();if(!c)return Promise.resolve(null);
+  let loading=fireworkBuffers.get(file);
+  if(!loading){loading=fetch(`/audio/fireworks/${file}`).then(response=>{if(!response.ok)throw new Error('Fireworks audio unavailable');return response.arrayBuffer()}).then(bytes=>c.decodeAudioData(bytes)).catch(()=>{fireworkBuffers.delete(file);return null});fireworkBuffers.set(file,loading);}
+  return loading;
+}
+export function preloadFireworksAudio(){
+  for(const file of [...fireworkLaunchClips,...fireworkBurstClips,...fireworkCrackleClips])void fireworkBuffer(file);
+}
+function playFireworkClip(file:string,volume:number,rate:number){
+  if(!useSound()||!enabled)return;const c=context();if(!c)return;const requestedAt=c.currentTime;
+  void fireworkBuffer(file).then(buffer=>{
+    if(!buffer||!enabled||!useSound()||c.currentTime-requestedAt>.5)return;
+    const source=track(c.createBufferSource()),gain=c.createGain();source.buffer=buffer;source.playbackRate.setValueAtTime(rate,c.currentTime);gain.gain.setValueAtTime(volume,c.currentTime);outputs.set(source,gain);source.connect(gain).connect(master!);source.start();
+  });
+}
+export function playFireworkLaunch(variant:number,volleySize=1){
+  const seed=Math.abs(Math.trunc(variant)),density=Math.sqrt(Math.max(1,volleySize));
+  playFireworkClip(fireworkLaunchClips[seed%fireworkLaunchClips.length],.22/density,.93+(seed%5)*.025);
+}
+export function playFireworkBurst(variant:number,volleySize=1){
+  const seed=Math.abs(Math.trunc(variant)),density=Math.sqrt(Math.max(1,volleySize));
+  playFireworkClip(fireworkBurstClips[seed%fireworkBurstClips.length],.34/density,.94+(seed%6)*.022);
+  playFireworkClip(fireworkCrackleClips[(seed*7+3)%fireworkCrackleClips.length],.075/density,1+(seed%4)*.025);
+}
+
 let drumBuffer:AudioBuffer|null=null;
 export function preloadDrum(){
   const c=context();if(!c||drumBuffer)return;

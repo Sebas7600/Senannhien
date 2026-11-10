@@ -41,6 +41,7 @@ export default function PlayerV3(){
     if(s.action==='pourWater'&&s.waterQuest?.jar!==null&&s.waterQuest?.jar!==undefined){const j=WATER_JARS[s.waterQuest.jar];playerMotion.heading=Math.atan2(j.x-p.x,j.z-p.z);}
     if(s.action==='feed'&&s.event)playerMotion.heading=Math.atan2(s.event.x-p.x,s.event.z-p.z);
     if(s.action==='incense')playerMotion.heading=incenseHeading([p.x,p.z],s.event?.target);
+    if(s.action==='drum')playerMotion.heading=Math.PI;
     if(['drawWater','pourWater','plant','water','harvest','feed','incense','flower','candle'].includes(s.action)||s.panel||!s.characterConfigured||!s.started){dx=dz=0;}
     let walking=false,stairStep:-1|0|1=0;
     if(s.seated){if(dx||dz){s.stand();return;}const seat=seats.find(c=>c.id===s.seated)!;rb.setNextKinematicTranslation({x:seat.position[0],y:seat.position[1]+CHARACTER_OFFSET,z:seat.position[2]});playerMotion.heading=s.action==='meditate'||s.meditationBow?meditationHeading(seat):seat.rotation;if(Math.abs(s.heading-playerMotion.heading)>.001)s.set({heading:playerMotion.heading});}
@@ -79,5 +80,5 @@ export default function PlayerV3(){
     }if(walking){s.record('walk');s.set({energy:Math.max(0,s.energy-.025)})}}}
     if(s.action==='bow')s.finishBow();
   });
-  const seat=seats.find(s=>s.id===seated);return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={[0,.06+CHARACTER_OFFSET+.02,COURTYARD_SPAWN_Z]} enabledRotations={[false,false,false]}><CapsuleCollider ref={collider} args={[CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS]}/><group ref={renderObject} position={[0,-CHARACTER_OFFSET,0]}><group ref={visual}><PlayerAvatar localPlayer running={running} robe={robe} pose={pose} moving={moving} climbing={stairsDirection===1} stairsDirection={stairsDirection} seated={!!seated} dish={dish} chair={!!seat&&!usesFloorSeat(seat)} gender={gender} skin={skin} robeStyle={robeStyle} bowStartedAt={bow?.at} bowMode={bow?.mode}/></group><Html position={[0,seated?(usesFloorSeat(seat)?1.4:1.1):1.95,0]} center zIndexRange={[4,0]}><span className="nametag"><i/>{name}</span></Html></group></RigidBody>;
+  const seat=seats.find(s=>s.id===seated);return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={[0,.06+CHARACTER_OFFSET+.02,COURTYARD_SPAWN_Z]} enabledRotations={[false,false,false]}><CapsuleCollider ref={collider} args={[CHARACTER_HALF_SEGMENT,CHARACTER_RADIUS]}/><group ref={renderObject} position={[0,-CHARACTER_OFFSET,0]}><group ref={visual}><PlayerAvatar localPlayer running={running} robe={robe} pose={pose} moving={moving} climbing={stairsDirection===1} stairsDirection={stairsDirection} seated={!!seated} dish={dish} chair={!!seat&&!usesFloorSeat(seat)} gender={gender} skin={skin} robeStyle={robeStyle} bowStartedAt={bow?.at} bowMode={bow?.mode}/></group><Html position={[0,seated?(usesFloorSeat(seat)?1.4:1.1):1.95,0]} center zIndexRange={[4,0]}><span className="nametag character-name-tag"><i/>{name}</span></Html></group></RigidBody>;
 }

@@ -16,3 +16,9 @@
 - Reproducible with python scripts/compose-chant.py (NumPy and SciPy).
 - 32 seconds, mono PCM 16-bit, 16 kHz. Slow D major pentatonic melody, soft drone and reflection.
 - Loops only while chanting and the music preference is enabled. Mute, ending the practice and hiding the page pause playback.
+
+## Fireworks
+- Source: `25 CC0 bang / firework SFX`, recorded by rubberduck and shared on OpenGameArt.org: https://opengameart.org/content/25-cc0-bang-firework-sfx
+- Selected license: CC0.
+- Local assets in `fireworks/`: `launch-01`–`launch-03` are the pack's `shot_01`–`shot_03`; `burst-01`–`burst-06` are `fw_01`–`fw_06`; `crackle-01`–`crackle-10` are `bang_01`–`bang_10`.
+- Short launch, bloom and crackle clips are mixed at each corresponding visual event. Volley size lowers per-shell gain; the game's sound toggle controls playback.

@@ -9,7 +9,8 @@
 .v2-game .v2-side-tools>button { width:48px; height:56px; }
 .v2-game .time-toggle { display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .v2-game .time-toggle span { font-size:11px; }
-.v2-game.hide-character-status .bottom-left { display:none !important; }
+.v2-game.hide-character-status .bottom-left,
+.v2-game.hide-character-status .character-name-tag { display:none !important; }
 .quick-dock-toggle {
   position:absolute; z-index:6; right:max(24px,env(safe-area-inset-right)); left:auto; top:50%;
   transform:translateY(-50%); min-width:70px; min-height:74px; padding:10px 7px;

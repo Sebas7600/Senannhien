@@ -1,7 +1,9 @@
 import {DRUM_PROP} from './courtyardPropsData';
 export const DRUM_STRIKES=[650,1850,3050] as const;
 export const DRUM_DURATION=4200;
-export const DRUM_APPROACH:[number,number]=[DRUM_PROP.x,DRUM_PROP.z+2.1];
+export const DRUM_APPROACH:[number,number]=[DRUM_PROP.x,DRUM_PROP.z+1.55];
+// The supplied drum model's audience-facing head is the +Z circular end.
+export const DRUM_FACE_CENTER:[number,number,number]=[DRUM_PROP.x,DRUM_PROP.y+1.55*DRUM_PROP.scale,DRUM_PROP.z+.87*DRUM_PROP.scale];
 const ease=(v:number)=>{const t=Math.max(0,Math.min(1,v));return t*t*(3-2*t);};
 export function drumStroke(ms:number){
   let amount=0;
