@@ -21,15 +21,20 @@ export function createFallenLeafGeometry(capacity:number){
 export function leafVariant(seed:number){const n=seed%10;return n<2?2:n<7?0:1;}
 
 export function createFallenLeafMaterial(atlas:T.Texture){
-  if(!atlas.premultiplyAlpha||atlas.colorSpace!==T.NoColorSpace||atlas.anisotropy!==4){
-    atlas.premultiplyAlpha=true;
-    atlas.colorSpace=T.NoColorSpace;
+  // Photos carry straight sRGB colour. Let Three/WebGL perform its standard decode;
+  // dividing by coverage in the fragment shader can blow edge colours out to white.
+  if(atlas.premultiplyAlpha||atlas.colorSpace!==T.SRGBColorSpace||atlas.anisotropy!==4){
+    atlas.premultiplyAlpha=false;
+    atlas.colorSpace=T.SRGBColorSpace;
     atlas.anisotropy=4;
     atlas.needsUpdate=true;
   }
   const material=new T.MeshStandardMaterial({
     map:atlas,color:0xf0e7d5,roughness:.84,side:T.DoubleSide,
-    alphaTest:.39,transparent:false,depthWrite:true,alphaToCoverage:true,
+    // With alpha-to-coverage Three omits OPAQUE and writes fractional framebuffer
+    // alpha. Browser compositing can then reveal the light page as a white outline.
+    // An opaque cutout discards outside pixels and writes alpha=1 for every survivor.
+    alphaTest:.52,transparent:false,depthWrite:true,alphaToCoverage:false,
   });
   material.onBeforeCompile=shader=>{
     shader.vertexShader='attribute float leafVariant;\n'+shader.vertexShader;
@@ -37,16 +42,9 @@ export function createFallenLeafMaterial(atlas:T.Texture){
       #ifdef USE_MAP
         vMapUv=(vMapUv+vec2(mod(leafVariant,2.0),1.0-floor(leafVariant/2.0)))*0.5;
       #endif`);
-    // Filter alpha-weighted sRGB so transparent texels cannot tint the leaf edge.
-    // Restore straight color before lighting while keeping alpha for the cutout.
-    shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`
-      #ifdef USE_MAP
-        vec4 leafSample = texture2D( map, vMapUv, -0.45 );
-        leafSample.rgb /= max(leafSample.a, 1.0 / 255.0);
-        diffuseColor *= sRGBTransferEOTF(leafSample);
-      #endif
-    `);
+    // Keep the standard map fragment intact: alpha only controls the cutout/coverage,
+    // never the RGB intensity. The opaque shader path also forces output alpha to 1.
   };
-  material.customProgramCacheKey=()=> 'bodhi-photo-atlas-v3';
+  material.customProgramCacheKey=()=> 'bodhi-photo-atlas-v5-opaque-cutout';
   return material;
 }
