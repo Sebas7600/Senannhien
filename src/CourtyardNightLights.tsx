@@ -13,7 +13,7 @@ const ceilingFixtures=[
     x:room.x+side*room.w*.245,y:3.72,z:room.z+row*room.d*.22,range:9.4,intensity:48,
   })))),
 ].map(fixture=>({...fixture,color:'#f8f9ff'}));
-// Reuse the existing two nearest-light slots so the added stalls do not add lights.
+// Reuse the existing two nearest-light slots; eight stalls do not add eight active lights.
 ceilingFixtures.push(...souvenirStalls.map(stall=>({x:stall.x,y:2.82,z:stall.z,range:7.5,intensity:24,color:'#ffdfa7'})));
 const closest=<T extends {x:number;z:number}>(points:T[],x:number,z:number,count:number)=>
   points.map(point=>({point,distance:(point.x-x)**2+(point.z-z)**2}))

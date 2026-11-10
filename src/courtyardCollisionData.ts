@@ -1,3 +1,4 @@
+import {souvenirSolids} from './souvenirData';
 import {avenueFlagPoles} from './avenueFlagsData';
 import {eveningPosts} from './eveningDecorData';
 import {woodlandSolids} from './woodlandLayout';

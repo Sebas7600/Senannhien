@@ -1,4 +1,5 @@
 import InventoryBag from './InventoryBag';
+import {souvenirCollectibles} from './souvenirData';
 import SouvenirPanel from './SouvenirPanel';
 import {unlockAudio} from './audio';
 import ReadingLibrary from './ReadingLibrary';

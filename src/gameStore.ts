@@ -1,3 +1,7 @@
+import {souvenirStalls,atSouvenirStall,type SouvenirId} from './souvenirData';
+import {shopProducts,supplyProduct} from './shopData';
+import {cleanEquipment,emptyEquipment,equipmentSlot,type Equipment} from './equipmentData';
+import {nearFruitAltar,nearestFruitAltar,cleanFruitOfferings,type FruitOffering} from './fruitOfferingData';
 import {submitWorld} from './worldTransport';
 import {foodIsActive} from './pondLayout';
 import {BODHI_INCENSE,HALL_INCENSE} from './ritualStations.mjs';
@@ -20,10 +24,6 @@ import {BELL_DURATION, LANTERN_RISE, LANTERN_LIFETIME, MAX_LANTERNS, WISH_STATIO
 import {serviceTimes} from './mealService';
 import {COURTYARD_SPAWN_Z,DRUM_PROP} from './courtyardPropsData';
 import {BEAD_STEP_MS} from './beadMotion';
-import {souvenirStalls,atSouvenirStall,type SouvenirId} from './souvenirData';
-import {shopProducts,supplyProduct} from './shopData';
-import {cleanEquipment,emptyEquipment,equipmentSlot,type Equipment} from './equipmentData';
-import {nearFruitAltar,nearestFruitAltar,cleanFruitOfferings,type FruitOffering} from './fruitOfferingData';
 export type Activity='carryWater'|'pray'|'bow'|'sweep'|'meditate'|'feed'|'drum'|'bell'|'lantern'|'incense'|'beads'|'chant'|'mok'|'candle'|'flower'|'read'|'plant'|'water'|'harvest'|'meal'|'tea'|'walk';
 export type Action='drum'|'drawWater'|'carryWater'|'pourWater'|'plant'|'water'|'harvest'|'feed'|'flower'|'candle'|'incense'|'walk'|'sit'|'eat'|'pray'|'bow'|'sweep'|'meditate'|'beads'|'chant'|'mok'|'read'|'tea';
 
@@ -154,7 +154,7 @@ export const useGame=create<GameState>()(persist((set,get)=>({
     if(activity==='feed'){const station=nearestFeedStation(s.position);
       if(!canFeedFrom(s.position,station)){s.stand();set({destination:station.spot,panel:null});s.notify('Đến gần mép hồ rồi bấm Cho cá ăn nhé.');return;}
       if(Date.now()-s.lastFishFedAt<3000){s.notify('Đợi cá ăn một chút rồi cho thêm nhé.');return;}
-      if(s.inventory.feed<1){set({panel:'bag'});s.notify('Thức ăn đã hết. Mở túi vải để đổi thêm.');return;}
+      if(s.inventory.feed<1){set({panel:'bag'});s.notify('Thức ăn đã hết. Ghé quầy hàng để mua thêm.');return;}
       if(s.connection==='connecting'){s.notify('Đang kết nối phòng, bạn đợi một chút nhé.');return;}
       if(s.connection==='online'){void completeSharedOffering('feed',station.id);return;}
       set({lastFishFedAt:Date.now(),fishFeedAt:Date.now(),fishFeeds:[...s.fishFeeds.filter(f=>foodIsActive(f,Date.now())),{at:Date.now(),x:station.target[0],z:station.target[1]}].slice(-12),action:'feed',event:{type:'feed',at:Date.now(),x:station.target[0],z:station.target[1]},inventory:{...s.inventory,feed:s.inventory.feed-1}});s.record('feed');s.notify('Đàn koi đang bơi đến ăn. +2 công đức');return;
@@ -162,7 +162,7 @@ export const useGame=create<GameState>()(persist((set,get)=>({
     if(activity==='flower'||activity==='candle'){
 if(stationId?.startsWith('flower-front-')){s.notify('Bình này chỉ để trang trí. Mời bạn chọn bình bên trong bàn thờ.');return;}
       const config=stationId?offeringStation(activity,stationId):nearestOfferingStation(activity,s.position,s.offeringFocus);set({offeringFocus:config.id});if(distance(s.position,config.spot)>OFFERING_RANGE){s.stand();set({destination:config.approach,panel:null});s.notify('Đến bàn '+(activity==='flower'?'dâng hoa trên bàn thờ':'dâng đèn trên bàn thờ')+' rồi bấm lại để thực hiện.');return;}
-      if(s.inventory[activity]<1){set({panel:'bag'});s.notify('Vật phẩm đã hết. Mở túi vải để đổi thêm.');return;}
+      if(s.inventory[activity]<1){set({panel:'bag'});s.notify('Vật phẩm đã hết. Ghé quầy hàng để mua thêm.');return;}
       if(offeringCount(s.offerings[activity],s.offeringSlots,config,Date.now(),templeOffering[activity].lifetime)>=OFFERING_CAPACITY){s.notify('Bàn đã đủ lễ vật. Mời bạn đợi một chút rồi quay lại.');return;}
       s.stand();set({action:activity,panel:null,event:{type:activity,at:Date.now(),x:s.position[0],z:s.position[1],target:config.id}});s.notify(activity==='flower'?'Đang thành tâm dâng hoa…':'Đang châm đèn sen…');return;
     }
@@ -171,7 +171,7 @@ if(stationId?.startsWith('flower-front-')){s.notify('Bình này chỉ để tran
       if(s.inventory.incense<1){set({panel:'bag'});s.notify('Bạn đã hết hương.');return;}
       s.stand();set({action:'incense',destination:null,pendingSeat:null,panel:null,event:{type:'incense',at:Date.now(),x:s.position[0],z:s.position[1],target:HALL_INCENSE.id}});return;
     }
-    if(activity==='incense'&&(stationId===QUAN_AM.incenseId||nearQuanAm(s.position))){if(!nearQuanAm(s.position)){s.stand();set({destination:[...QUAN_AM.approach],panel:null});s.notify('Đến trước bàn hương Quan Âm rồi nhấn E để dâng hương.');return;}if(s.inventory.incense<1){set({panel:'bag'});s.notify('Bạn đã hết hương. Mở túi vải để đổi thêm nhé.');return;}s.stand();set({action:'incense',destination:null,pendingSeat:null,panel:null,event:{type:'incense',at:Date.now(),x:s.position[0],z:s.position[1],target:QUAN_AM.incenseId}});s.notify('Thành tâm dâng hương trước Quán Thế Âm Bồ Tát…');return;}
+    if(activity==='incense'&&(stationId===QUAN_AM.incenseId||nearQuanAm(s.position))){if(!nearQuanAm(s.position)){s.stand();set({destination:[...QUAN_AM.approach],panel:null});s.notify('Đến trước bàn hương Quan Âm rồi nhấn E để dâng hương.');return;}if(s.inventory.incense<1){set({panel:'bag'});s.notify('Bạn đã hết hương. Ghé quầy nhang để mua thêm nhé.');return;}s.stand();set({action:'incense',destination:null,pendingSeat:null,panel:null,event:{type:'incense',at:Date.now(),x:s.position[0],z:s.position[1],target:QUAN_AM.incenseId}});s.notify('Thành tâm dâng hương trước Quán Thế Âm Bồ Tát…');return;}
     if(activity==='incense'&&(stationId===BODHI_INCENSE.id||nearBodhiAltar(s.position))){
       if(!nearBodhiAltar(s.position)){s.stand();set({destination:[...BODHI.offeringPoint],panel:null});return;}
       if(s.inventory.incense<1){set({panel:'bag'});return;}
@@ -179,7 +179,7 @@ if(stationId?.startsWith('flower-front-')){s.notify('Bình này chỉ để tran
     }
     if(activity==='incense'){
       if(distance(s.position,incenseSpot)>INCENSE_RANGE||distance(s.position,incenseSpot)<INCENSE_CLEARANCE){s.stand();set({destination:incenseApproach,panel:null});s.notify('Đến trước lư hương, rồi nhấn E để dâng hương.');return;}
-      if(s.inventory.incense<1){set({panel:'bag'});s.notify('Bạn đã hết hương. Mở túi vải để đổi thêm.');return;}
+      if(s.inventory.incense<1){set({panel:'bag'});s.notify('Bạn đã hết hương. Ghé quầy hàng để mua thêm.');return;}
       s.stand();set({action:'incense',destination:null,pendingSeat:null,panel:null,event:{type:'incense',at:Date.now(),x:s.position[0],z:s.position[1]}});s.notify('Thành tâm dâng một nén hương…');return;
     }
 if(activity==='pray'||activity==='beads'){set({action:s.action===activity?(s.seated?'sit':'walk'):activity,destination:null,pendingSeat:null,pendingActivity:null,bow:null});return;}if((activity==='bell'||activity==='lantern')&&s.ceremony){s.notify('Mời bạn lắng lại cùng khoảnh khắc đang diễn ra.');return;}if(s.event&&Date.now()-s.event.at<900&&!['tea','read','chant','meditate','mok','meal'].includes(activity))return;
@@ -206,7 +206,7 @@ if(activity==='pray'||activity==='beads'){set({action:s.action===activity?(s.sea
       set({worldBellAt:Date.now(),worldBellReadyAt:Date.now()+BELL_DURATION+10000});
     }
     const consumable=(['feed','incense','candle','flower'] as string[]).includes(activity)?activity as Item:null;
-    if(consumable){if(s.inventory[consumable]<=0){set({panel:'bag'});s.notify('Vật phẩm đã hết. Ghé túi vải để đổi thêm.');return;}set({inventory:{...s.inventory,[consumable]:s.inventory[consumable]-1}});}
+    if(consumable){if(s.inventory[consumable]<=0){set({panel:'bag'});s.notify('Vật phẩm đã hết. Ghé quầy hàng để mua thêm.');return;}set({inventory:{...s.inventory,[consumable]:s.inventory[consumable]-1}});}
     if(activity==='sweep'){s.stand();set({action:s.action==='sweep'?'walk':'sweep'});}else if(['pray','beads'].includes(activity))set({action:s.action===activity?'sit' as Action:activity as Action});else if(activity==='bow'){const cushion=!!s.seated&&seats.find(c=>c.id===s.seated)?.kind==='cushion';if(!cushion)s.stand();set({action:'bow',bow:{at:Date.now(),mode:cushion?'cushion':'standing'},destination:null,pendingSeat:null,pendingActivity:null});}
     set({event:{type:activity,at:Date.now(),x:atBodhi?BODHI.x:s.position[0],z:atBodhi?BODHI.altarZ:s.position[1]},...(atBodhi?{bodhiIncense:s.bodhiIncense+1}:{})});
     if(activity==='bell')set({ceremony:{type:'bell',at:Date.now()}});
@@ -278,7 +278,7 @@ if(s.flights.some(f=>Date.now()-f.at>=LANTERN_LIFETIME))set({flights:s.flights.f
     const s=get();if(s.waterQuest||s.bow||s.ceremony){s.notify('Hoàn tất hoạt động hiện tại trước khi dâng trái cây nhé.');return;}
     if(s.inventory.fruit<1){s.notify('Bạn cần mua trái cây ở quầy hoa quả.');return;}
     const altar=nearFruitAltar(s.position);
-    if(!altar){const target=nearestFruitAltar(s.position);s.stand();set({panel:null,destination:[...target.spot] as Vec2});s.notify('Đang đến '+target.label+'. Đến gần rồi mở túi để dâng nhé.');return;}
+    if(!altar){const target=nearestFruitAltar(s.position);s.stand();set({panel:null,destination:[...target.spot] as Vec2});s.notify('Đang đến '+target.label+'. Đến gần rồi mở túi để dâng trái cây.');return;}
     const at=Date.now(),active=cleanFruitOfferings(s.fruitOfferings,at);
     if(active.some(offering=>offering.altar===altar.id)){s.notify('Bàn đang có mâm trái cây. Mời bạn quay lại khi lễ vật được thu dọn.');return;}
     s.stand();set({panel:null,action:'pray',destination:null,fruitOfferings:[...active,{altar:altar.id,at}],inventory:{...s.inventory,fruit:s.inventory.fruit-1},merit:s.merit+2,peace:Math.min(100,s.peace+1),experience:s.experience+2});s.notify('Đã dâng một mâm trái cây tại '+altar.label+'. +2 công đức.');

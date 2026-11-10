@@ -46,3 +46,17 @@ for(const chef of [true,false])for(let t=chef?order.cookedAt+200:order.deliveryA
 }assert.ok(total>550,'Sampled the server and chef through every supported tray handoff frame');
 
 });
+
+test('two-handed equipment holds both palms near the item while retaining the walking leg animation',async()=>{
+ const bytes=fs.readFileSync('public/assets/characters/thay-chua-chibi.glb'),{scene,animations}=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+ const mixer=new AnimationMixer(scene);mixer.clipAction(animations.find(clip=>clip.name==='Walk')!).play();const rig=createChibiPose(scene),left=new Vector3(),right=new Vector3();
+ let moved=0,lastLeg=scene.getObjectByName('Dui_L')!.quaternion.clone();
+ for(let i=0;i<100;i++){
+  rig.restore();mixer.update(1/60);const expectedLeg=scene.getObjectByName('Dui_L')!.quaternion.clone();
+  rig.update('walk',false,false,1/60,undefined,undefined,0,true,false,undefined,true);
+  assert.ok(scene.getObjectByName('Dui_L')!.quaternion.toArray().every((value,index)=>Math.abs(value-expectedLeg.toArray()[index])<1e-8),'holding never overwrites the gait');
+  moved+=lastLeg.angleTo(expectedLeg);lastLeg=expectedLeg;
+ }
+ scene.updateMatrixWorld(true);scene.getObjectByName('Co_Tay_L')!.getWorldPosition(left);scene.getObjectByName('Co_Tay_R')!.getWorldPosition(right);scene.worldToLocal(left);scene.worldToLocal(right);
+ assert.ok(left.distanceTo(new Vector3(.085,.65,.24))<.018,`left palm ${left.toArray()}`);assert.ok(right.distanceTo(new Vector3(-.085,.65,.24))<.018,`right palm ${right.toArray()}`);assert.ok(moved>.1);
+});

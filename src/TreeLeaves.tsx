@@ -1,7 +1,7 @@
 import {submitSweep} from './worldTransport';
 import {createClientId} from './clientIds';
 import {useLayoutEffect,useMemo,useRef} from 'react';import {useFrame} from '@react-three/fiber';import {useTexture} from '@react-three/drei';import * as T from 'three';
-import {useGame} from './gameStore';import {playerMotion} from './runtime';import {useReducedMotion} from './useReducedMotion';import {createLeafPool,advanceLeaf,collectLeaf,sampleLeaf,leafSources,LEAVES,type LeafPose} from './leafSimulation';import {createFallenLeafGeometry,createFallenLeafMaterial,leafVariant} from './fallenLeafSurface';import {createBroomContact,createSweepPose,sampleSweepPose,placeSweepContact,sweepContact} from './sweepMotion';
+import {useGame} from './gameStore';import {playerMotion} from './runtime';import {useReducedMotion} from './useReducedMotion';import {createLeafPool,advanceLeaf,collectLeaf,sampleLeaf,leafSources,LEAVES,type LeafPose} from './leafSimulation';import {createFallenLeafGeometry,createFallenLeafMaterial,leafVariant} from './fallenLeafSurface';import {createBroomContact,createSweepPose,sampleChibiSweepPose,placeSweepContact,sweepContact} from './sweepMotion';
 export default function TreeLeaves(){
  const mesh=useRef<T.InstancedMesh>(null),pool=useMemo(()=>createLeafPool(Date.now()),[]),quality=useGame(s=>s.quality),reduced=useReducedMotion(),atlas=useTexture('/assets/sweeping/bodhi-leaves-v1.webp'),geometry=useMemo(()=>createFallenLeafGeometry(LEAVES.perTree*leafSources.length),[]),material=useMemo(()=>createFallenLeafMaterial(atlas),[atlas]);
  const slots=pool,object=useRef(new T.Object3D()),pose=useRef<LeafPose>({x:0,y:0,z:0,rx:0,ry:0,rz:0,scale:0}),frame=useRef(createSweepPose()),feet=useRef(new T.Vector3()),lastSweep=useRef(0),previous=useRef({x:0,z:0,valid:false}),contact=useRef(createBroomContact());
@@ -14,7 +14,7 @@ export default function TreeLeaves(){
   if(shared&&remoteCache.current.snapshot!==shared.leaves){remoteCache.current.snapshot=shared.leaves;remoteCache.current.map=new Map(shared.leaves.cleared.map(c=>[c[0],c]));}
   const cleared=shared?remoteCache.current.map:null;
   if(!active)previous.current.valid=false;
-  if(sweep){sampleSweepPose(Date.now(),reduced,frame.current);const f=frame.current;playerMotion.object?playerMotion.object.getWorldPosition(feet.current):feet.current.set(state.position[0],state.height,state.position[1]);placeSweepContact(f,feet.current.x,feet.current.z,feet.current.y+.025,playerMotion.object?playerMotion.heading:state.heading,previous.current,elapsed,contact.current);lastSweep.current=now;
+  if(sweep){sampleChibiSweepPose(Date.now(),reduced,frame.current);const f=frame.current;playerMotion.object?playerMotion.object.getWorldPosition(feet.current):feet.current.set(state.position[0],state.height,state.position[1]);placeSweepContact(f,feet.current.x,feet.current.z,feet.current.y+.025,playerMotion.object?playerMotion.heading:state.heading,previous.current,elapsed,contact.current);lastSweep.current=now;
   }
   for(let i=0;i<slots.length;i++){const slot=slots[i];advanceLeaf(slot,now);
    const remote=cleared?.get(slot.seed);if(remote&&slot.collectedAt!==remote[2]){slot.fallAt=remote[1];slot.collectedAt=remote[2];slot.gatherX=remote[3];slot.gatherZ=remote[4];slot.dirty=true;}

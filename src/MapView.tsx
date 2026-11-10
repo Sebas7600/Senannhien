@@ -1,3 +1,4 @@
+import {souvenirStalls} from './souvenirData';
 import {MAYA_LEVEL} from './mayaLevel';
 import {QUAN_AM} from './quanAmData';
 import {GATE_ENTRY} from './courtyardPropsData';

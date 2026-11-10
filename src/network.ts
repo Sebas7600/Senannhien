@@ -55,4 +55,3 @@ export function useSharedCourtyard(){const room=useGame(s=>s.room);useEffect(()=
   void connect();return()=>{closed=true;setWorldTransport(null);setSweepTransport(null);setGardenTransport(null);setOfferingTransport(null);source?.close();if(timer)clearInterval(timer);useGame.setState({peers:[]})};
 },[room]);}
 export async function sendChat(text:string){const s=useGame.getState();const clean=text.trim().slice(0,240);if(!clean)return false;if(s.connection!=='online'){s.notify('Chat cần kết nối tới máy chủ game đang chạy bằng Choi-Game.cmd.');return false;}try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:clientId,room:s.room,text:clean})});if(!r.ok)throw new Error();return true}catch{s.notify('Chưa gửi được lời nhắn. Thử lại sau một chút nhé.');return false}}
-

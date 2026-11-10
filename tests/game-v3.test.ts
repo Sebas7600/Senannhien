@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {webcrypto} from 'node:crypto';
 import * as THREE from 'three';
-import {POND,ISLAND,POND_BRIDGES,feedStations,bridgeHeight,pondContains,pondBlocked,pondSurface} from '../src/pondLayout';
+import {POND,ISLAND,POND_BRIDGES,feedStations,bridgeHeight,islandContains,pondContains,pondBlocked,pondSurface} from '../src/pondLayout';
 import {pondTerrain,pavementGeometry} from '../src/pondGeometry';
 import {incenseApproach} from '../src/gameData';
 // Node 18 ESM does not expose the browser Web Crypto global by default.
@@ -161,6 +161,50 @@ test('feeding koi targets stay inside the pond near the food',async()=>{
    assert.ok(Math.hypot(x-foodX,z-foodZ)<2);
    assert.ok(pondContains(x,z),station.id);
   }
+ }
+});
+
+test('idle koi wander independently with turns in both directions across the lake',async()=>{
+ const {createFishSchool,advanceFishSchool,FISH_COUNT}=await import('../src/fishSimulation.mjs');
+ const dt=1/30,school=createFishSchool(0);
+ const coverage=Array.from({length:FISH_COUNT},()=>new Set<number>()),turns=Array.from({length:FISH_COUNT},()=>new Set<number>());
+ const quadrant=(x:number,z:number)=>(x>POND.x?1:0)+(z>POND.z?2:0);
+ assert.equal(new Set(Array.from({length:9},(_,i)=>quadrant(school.poses[i*3],school.poses[i*3+1]))).size,4);
+ for(let frame=1;frame<=5400;frame++){
+  const previous=school.poses.slice();advanceFishSchool(school,frame*1000/30,[]);
+  for(let i=0;i<FISH_COUNT;i++){
+   const n=i*3,[x,z,yaw]=school.poses.slice(n,n+3);
+   assert.ok(pondContains(x,z)&&!islandContains(x,z,-.54));
+   assert.ok(Math.hypot(x-previous[n],z-previous[n+1])<=1.95*dt+1e-8);
+   coverage[i].add(quadrant(x,z));const turn=yaw-previous[n+2];
+   // Slow patrols turn more gently than the former fast, client-only swimmers.
+   if(Math.abs(turn)>.005)turns[i].add(Math.sign(turn));
+  }
+ }
+ assert.ok(coverage.filter(sections=>sections.size>=3).length>=Math.floor(FISH_COUNT*.7));
+ assert.ok(turns.every(direction=>direction.size===2));
+});
+
+test('koi reach food across the island and return to their route without crossing dry land',async()=>{
+ const {createFishSchool,advanceFishSchool,FISH_COUNT}=await import('../src/fishSimulation.mjs');
+ for(const station of feedStations){
+  const food={at:0,x:station.target[0],z:station.target[1]} as {at:number;x:number;z:number;eatingAt?:number};
+  const school=createFishSchool(0);let eatingPositions:number[]=[];
+  for(let frame=1;frame<=930;frame++){
+   const now=frame*1000/30;advanceFishSchool(school,now,[food]);
+   for(let i=0;i<FISH_COUNT;i++){
+    const n=i*3,x=school.poses[n],z=school.poses[n+1];
+    assert.ok(pondContains(x,z)&&!islandContains(x,z,-.54),`${station.id}, fish ${i}, frame ${frame}`);
+   }
+   if(frame===150){
+    assert.ok(food.eatingAt!==undefined&&food.eatingAt<=now,`${station.id}: fish reach the food`);
+    assert.ok(school.states.some((s,i)=>s.feedAt===food.at&&Math.hypot(school.poses[i*3]-food.x,school.poses[i*3+1]-food.z)<2));
+    assert.equal(school.states.filter(s=>s.feedAt===food.at).length,Math.ceil(FISH_COUNT/3),'one pile keeps a group, leaving fish for other visitors');
+    eatingPositions=school.poses.slice();
+   }
+  }
+  assert.ok(school.states.every(s=>s.feedAt===null),'fish leave the expired meal and resume roaming');
+  assert.ok(school.poses.some((v,i)=>i%3!==2&&Math.abs(v-eatingPositions[i])>1),'the school keeps moving after feeding');
  }
 });
 

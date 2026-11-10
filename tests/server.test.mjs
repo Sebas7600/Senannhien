@@ -52,6 +52,12 @@ test('shared courtyard: live positions, room separation, exclusive seats and cha
     const first=await post('/api/state',{id:'test_player_a',room:'an-nhien',name:'An',robe:'#bf733e',gender:'female',skin:'#b58a66',robeStyle:'cross',x:28.2,y:.53,z:-29,heading:1.5,action:'sit',seat:'dining-0'});assert.equal(first.status,200);assert.equal(first.data.seat,'dining-0');
     const conflict=await post('/api/state',{id:'test_player_b',room:'an-nhien',name:'Bình',x:3,z:4,action:'sit',seat:'dining-0'});assert.equal(conflict.data.seat,null);
     await b.wait(s=>s.peers.some(p=>p.name==='An'&&p.x===28.2&&p.seat==='dining-0'));assert.equal(other.state.peers.length,1);assert.equal(b.state.peers.find(p=>p.name==='An').gender,'female');assert.equal(b.state.peers.find(p=>p.name==='An').robeStyle,'cross');
+    await post('/api/state',{id:'test_player_a',room:'an-nhien',equipment:{neck:'necklace',wrist:'bracelet',hand:'buddha'}});
+    await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.equipment?.hand==='buddha'));
+    assert.deepEqual(b.state.peers.find(p=>p.id==='test_player_a').equipment,{neck:'necklace',wrist:'bracelet',hand:'buddha'});
+    await post('/api/state',{id:'test_player_a',room:'an-nhien',equipment:{neck:'buddha',wrist:'invalid',hand:'necklace',injected:'anything'}});
+    await b.wait(s=>s.peers.some(p=>p.id==='test_player_a'&&p.equipment?.neck===null));
+    assert.deepEqual(b.state.peers.find(p=>p.id==='test_player_a').equipment,{neck:null,wrist:null,hand:null});
     const message=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'Chào bạn, mời dùng bữa chay.'});assert.equal(message.status,200);await b.wait(s=>s.messages.some(m=>m.text==='Chào bạn, mời dùng bữa chay.'));assert.equal(other.state.messages.length,0);
     const duplicate=await post('/api/chat',{id:'test_player_a',room:'an-nhien',text:'spam'});assert.equal(duplicate.status,429);
     const forged=await post('/api/chat',{id:'not_connected',room:'an-nhien',text:'hello'});assert.equal(forged.status,409);

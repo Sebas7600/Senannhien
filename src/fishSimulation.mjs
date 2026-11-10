@@ -1,10 +1,15 @@
 import {koiTarget,steerKoi} from './fishMotion.mjs';
-import {foodIsActive} from './pondScene.mjs';
+import {POND,foodIsActive} from './pondScene.mjs';
 export const FISH_COUNT=23;
 const STEP=1000/30,damp=(a,b,k,dt)=>b+(a-b)*Math.exp(-k*dt);
 export function createFishSchool(at){
  const poses=[],states=[];
- for(let i=0;i<FISH_COUNT;i++){const [x,z]=koiTarget(i,0,null);poses.push(x,z,i);states.push({x,z,at:0,blend:0,speed:.65,feedAt:null,eating:false});}
+ // Preserve the scattered arrival view; subsequent destinations remain independent.
+ for(let i=0;i<FISH_COUNT;i++){
+  const angle=i*2.399963,spread=.58+i%4*.085;
+  const x=POND.x+Math.cos(angle)*POND.rx*spread,z=POND.z+Math.sin(angle)*POND.rz*spread;
+  poses.push(x,z,angle);states.push({x,z,at:0,blend:0,speed:.65,feedAt:null,eating:false});
+ }
  return {at,epoch:at,poses,states};
 }
 // Reserve at most a third of the school for each pile. Keep some fish roaming

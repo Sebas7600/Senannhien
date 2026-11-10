@@ -252,15 +252,16 @@ function KoiSchool(){
   const simulation=useRef(createFishSchool(Date.now()));
   const swimming=useRef(new Float64Array(koiCount*3).fill(Number.NaN));
   const interpolation=useRef({at:0,from:new Float64Array(koiCount*3),to:[] as number[],received:0});
-  const reduced=useReducedMotion();
+  const elapsed=useRef(0),quality=useGame(s=>s.quality),reduced=useReducedMotion();
   useLayoutEffect(()=>{
     for(const mesh of [...bodies.current,tails.current!]){
       mesh!.instanceMatrix.setUsage(T.DynamicDrawUsage);
       mesh!.boundingSphere=new T.Sphere(new T.Vector3(POND.x,POND.waterY,POND.z),POND.rz);
     }
   },[]);
-  useFrame(({clock},dt)=>{
-    dt=Math.min(dt,.05);
+  useFrame((_,dt)=>{
+    // Keep every authoritative fish visible; low quality limits matrix uploads.
+    elapsed.current+=dt;if(quality==='low'&&elapsed.current+1e-6<1/30)return;elapsed.current=0;
     const tail=tails.current!,object=work.current,poses=swimming.current;
     const state=useGame.getState(),now=Date.now(),shared=state.connection==='online'?state.sharedFish:null;
     let next:ArrayLike<number>,time:number;

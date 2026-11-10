@@ -1,16 +1,13 @@
 import type {DishId} from './gameData';
-import {Suspense, useMemo, useRef} from 'react';
+import {Suspense, useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import type {Group} from 'three';
 import SweepBroom from './SweepBroom';
 import WaterYoke from './WaterYoke';
-import {createSweepPose,sampleSweepPose,sweepContact} from './sweepMotion';
+import type {SweepPose} from './sweepMotion';
 import {useReducedMotion} from './useReducedMotion';
 
-export function ChibiBroom({localPlayer = false}: {localPlayer?:boolean}) {
-  const frame = useMemo(createSweepPose,[]);
-  const reduced = useReducedMotion();
-  useFrame(() => sampleSweepPose(Date.now(),reduced,frame,localPlayer?sweepContact:null));
+export function ChibiBroom({frame,localPlayer = false}: {frame:SweepPose;localPlayer?:boolean}) {
   return <Suspense fallback={null}><SweepBroom frame={frame} localPlayer={localPlayer}/></Suspense>;
 }
 
@@ -58,7 +55,7 @@ export function ChibiHandProp({pose,dish}: {pose:string;dish?:DishId}) {
     <mesh><cylinderGeometry args={[.043,.046,.026,12]}/><meshStandardMaterial color="#e9d39b"/></mesh>
     <mesh position={[0,.054,0]} scale={[1,1.65,1]}><sphereGeometry args={[.014,6,4]}/><meshBasicMaterial color="#ffd685"/></mesh>
   </group>;
-  if (pose === 'water' || pose === 'drawWater') return <WateringCan flow={pose === 'water'}/>;
+  if (pose === 'water') return <WateringCan flow/>;
   if (pose === 'eat') return <group>
     {dish === 'bread' ? <mesh><capsuleGeometry args={[.035,.105,4,8]}/><meshStandardMaterial color="#c89550"/></mesh>
       : dish === 'rice' ? <>

@@ -1,8 +1,8 @@
-import AltarSmoke from './AltarSmoke';
 import FruitOfferings from './FruitOfferings';
 import SouvenirMarket from './SouvenirMarket';
 import {nearestSouvenirStall,atSouvenirStall} from './souvenirData';
 import {openSouvenirStall} from './souvenirActions';
+import AltarSmoke from './AltarSmoke';
 import {HALL_INCENSE} from './ritualStations.mjs';
 import {DRUM_APPROACH} from './drumMotion';
 import {TouchLookGesture,touchLookDelta} from './touchLook';
@@ -175,7 +175,6 @@ function RemoteAvatar({peer}:{peer:Peer}){
   const [safeX,safeZ]=outsideIncenseBurner(peer.x,peer.z);
   const relocated=Math.hypot(safeX-peer.x,safeZ-peer.z)>.001;
   const safeY=relocated?floorAt(safeX,safeZ):peer.y;
-  const remoteSeat=seats.find(seat=>seat.id===peer.seat);
   const ref=useRef<THREE.Group>(null),initial=useRef<[number,number,number]>([safeX,safeY,safeZ]),target=useRef(new THREE.Vector3());
   useFrame((_,dt)=>{
     if(!ref.current)return;
@@ -187,6 +186,7 @@ function RemoteAvatar({peer}:{peer:Peer}){
     if(Math.hypot(x-ref.current.position.x,z-ref.current.position.z)>.001){ref.current.position.set(x,floorAt(x,z),z);}
     const d=THREE.MathUtils.euclideanModulo(peer.heading-ref.current.rotation.y+Math.PI,Math.PI*2)-Math.PI;ref.current.rotation.y+=d*Math.min(1,dt*12);
   });
+  const remoteSeat=seats.find(seat=>seat.id===peer.seat);
   return <group ref={ref} position={initial.current}><PlayerAvatar equipment={peer.equipment} moving={moving} robe={peer.robe} pose={relocated?'walk':peer.action} bowStartedAt={peer.bow?.at} bowMode={peer.bow?.mode} gender={peer.gender} skin={peer.skin} robeStyle={peer.robeStyle} seated={!relocated&&!!peer.seat} dish={peer.meal?.dish} chair={!relocated&&!!peer.seat&&!usesFloorSeat(remoteSeat)}/><Html position={[0,1.8,0]} center zIndexRange={[3,0]}><span className="nametag remote character-name-tag"><i/>{peer.name}</span></Html></group>;
 }
 
@@ -273,7 +273,7 @@ function CourtyardReflections({low}:{low:boolean}){
 }
 function FrameMetrics(){const samples=useRef<number[]>([]),elapsed=useRef(0);useFrame((_,dt)=>{samples.current.push(dt*1000);elapsed.current+=dt;if(elapsed.current>=2){const sorted=samples.current.slice().sort((a,b)=>a-b);performanceStats.fps=Math.round(samples.current.length/elapsed.current);performanceStats.p95=Math.round(sorted[Math.floor(sorted.length*.95)]||0);performanceStats.frames+=samples.current.length;document.documentElement.dataset.performance=JSON.stringify(performanceStats);samples.current=[];elapsed.current=0}});return null;}
 function SceneReady(){useEffect(()=>{document.documentElement.dataset.scene='ready';return()=>{delete document.documentElement.dataset.scene}},[]);return null;}
-function WorldV2(){const quality=useGame(s=>s.quality);return <Canvas shadows={quality==='high'} dpr={quality==='high'?[1,1.3]:1} gl={{antialias:quality==='high',powerPreference:quality==='low'?'low-power':'high-performance'}} camera={{position:[0,6.8,COURTYARD_SPAWN_Z+14],fov:48}}>
+function WorldV2(){const quality=useGame(s=>s.quality);return <Canvas shadows={quality==='high'} dpr={quality==='high'?[1,1.3]:1} gl={{alpha:false,premultipliedAlpha:false,antialias:quality==='high',powerPreference:quality==='low'?'low-power':'high-performance'}} camera={{position:[0,6.8,COURTYARD_SPAWN_Z+14],fov:48}}>
   <CourtyardReflections low={quality==='low'}/><FrameMetrics/><OutdoorLighting/><PerspectiveCamera makeDefault position={[0,6.8,COURTYARD_SPAWN_Z+14]} fov={48} near={.1} far={650}/><Keyboard/><FireworksShow/>
   <Suspense fallback={null}><MountainScenery/></Suspense>
   <Suspense fallback={<Html center><div className="scene-loading"><span className="loading-lotus">❋</span>Đang mở khuôn viên an nhiên…</div></Html>}>

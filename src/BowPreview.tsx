@@ -2,7 +2,7 @@ import {Suspense,useEffect,useRef,useState} from 'react';
 import {Canvas} from '@react-three/fiber';
 import {ContactShadows,OrbitControls,Environment,Lightformer} from '@react-three/drei';
 import {ArrowLeft,Flower2,Volume2,VolumeX,Play} from 'lucide-react';
-import {Character} from './Character';
+import Character from './PlayerAvatar';
 import {CUSHION} from './cushionData';
 import {cushionNearGeometry} from './cushionGeometry';
 import {useCushionMaterial} from './cushionMaterial';

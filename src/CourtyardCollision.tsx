@@ -10,5 +10,5 @@ export default function CourtyardCollision(){return <><RigidBody type="fixed" co
  </group>)}
  </RigidBody>
  {souvenirStalls.map(stall=><RigidBody key={stall.id} type="fixed" colliders={false} position={[stall.x,0,stall.z]} rotation={[0,stall.rotation,0]} userData={{cameraWall:true}}>
-  {souvenirCameraParts.map((part,i)=><CuboidCollider key={i} position={part.position} rotation={part.rotation} args={[part.size[0]/2,part.size[1]/2,part.size[2]/2]}/>) }
+  {souvenirCameraParts.map((part,i)=><CuboidCollider key={i} position={part.position} rotation={part.rotation} args={[part.size[0]/2,part.size[1]/2,part.size[2]/2]}/>)}
  </RigidBody>)}</>}
